@@ -7,4 +7,6 @@
 #include <codecvt>
 #include <memory>
 #include <cstdint>
+#include <exception>
+#include <sstream>
 #include <Windows.h>

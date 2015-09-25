@@ -6,13 +6,16 @@
 class LineProcessor{
 	std::vector<std::string> args;
 	std::set<std::string, strcmpci> argument_set;
-	enum OperationMode{
+	enum class OperationMode{
 		User,
 		Pipe,
 	};
 	OperationMode operation_mode;
 	std::unique_ptr<BackupSystem> backup_system;
 	version_number_t selected_version;
+
+	void ensure_backup_initialized();
+	void ensure_existing_version();
 
 #define DECLARE_PROCESS_OVERLOAD(x) void process_##x(const std::wstring *begin, const std::wstring *end)
 	DECLARE_PROCESS_OVERLOAD(line);
