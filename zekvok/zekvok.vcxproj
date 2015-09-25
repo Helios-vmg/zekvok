@@ -139,6 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\ArchiveReader.cpp" />
     <ClCompile Include="..\src\BackupSystem.cpp" />
     <ClCompile Include="..\src\LineProcessor.cpp" />
     <ClCompile Include="..\src\main.cpp" />
@@ -150,6 +151,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\ArchiveReader.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\LineProcessor.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />

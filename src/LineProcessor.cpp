@@ -237,7 +237,7 @@ void LineProcessor::process_show_versions(const std::wstring *begin, const std::
 		return;
 
 	this->ensure_backup_initialized();
-	auto vs = this->backup_system->get_versions();
+	auto &vs = this->backup_system->get_versions();
 	std::cout << "Available versions: " << vs << std::endl;
 }
 
@@ -249,7 +249,7 @@ void LineProcessor::process_show_version_count(const std::wstring *begin, const 
 	if (!this->backup_system->get_version_count())
 		std::cout << "No versions.\n";
 	else{
-		auto vs = this->backup_system->get_versions();
+		auto &vs = this->backup_system->get_versions();
 		std::cout
 			<< "Available versions count: " << vs.size() << std::endl
 			<< "Latest version: " << vs.back() << std::endl;
