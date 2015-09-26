@@ -59,3 +59,13 @@ struct strcmpci
 		return true;
 	}
 };
+
+template <typename T>
+void zero_struct(T &dst){
+	memset(&dst, 0, sizeof(dst));
+}
+
+template <typename T, size_t N>
+void zero_array(T (&dst)[N]){
+	memset(&dst, 0, sizeof(dst));
+}

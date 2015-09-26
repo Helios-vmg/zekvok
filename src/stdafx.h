@@ -16,5 +16,13 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/filtering_stream.hpp> 
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/ptr_container/ptr_container.hpp>
 #include <Windows.h>
+
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
