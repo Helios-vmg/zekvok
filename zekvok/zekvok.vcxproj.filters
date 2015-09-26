@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\serialization">
+      <UniqueIdentifier>{6abb936f-252d-4214-8687-ed9fe2edb085}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\serialization">
+      <UniqueIdentifier>{7809aede-f21d-4741-829c-94394035c84a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\serialization\generated">
+      <UniqueIdentifier>{a295dfcd-90ed-49f3-9396-7eb99f19f050}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -29,6 +38,21 @@
     </ClCompile>
     <ClCompile Include="..\src\ArchiveReader.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\serialization\postsrc\DeserializerStream.cpp">
+      <Filter>Source Files\serialization</Filter>
+    </ClCompile>
+    <ClCompile Include="..\serialization\postsrc\Serializable.cpp">
+      <Filter>Source Files\serialization</Filter>
+    </ClCompile>
+    <ClCompile Include="..\serialization\postsrc\SerializerStream.cpp">
+      <Filter>Source Files\serialization</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\serialization\fso.aux.generated.cpp">
+      <Filter>Source Files\serialization\generated</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\serialization\fso.generated.cpp">
+      <Filter>Source Files\serialization\generated</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -49,6 +73,24 @@
     </ClInclude>
     <ClInclude Include="..\src\ArchiveReader.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Archive.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\serialization\postsrc\DeserializerStream.h">
+      <Filter>Header Files\serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\serialization\postsrc\Serializable.h">
+      <Filter>Header Files\serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\serialization\postsrc\serialization_utils.h">
+      <Filter>Header Files\serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\serialization\postsrc\SerializerStream.h">
+      <Filter>Header Files\serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\fso.generated.h">
+      <Filter>Source Files\serialization\generated</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

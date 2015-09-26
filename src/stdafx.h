@@ -10,6 +10,11 @@
 #include <exception>
 #include <sstream>
 #include <map>
+#include <deque>
 #include <algorithm>
+#include <functional>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filtering_stream.hpp> 
 #include <Windows.h>

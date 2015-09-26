@@ -1,0 +1,117 @@
+<cpp name="fso">
+	<struct name="Sha256Digest">
+		<bool name="valid"/>
+		<array name="digest" length="32">
+			<uint8_t/>
+		</array>
+	</struct>
+	
+	<struct name="Guid">
+		<bool name="valid"/>
+		<array name="data" length="16">
+			<uint8_t/>
+		</array>
+	</struct>
+	
+	<class name="FileSystemObject">
+		<protected/>
+		<uint64_t name="stream_id" />
+		<uint64_t name="differential_chain_id" />
+		<wstring name="name" />
+		<shared_ptr name="mapped_base_path">
+			<wstring/>
+		</shared_ptr>
+		<shared_ptr name="unmapped_base_path">
+			<wstring/>
+		</shared_ptr>
+		<shared_ptr name="link_target">
+			<wstring/>
+		</shared_ptr>
+		<uint64_t name="size" />
+		<datetime name="modification_time" />
+		<Sha256Digest name="hash" />
+		<Guid name="file_system_guid" />
+		<vector name="exceptions">
+			<wstring/>
+		</vector>
+		<bool name="is_main" />
+		<pointer name="parent">
+			<FileSystemObject/>
+		</pointer>
+		<int32_t name="latest_version" />
+		<include header="&quot;FileSystemObject.h&quot;" />
+	</class>
+	
+	<class name="DirectoryishFso">
+		<base name="FileSystemObject" />
+		<include header="&quot;DirectoryishFso.h&quot;" />
+	</class>
+	<class name="DirectoryFso">
+		<base name="DirectoryishFso" />
+		<vector name="children" >
+			<shared_ptr>
+				<FileSystemObject/>
+			</shared_ptr>
+		</vector>
+		<include header="&quot;DirectoryFso.h&quot;" />
+	</class>
+	<class name="DirectorySymlinkFso">
+		<base name="DirectoryishFso" />
+		<include header="&quot;DirectorySymlinkFso.h&quot;" />
+	</class>
+	<class name="JunctionFso">
+		<base name="DirectorySymlinkFso" />
+		<include header="&quot;JunctionFso.h&quot;" />
+	</class>
+	
+	<class name="FilishFso">
+		<base name="FileSystemObject" />
+		<include header="&quot;FilishFso.h&quot;" />
+	</class>
+	<class name="RegularFileFso">
+		<base name="FilishFso" />
+		<include header="&quot;RegularFileFso.h&quot;" />
+	</class>
+	<class name="FileHardlinkFso">
+		<base name="RegularFileFso" />
+		<vector name="peers">
+			<wstring/>
+		</vector>
+		<include header="&quot;FileHardlinkFso.h&quot;" />
+	</class>
+	<class name="FileSymlinkFso">
+		<base name="FilishFso" />
+		<include header="&quot;FileSymlinkFso.h&quot;" />
+	</class>
+	<class name="FileReparsePointFso">
+		<base name="FileSymlinkFso" />
+		<include header="&quot;FileReparsePointFso.h&quot;" />
+	</class>
+	
+	<struct name="ArchiveMetadata">
+		<uint64_t name="entries_size_in_archive" />
+		<vector name="entry_sizes">
+			<uint64_t/>
+		</vector>
+		<vector name="stream_ids">
+			<uint64_t/>
+		</vector>
+		<vector name="stream_sizes">
+			<uint64_t/>
+		</vector>
+	</struct>
+	
+	<struct name="VersionManifest">
+		<datetime name="creation_time" />
+		<int32_t name="version_number" />
+		<vector name="version_dependencies">
+			<int32_t/>
+		</vector>
+		<int32_t name="entry_count" />
+		<uint32_t name="first_stream_id" />
+		<uint32_t name="next_stream_id" />
+		<uint32_t name="first_differential_chain_id" />
+		<uint32_t name="next_differential_chain_id" />
+		<ArchiveMetadata name="archive_metadata" />
+	</struct>
+</cpp>
