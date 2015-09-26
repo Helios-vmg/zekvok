@@ -143,3 +143,81 @@ bool LzmaOutputFilter::flush(write_callback_t cb, void *ud){
 	while (this->pass_data_to_stream(lzma_code(&this->lstream, this->action), cb, ud));
 	return true;
 }
+
+LzmaInputFilter::LzmaInputFilter(size_t buffer_size){
+	this->lstream = LZMA_STREAM_INIT;
+	lzma_ret ret = lzma_stream_decoder(&this->lstream, UINT64_MAX, LZMA_IGNORE_CHECK);
+	if (ret != LZMA_OK){
+		const char *msg;
+		switch (ret) {
+		case LZMA_MEM_ERROR:
+			msg = "Memory allocation failed.\n";
+			break;
+		case LZMA_OPTIONS_ERROR:
+			msg = "Unsupported decompressor flags.\n";
+			break;
+		default:
+			msg = "Unknown error.\n";
+			break;
+		}
+		throw LzmaInitializationException(msg);
+	}
+	this->action = LZMA_RUN;
+	this->input_buffer.resize(buffer_size);
+	this->bytes_read = 0;
+	this->bytes_written = 0;
+	this->queued_buffer = &this->input_buffer[0];
+	this->queued_bytes = 0;
+}
+
+LzmaInputFilter::~LzmaInputFilter(){
+	lzma_end(&this->lstream);
+}
+
+std::streamsize LzmaInputFilter::read(read_callback_t cb, void *ud, void *buffer, std::streamsize size){
+	if (this->at_eof)
+		return 0;
+	size_t ret = 0;
+	this->lstream.next_out = (uint8_t *)buffer;
+	this->lstream.avail_out = size;
+	while (this->lstream.avail_out){
+		if (this->lstream.avail_in == 0){
+			this->lstream.next_in = &this->input_buffer[0];
+			this->lstream.avail_in = cb(ud, &this->input_buffer[0], this->input_buffer.size());
+			this->bytes_read += this->lstream.avail_in;
+		}
+		if (this->lstream.avail_in == 0)
+			this->action = LZMA_FINISH;
+		lzma_ret ret_code = lzma_code(&this->lstream, action);
+		if (ret_code != LZMA_OK) {
+			if (ret_code == LZMA_STREAM_END)
+				break;
+			const char *msg;
+			switch (ret_code) {
+			case LZMA_MEM_ERROR:
+				msg = "Memory allocation failed.";
+				break;
+			case LZMA_FORMAT_ERROR:
+				msg = "The input is not in the .xz format.";
+				break;
+			case LZMA_OPTIONS_ERROR:
+				msg = "Unsupported compression options.";
+				break;
+			case LZMA_DATA_ERROR:
+				msg = "Compressed file is corrupt.";
+				break;
+			case LZMA_BUF_ERROR:
+				msg = "Compressed file is truncated or otherwise corrupt.";
+				break;
+			default:
+				msg = "Unknown error.";
+				break;
+			}
+			throw LzmaOperationException(msg);
+		}
+	}
+	ret = size - this->lstream.avail_out;
+	this->bytes_written += ret;
+	this->at_eof = !ret && size;
+	return ret;
+}

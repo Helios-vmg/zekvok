@@ -50,6 +50,7 @@ class LzmaInputFilter : public InputFilter{
 	uint64_t bytes_read,
 		bytes_written;
 	bool at_eof;
+
 protected:
 	std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 public:
