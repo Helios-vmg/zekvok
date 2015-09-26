@@ -92,7 +92,13 @@ bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret, write_callback_t cb, vo
 	if (!this->lstream.avail_out || ret == LZMA_STREAM_END) {
 		size_t write_size = this->output_buffer.size() - this->lstream.avail_out;
 
-		this->bytes_written += cb(ud, &this->output_buffer[0], write_size);
+		auto temp = &this->output_buffer[0];
+		while (write_size){
+			auto w = cb(ud, temp, write_size);
+			this->bytes_written += w;
+			temp += w;
+			write_size -= w;
+		}
 
 		this->lstream.next_out = &this->output_buffer[0];
 		this->lstream.avail_out = this->output_buffer.size();
@@ -176,7 +182,7 @@ LzmaInputFilter::~LzmaInputFilter(){
 
 std::streamsize LzmaInputFilter::read(read_callback_t cb, void *ud, void *buffer, std::streamsize size){
 	if (this->at_eof)
-		return 0;
+		return -1;
 	size_t ret = 0;
 	this->lstream.next_out = (uint8_t *)buffer;
 	this->lstream.avail_out = size;

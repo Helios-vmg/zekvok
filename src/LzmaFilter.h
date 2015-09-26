@@ -1,6 +1,4 @@
 #pragma once
-#define LZMA_API_STATIC
-#include <lzma.h>
 #include "Filters.h"
 
 const size_t default_buffer_size = 1 << 12;

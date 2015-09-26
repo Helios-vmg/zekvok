@@ -41,7 +41,7 @@ public:
 class InputFilter{
 protected:
 	typedef std::streamsize (*read_callback_t)(void *p, void *buffer, std::streamsize n);
-	virtual std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length);
+	virtual std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) = 0;
 public:
 	typedef char char_type;
     struct category :

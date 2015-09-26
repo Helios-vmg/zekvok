@@ -4,10 +4,18 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zekvok", "zekvok\zekvok.vcxproj", "{8B9BA596-2B6F-4702-91BB-DC1763CE3724}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0703A558-BED4-44C6-B492-878BF786387E} = {0703A558-BED4-44C6-B492-878BF786387E}
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF} = {3423EC9A-52E4-4A4D-9753-EDEBC38785EF}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LAS", "serialization\LAS\LAS.vcxproj", "{886936B8-F314-4A7A-915A-C1138AF46B83}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liblzma", "liblzma\liblzma.vcxproj", "{0703A558-BED4-44C6-B492-878BF786387E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{7CEA44A5-B568-4810-ACE4-477ACF414EE4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cryptlib", "cryptopp\cryptlib.vcxproj", "{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,8 +47,20 @@ Global
 		{0703A558-BED4-44C6-B492-878BF786387E}.Release|Win32.Build.0 = Release|Win32
 		{0703A558-BED4-44C6-B492-878BF786387E}.Release|x64.ActiveCfg = Release|x64
 		{0703A558-BED4-44C6-B492-878BF786387E}.Release|x64.Build.0 = Release|x64
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Debug|Win32.Build.0 = Debug|Win32
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Debug|x64.ActiveCfg = Debug|x64
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Debug|x64.Build.0 = Debug|x64
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Release|Win32.ActiveCfg = Release|Win32
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Release|Win32.Build.0 = Release|Win32
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Release|x64.ActiveCfg = Release|x64
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0703A558-BED4-44C6-B492-878BF786387E} = {7CEA44A5-B568-4810-ACE4-477ACF414EE4}
+		{3423EC9A-52E4-4A4D-9753-EDEBC38785EF} = {7CEA44A5-B568-4810-ACE4-477ACF414EE4}
 	EndGlobalSection
 EndGlobal

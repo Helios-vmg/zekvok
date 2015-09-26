@@ -69,3 +69,13 @@ template <typename T, size_t N>
 void zero_array(T (&dst)[N]){
 	memset(&dst, 0, sizeof(dst));
 }
+
+struct quick_buffer{
+	std::uint8_t *data;
+	quick_buffer(size_t n): data(new std::uint8_t[n]){}
+	~quick_buffer(){
+		delete[] this->data;
+	}
+	quick_buffer(const quick_buffer &) = delete;
+	quick_buffer(quick_buffer &&) = delete;
+};
