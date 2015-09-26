@@ -194,24 +194,24 @@ std::streamsize LzmaInputFilter::read(read_callback_t cb, void *ud, void *buffer
 				break;
 			const char *msg;
 			switch (ret_code) {
-			case LZMA_MEM_ERROR:
-				msg = "Memory allocation failed.";
-				break;
-			case LZMA_FORMAT_ERROR:
-				msg = "The input is not in the .xz format.";
-				break;
-			case LZMA_OPTIONS_ERROR:
-				msg = "Unsupported compression options.";
-				break;
-			case LZMA_DATA_ERROR:
-				msg = "Compressed file is corrupt.";
-				break;
-			case LZMA_BUF_ERROR:
-				msg = "Compressed file is truncated or otherwise corrupt.";
-				break;
-			default:
-				msg = "Unknown error.";
-				break;
+				case LZMA_MEM_ERROR:
+					msg = "Memory allocation failed.";
+					break;
+				case LZMA_FORMAT_ERROR:
+					msg = "The input is not in the .xz format.";
+					break;
+				case LZMA_OPTIONS_ERROR:
+					msg = "Unsupported compression options.";
+					break;
+				case LZMA_DATA_ERROR:
+					msg = "Compressed file is corrupt.";
+					break;
+				case LZMA_BUF_ERROR:
+					msg = "Compressed file is truncated or otherwise corrupt.";
+					break;
+				default:
+					msg = "Unknown error.";
+					break;
 			}
 			throw LzmaOperationException(msg);
 		}
