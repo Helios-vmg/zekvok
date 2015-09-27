@@ -211,6 +211,7 @@
     <ClInclude Include="..\src\HashFilter.h" />
     <ClInclude Include="..\src\LineProcessor.h" />
     <ClInclude Include="..\src\LzmaFilter.h" />
+    <ClInclude Include="..\src\ProgressFilter.h" />
     <ClInclude Include="..\src\serialization\DirectoryFso.h" />
     <ClInclude Include="..\src\serialization\DirectoryishFso.h" />
     <ClInclude Include="..\src\serialization\DirectorySymlinkFso.h" />

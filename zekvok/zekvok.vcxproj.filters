@@ -155,5 +155,8 @@
     <ClInclude Include="..\src\HashFilter.h">
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\ProgressFilter.h">
+      <Filter>Header Files\Stream filters</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
