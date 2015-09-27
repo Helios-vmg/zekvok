@@ -13,6 +13,11 @@
 		</array>
 	</struct>
 	
+	<class name="OpaqueTimestamp">
+		<uint64_t name="timestamp" />
+		<include header="&quot;OpaqueTimestamp.h&quot;" />
+	</class>
+	
 	<class name="FileSystemObject">
 		<protected/>
 		<uint64_t name="stream_id" />
@@ -28,7 +33,7 @@
 			<wstring/>
 		</shared_ptr>
 		<uint64_t name="size" />
-		<datetime name="modification_time" />
+		<OpaqueTimestamp name="modification_time" />
 		<Sha256Digest name="hash" />
 		<Guid name="file_system_guid" />
 		<vector name="exceptions">
@@ -102,7 +107,7 @@
 	</struct>
 	
 	<struct name="VersionManifest">
-		<datetime name="creation_time" />
+		<OpaqueTimestamp name="creation_time" />
 		<int32_t name="version_number" />
 		<vector name="version_dependencies">
 			<int32_t/>
