@@ -53,6 +53,6 @@ std::streamsize HashInputFilter::read(read_callback_t cb, void *ud, void *output
 		output = (char *)output + temp;
 		length -= temp;
 	}
-	this->update(output, ret);
+	this->update(head, ret);
 	return !ret && eof ? -1 : ret;
 }
