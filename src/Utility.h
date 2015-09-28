@@ -86,3 +86,34 @@ struct quick_buffer{
 	quick_buffer(const quick_buffer &) = delete;
 	quick_buffer(quick_buffer &&) = delete;
 };
+
+template <typename DstT, typename SrcT>
+DstT deserialize_fixed_le_int(const SrcT &src){
+	static_assert(CHAR_BIT == 8, "Only 8-bit byte platforms supported!");
+
+	const std::uint8_t *p = (const std::uint64_t *)src;
+	DstT ret = 0;
+	for (auto i = sizeof(ret); i--; ){
+		ret <<= 8;
+		ret |= p[i];
+	}
+	return ret;
+}
+
+template <typename DstT, typename SrcT>
+void deserialize_fixed_le_int(DstT &dst, const SrcT &src){
+	dst = deserialize_fixed_le_int<DstT, SrcT>(src);
+}
+
+template <typename DstT, typename SrcT>
+void serialize_fixed_le_int(DstT &dst, const SrcT &src){
+	static_assert(CHAR_BIT == 8, "Only 8-bit byte platforms supported!");
+
+	std::uint8_t *p = (std::uint64_t *)src;
+	std::make_unsigned<SrcT>::type copy = src;
+	const auto n = sizeof(src);
+	for (auto i = 0; i != n; i++){
+		p[i] = copy & 0xFF;
+		copy >>= 8;
+	}
+}

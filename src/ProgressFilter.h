@@ -51,7 +51,6 @@ protected:
 	}
 public:
 	ProgressOutputFilter(F &report, T steps, T size): ProgressFilter<F, T>(report, steps, size){}
-	~ProgressOutputFilter(){}
 };
 
 template <typename F, typename T>
@@ -75,5 +74,4 @@ protected:
 	}
 public:
 	ProgressInputFilter(F &report, T steps, T size): ProgressFilter<F, T>(report, steps, size){}
-	~ProgressInputFilter(){}
 };

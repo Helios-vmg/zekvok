@@ -14,13 +14,15 @@ Distributed under a permissive license. See COPYING.txt for details.
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
 
 class ArchiveReader{
-	std::deque<input_filter_generator_t> filters;
+	//std::deque<input_filter_generator_t> filters;
 	std::unique_ptr<std::istream> stream;
 	std::shared_ptr<VersionManifest> version_manifest;
 	std::vector<std::shared_ptr<FileSystemObject>> base_objects;
-	std::int64_t manifest_offset,
-		manifest_size,
+	std::int64_t manifest_offset;
+	std::uint64_t manifest_size,
 		base_objects_offset;
+
+	std::vector<stream_id_t> stream_ids;
 
 public:
 	ArchiveReader(const path_t &);

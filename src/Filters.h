@@ -43,6 +43,8 @@ public:
         WriteLambdish<Sink> l(dst);
 		return this->flush(l.callback, &l) && boost::iostreams::flush(this->dst);
 	}
+
+	virtual ~OutputFilter(){}
 };
 
 class InputFilter{
@@ -74,4 +76,6 @@ public:
 		Lambdish<Source> l(src);
 		return this->read(l.callback, &l, s, n);
     }
+
+	virtual ~InputFilter(){}
 };

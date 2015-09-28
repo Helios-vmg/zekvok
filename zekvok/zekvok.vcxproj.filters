@@ -78,6 +78,9 @@
     <ClCompile Include="..\src\HashFilter.cpp">
       <Filter>Source Files\Stream filters</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\BoundedStreamFilter.cpp">
+      <Filter>Source Files\Stream filters</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -156,6 +159,12 @@
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
     <ClInclude Include="..\src\ProgressFilter.h">
+      <Filter>Header Files\Stream filters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SymbolicConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BoundedStreamFilter.h">
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
   </ItemGroup>
