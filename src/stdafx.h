@@ -21,11 +21,13 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <algorithm>
 #include <functional>
 #include <cassert>
+#include <utility>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/ptr_container/ptr_container.hpp>
+#include <boost/coroutine/coroutine.hpp>
 #define LZMA_API_STATIC
 #include <lzma.h>
 #include <cryptlib/sha.h>

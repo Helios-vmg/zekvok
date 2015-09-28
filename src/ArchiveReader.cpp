@@ -53,6 +53,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 
 	this->base_objects_offset = this->version_manifest->archive_metadata.entries_size_in_archive;
 	this->stream_ids = this->version_manifest->archive_metadata.stream_ids;
+	this->stream_sizes = this->version_manifest->archive_metadata.stream_sizes;
 
 	return this->version_manifest;
 }
@@ -87,9 +88,33 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	return this->base_objects;
 }
 
-std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::get_base_objects(){
-	return std::vector<std::shared_ptr<FileSystemObject>>();
+void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
+	if (!this->version_manifest)
+		this->read_manifest();
+	this->stream->seekg(0);
+	{
+		LzmaInputFilter lzma;
+		boost::iostreams::filtering_istream filter;
+		filter.push(lzma);
+		filter.push(*this->stream);
+
+		assert(this->stream_ids.size() == this->stream_sizes.size());
+		for (size_t i = 0; i < this->stream_ids.size(); i++){
+			BoundedInputFilter bounded(this->stream_sizes[i]);
+			boost::iostreams::filtering_istream second_filter;
+			second_filter.push(bounded);
+			second_filter.push(filter);
+			sink(std::make_pair(this->stream_ids[i], &second_filter));
+		}
+		DeserializerStream ds(filter);
+		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
+		if (!this->version_manifest)
+			throw std::exception("Error during deserialization");
+	}
 }
 
-void ArchiveReader::begin(std::function<void(std::uint64_t, std::istream &)> &){
+ArchiveReader::read_everything_co_t::pull_type ArchiveReader::read_everything(){
+	return read_everything_co_t::pull_type([this](read_everything_co_t::push_type &sink){
+		this->read_everything(sink);
+	});
 }
