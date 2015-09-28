@@ -51,9 +51,6 @@
     <ClCompile Include="..\src\LineProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ArchiveReader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\serialization\fso.aux.generated.cpp">
       <Filter>Source Files\Serialization\Generated</Filter>
     </ClCompile>
@@ -81,6 +78,9 @@
     <ClCompile Include="..\src\BoundedStreamFilter.cpp">
       <Filter>Source Files\Stream filters</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\ArchiveIO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -96,9 +96,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\SimpleTypes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\ArchiveReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Archive.h">
@@ -166,6 +163,9 @@
     </ClInclude>
     <ClInclude Include="..\src\BoundedStreamFilter.h">
       <Filter>Header Files\Stream filters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ArchiveIO.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

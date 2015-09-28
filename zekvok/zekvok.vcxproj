@@ -173,7 +173,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\src\ArchiveReader.cpp" />
+    <ClCompile Include="..\src\ArchiveIO.cpp" />
     <ClCompile Include="..\src\BackupSystem.cpp" />
     <ClCompile Include="..\src\BoundedStreamFilter.cpp" />
     <ClCompile Include="..\src\HashFilter.cpp" />
@@ -206,7 +206,7 @@
     <ClInclude Include="..\serialization\postsrc\serialization_utils.h" />
     <ClInclude Include="..\serialization\postsrc\SerializerStream.h" />
     <ClInclude Include="..\src\Archive.h" />
-    <ClInclude Include="..\src\ArchiveReader.h" />
+    <ClInclude Include="..\src\ArchiveIO.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\BoundedStreamFilter.h" />
     <ClInclude Include="..\src\Filters.h" />
