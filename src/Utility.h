@@ -91,7 +91,7 @@ template <typename DstT, typename SrcT>
 DstT deserialize_fixed_le_int(const SrcT &src){
 	static_assert(CHAR_BIT == 8, "Only 8-bit byte platforms supported!");
 
-	const std::uint8_t *p = (const std::uint64_t *)src;
+	const std::uint8_t *p = (const std::uint8_t *)src;
 	DstT ret = 0;
 	for (auto i = sizeof(ret); i--; ){
 		ret <<= 8;

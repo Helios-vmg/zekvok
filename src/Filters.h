@@ -13,7 +13,7 @@ class OutputFilter{
 		T &dst;
 		WriteLambdish(T &dst): dst(dst){}
 		static std::streamsize callback(void *p, const void *buffer, std::streamsize n){
-			return ((Lambdish<Sink> *)p)->write(buffer, n);
+			return ((Lambdish<T> *)p)->write(buffer, n);
 		}
 	private:
 		std::streamsize write(const void *buffer, std::streamsize n){
@@ -22,8 +22,8 @@ class OutputFilter{
 	};
 protected:
 	typedef std::streamsize (*write_callback_t)(void *p, const void *buffer, std::streamsize n);
-    virtual std::streamsize write(write_callback_t cb, void *ud, const void *input, std::streamsize length) = 0;
-    virtual bool flush(write_callback_t cb, void *ud) = 0;
+    virtual std::streamsize internal_write(write_callback_t cb, void *ud, const void *input, std::streamsize length) = 0;
+    virtual bool internal_flush(write_callback_t cb, void *ud) = 0;
 public:
     typedef char char_type;
     struct category :
@@ -35,22 +35,34 @@ public:
     std::streamsize write(Sink &dst, const char *s, std::streamsize n)
     {
         WriteLambdish<Sink> l(dst);
-		return this->write(l.callback, &l, s, n);
+		return this->internal_write(l.callback, &l, s, n);
     }
 
 	template <typename Sink>
 	bool flush(Sink &dst){
         WriteLambdish<Sink> l(dst);
-		return this->flush(l.callback, &l) && boost::iostreams::flush(this->dst);
+		return this->internal_flush(l.callback, &l) && boost::iostreams::flush(this->dst);
 	}
 
 	virtual ~OutputFilter(){}
 };
 
 class InputFilter{
+	template <typename T>
+	struct ReadLambdish{
+		T &src;
+		ReadLambdish(T &src): src(src){}
+		static std::streamsize callback(void *p, void *buffer, std::streamsize n){
+			return ((ReadLambdish<T> *)p)->read(buffer, n);
+		}
+	private:
+		std::streamsize read(void *buffer, std::streamsize n){
+			return boost::iostreams::read(this->src, (char *)buffer, n);
+		}
+	};
 protected:
 	typedef std::streamsize (*read_callback_t)(void *p, void *buffer, std::streamsize n);
-	virtual std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) = 0;
+	virtual std::streamsize internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length) = 0;
 public:
 	typedef char char_type;
     struct category :
@@ -61,20 +73,8 @@ public:
 	template<typename Source>
     std::streamsize read(Source &src, char *s, std::streamsize n)
     {
-		template <typename T>
-		struct Lambdish{
-			T &src;
-			Lambdish(T &src): src(src){}
-			static std::streamsize callback(void *p, void *buffer, std::streamsize n){
-				return ((Lambdish<Source> *)p)->read(buffer, n);
-			}
-		private:
-			std::streamsize read(void *buffer, std::streamsize n){
-				return boost::iostreams::read(this->dest, (const char *)buffer, n);
-			}
-		};
-		Lambdish<Source> l(src);
-		return this->read(l.callback, &l, s, n);
+		ReadLambdish<Source> l(src);
+		return this->internal_read(l.callback, &l, s, n);
     }
 
 	virtual ~InputFilter(){}

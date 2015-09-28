@@ -48,17 +48,43 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		DeserializerStream ds(filter);
 		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
-			throw new std::exception("Error during deserialization");
+			throw std::exception("Error during deserialization");
 	}
 
 	this->base_objects_offset = this->version_manifest->archive_metadata.entries_size_in_archive;
 	this->stream_ids = this->version_manifest->archive_metadata.stream_ids;
 
-	return std::shared_ptr<VersionManifest>();
+	return this->version_manifest;
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(){
-	return std::vector<std::shared_ptr<FileSystemObject>>();
+	if (!this->version_manifest)
+		this->read_manifest();
+	assert(this->version_manifest);
+	decltype(this->base_objects) ret;
+	ret.reserve(this->version_manifest->archive_metadata.entry_sizes.size());
+	this->stream->seekg(this->base_objects_offset);
+	{
+		LzmaInputFilter lzma;
+		BoundedInputFilter bounded(this->manifest_offset - this->base_objects_offset);
+		boost::iostreams::filtering_istream filter;
+		filter.push(lzma);
+		filter.push(bounded);
+		filter.push(*this->stream);
+		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
+			BoundedInputFilter second_bound(s);
+			boost::iostreams::filtering_istream second_filter;
+			second_filter.push(second_bound);
+			second_filter.push(filter);
+			DeserializerStream ds(second_filter);
+			std::shared_ptr<FileSystemObject> fso(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
+			if (!fso)
+				throw std::exception("Error during deserialization");
+			ret.push_back(fso);
+		}
+	}
+	this->base_objects = std::move(ret);
+	return this->base_objects;
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::get_base_objects(){

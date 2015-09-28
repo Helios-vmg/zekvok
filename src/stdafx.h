@@ -20,6 +20,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <deque>
 #include <algorithm>
 #include <functional>
+#include <cassert>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
