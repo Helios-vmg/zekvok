@@ -13,7 +13,7 @@ class OutputFilter{
 		T &dst;
 		WriteLambdish(T &dst): dst(dst){}
 		static std::streamsize callback(void *p, const void *buffer, std::streamsize n){
-			return ((Lambdish<T> *)p)->write(buffer, n);
+			return ((WriteLambdish<T> *)p)->write(buffer, n);
 		}
 	private:
 		std::streamsize write(const void *buffer, std::streamsize n){

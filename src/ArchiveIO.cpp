@@ -6,7 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
-#include "ArchiveReader.h"
+#include "ArchiveIO.h"
 #include "SymbolicConstants.h"
 #include "Utility.h"
 #include "LzmaFilter.h"
@@ -25,7 +25,7 @@ ArchiveReader::ArchiveReader(const path_t &path){
 std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	if (this->manifest_offset < 0){
 		const int uint64_length = sizeof(std::uint64_t);
-		std::int64_t start = -uint64_length - md5_digest_length;
+		std::int64_t start = -uint64_length - sha256_digest_length;
 		this->stream->seekg(start, std::ios::end);
 		char temp[uint64_length];
 		this->stream->read(temp, uint64_length);
@@ -117,4 +117,58 @@ ArchiveReader::read_everything_co_t::pull_type ArchiveReader::read_everything(){
 	return read_everything_co_t::pull_type([this](read_everything_co_t::push_type &sink){
 		this->read_everything(sink);
 	});
+}
+
+void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end){
+	if (end - begin != 3)
+		throw std::exception("Incorrect usage");
+
+	{
+		boost::iostreams::filtering_ostream filter;
+		bool mt = true;
+		LzmaOutputFilter lzma(mt, 1);
+		filter.push(lzma);
+		filter.push(*this->stream);
+		this->filtered_stream = &filter;
+
+		auto co = begin->first();
+		for (auto i : *co)
+			*i.dst = this->add_file(i.id, *i.stream);
+		filter.flush();
+	}
+	{
+		boost::iostreams::filtering_ostream filter;
+		bool mt = true;
+		LzmaOutputFilter lzma(mt, 9);
+		filter.push(lzma);
+		filter.push(*this->stream);
+		this->filtered_stream = &filter;
+
+		auto co = begin->second();
+		for (auto i : *co)
+			this->add_fso(*i);
+	}
+	{
+		boost::iostreams::filtering_ostream filter;
+		bool mt = true;
+		LzmaOutputFilter lzma(mt, 9);
+		filter.push(lzma);
+		filter.push(*this->stream);
+		this->filtered_stream = &filter;
+
+		auto co = begin->third();
+		for (auto i : *co){
+			this->add_version_manifest(*i);
+			break;
+		}
+	}
+}
+
+sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream){
+}
+
+void ArchiveWriter::add_fso(const FileSystemObject &){
+}
+
+void ArchiveWriter::add_version_manifest(const VersionManifest &){
 }

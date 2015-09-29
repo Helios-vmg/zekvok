@@ -38,3 +38,56 @@ public:
 	read_everything_co_t::pull_type read_everything();
 };
 
+class ArchiveWriter_helper{
+public:
+	struct first_push_t{
+		sha256_digest *dst;
+		stream_id_t id;
+		std::istream *stream;
+	};
+	typedef const FileSystemObject *second_push_t;
+	typedef const VersionManifest *third_push_t;
+	typedef boost::coroutines::asymmetric_coroutine<first_push_t> first_co_t;
+	typedef boost::coroutines::asymmetric_coroutine<second_push_t> second_co_t;
+	typedef boost::coroutines::asymmetric_coroutine<third_push_t> third_co_t;
+
+	virtual ~ArchiveWriter_helper(){}
+
+	virtual std::shared_ptr<first_co_t::pull_type> first(){
+		throw std::exception("Incorrect use");
+	}
+	virtual std::shared_ptr<second_co_t::pull_type> second(){
+		throw std::exception("Incorrect use");
+	}
+	virtual std::shared_ptr<third_co_t::pull_type> third(){
+		throw std::exception("Incorrect use");
+	}
+};
+
+#define DERIVE_ArchiveWriter_helper(x)                        \
+class ArchiveWriter_helper_##x : public ArchiveWriter_helper{ \
+	typedef std::shared_ptr<x##_co_t::pull_type> r;           \
+	r data;                                                   \
+public:                                                       \
+	ArchiveWriter_helper_##x(const r &data): data(data){}     \
+	r x() override{                                           \
+		return this->data;                                    \
+	}                                                         \
+}
+
+DERIVE_ArchiveWriter_helper(first);
+DERIVE_ArchiveWriter_helper(second);
+DERIVE_ArchiveWriter_helper(third);
+
+class ArchiveWriter{
+	std::unique_ptr<std::ostream> stream;
+	std::ostream *filtered_stream;
+
+	sha256_digest add_file(stream_id_t, std::istream &);
+	void add_fso(const FileSystemObject &);
+	void add_version_manifest(const VersionManifest &);
+public:
+	ArchiveWriter(const path_t &);
+	
+	void process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end);
+};
