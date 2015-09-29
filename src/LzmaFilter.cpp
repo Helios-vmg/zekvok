@@ -132,7 +132,7 @@ bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret, write_callback_t cb, vo
 	return true;
 }
 
-std::streamsize LzmaOutputFilter::internal_write(write_callback_t cb, void *ud, const void *buffer, std::streamsize length){
+std::streamsize LzmaOutputFilter::write(write_callback_t cb, void *ud, const void *buffer, std::streamsize length){
 	auto x0 = this->bytes_written;
 	lzma_ret lret;
 	do{
@@ -149,7 +149,7 @@ std::streamsize LzmaOutputFilter::internal_write(write_callback_t cb, void *ud, 
 	return this->bytes_written - x0;
 }
 
-bool LzmaOutputFilter::internal_flush(write_callback_t cb, void *ud){
+bool LzmaOutputFilter::flush(write_callback_t cb, void *ud){
 	if (this->action != LZMA_RUN)
 		return false;
 	this->action = LZMA_FINISH;
@@ -187,7 +187,7 @@ LzmaInputFilter::~LzmaInputFilter(){
 	lzma_end(&this->lstream);
 }
 
-std::streamsize LzmaInputFilter::internal_read(read_callback_t cb, void *ud, void *buffer, std::streamsize size){
+std::streamsize LzmaInputFilter::read(read_callback_t cb, void *ud, void *buffer, std::streamsize size){
 	if (this->at_eof)
 		return -1;
 	size_t ret = 0;

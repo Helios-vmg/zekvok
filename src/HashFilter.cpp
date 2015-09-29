@@ -23,7 +23,7 @@ void HashCalculator::get_result(void *buffer, size_t max_length){
 	memcpy(buffer, b.data, max_length);
 }
 
-std::streamsize HashOutputFilter::internal_write(write_callback_t cb, void *ud, const void *input, std::streamsize length){
+std::streamsize HashOutputFilter::write(write_callback_t cb, void *ud, const void *input, std::streamsize length){
 	this->update(input, length);
 	std::streamsize ret = 0;
 	while (length){
@@ -35,11 +35,11 @@ std::streamsize HashOutputFilter::internal_write(write_callback_t cb, void *ud, 
 	return ret;
 }
 
-bool HashOutputFilter::internal_flush(write_callback_t cb, void *ud){
+bool HashOutputFilter::flush(write_callback_t cb, void *ud){
 	return true;
 }
 
-std::streamsize HashInputFilter::internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length){
+std::streamsize HashInputFilter::read(read_callback_t cb, void *ud, void *output, std::streamsize length){
 	auto head = output;
 	std::streamsize ret = 0;
 	bool eof = false;

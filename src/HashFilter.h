@@ -30,21 +30,19 @@ public:
 };
 
 class HashOutputFilter : public OutputFilter, public HashCalculator{
-protected:
-	std::streamsize internal_write(write_callback_t cb, void *ud, const void *input, std::streamsize length) override;
-	bool internal_flush(write_callback_t cb, void *ud) override;
 public:
 	template <typename T>
 	HashOutputFilter(const template_parameter_passer<T> &x): HashCalculator(x){}
 	HashOutputFilter(const HashOutputFilter &) = delete;
+	std::streamsize write(write_callback_t cb, void *ud, const void *input, std::streamsize length) override;
+	bool flush(write_callback_t cb, void *ud) override;
 };
 
 class HashInputFilter : public InputFilter, public HashCalculator{
 	std::unique_ptr<CryptoPP::HashTransformation> hash;
-protected:
-	std::streamsize internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 public:
 	template <typename T>
 	HashInputFilter(const template_parameter_passer<T> &x): HashCalculator(x){}
 	HashInputFilter(const HashInputFilter &) = delete;
+	std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 };

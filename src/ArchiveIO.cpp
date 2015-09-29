@@ -39,8 +39,8 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	}else
 		this->stream->seekg(this->manifest_offset);
 	{
-		LzmaInputFilter lzma;
-		BoundedInputFilter bounded(this->manifest_size);
+		InputFilterCopyable<LzmaInputFilter> lzma;
+		InputFilterCopyable<BoundedInputFilter> bounded(new BoundedInputFilter(this->manifest_size));
 		boost::iostreams::filtering_istream filter;
 		filter.push(lzma);
 		filter.push(bounded);
@@ -67,14 +67,14 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	ret.reserve(this->version_manifest->archive_metadata.entry_sizes.size());
 	this->stream->seekg(this->base_objects_offset);
 	{
-		LzmaInputFilter lzma;
-		BoundedInputFilter bounded(this->manifest_offset - this->base_objects_offset);
+		InputFilterCopyable<LzmaInputFilter> lzma;
+		InputFilterCopyable<BoundedInputFilter> bounded(new BoundedInputFilter(this->manifest_offset - this->base_objects_offset));
 		boost::iostreams::filtering_istream filter;
 		filter.push(lzma);
 		filter.push(bounded);
 		filter.push(*this->stream);
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
-			BoundedInputFilter second_bound(s);
+			InputFilterCopyable<BoundedInputFilter> second_bound(new BoundedInputFilter(s));
 			boost::iostreams::filtering_istream second_filter;
 			second_filter.push(second_bound);
 			second_filter.push(filter);
@@ -94,14 +94,14 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 		this->read_manifest();
 	this->stream->seekg(0);
 	{
-		LzmaInputFilter lzma;
+		InputFilterCopyable<LzmaInputFilter> lzma;
 		boost::iostreams::filtering_istream filter;
 		filter.push(lzma);
 		filter.push(*this->stream);
 
 		assert(this->stream_ids.size() == this->stream_sizes.size());
 		for (size_t i = 0; i < this->stream_ids.size(); i++){
-			BoundedInputFilter bounded(this->stream_sizes[i]);
+			InputFilterCopyable<BoundedInputFilter> bounded(new BoundedInputFilter(this->stream_sizes[i]));
 			boost::iostreams::filtering_istream second_filter;
 			second_filter.push(bounded);
 			second_filter.push(filter);
@@ -127,7 +127,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	{
 		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
-		LzmaOutputFilter lzma(mt, 1);
+		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 1));
 		filter.push(lzma);
 		filter.push(*this->stream);
 		this->filtered_stream = &filter;
@@ -140,7 +140,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	{
 		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
-		LzmaOutputFilter lzma(mt, 9);
+		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 8));
 		filter.push(lzma);
 		filter.push(*this->stream);
 		this->filtered_stream = &filter;
@@ -152,7 +152,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	{
 		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
-		LzmaOutputFilter lzma(mt, 9);
+		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 8));
 		filter.push(lzma);
 		filter.push(*this->stream);
 		this->filtered_stream = &filter;
@@ -169,7 +169,7 @@ sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std:
 	this->stream_ids.push_back(id);
 	this->stream_sizes.push_back(stream_size);
 
-	HashInputFilter hash = template_parameter_passer<CryptoPP::SHA256>();
+	InputFilterCopyable<HashInputFilter> hash(new HashInputFilter(template_parameter_passer<CryptoPP::SHA256>()));
 	{
 		boost::iostreams::filtering_istream filter;
 		filter.push(hash);
@@ -178,7 +178,7 @@ sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std:
 		*this->filtered_stream << filter.rdbuf();
 	}
 	sha256_digest ret;
-	hash.get_result(ret.data(), ret.size());
+	hash->get_result(ret.data(), ret.size());
 	return ret;
 }
 

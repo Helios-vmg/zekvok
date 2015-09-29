@@ -8,23 +8,33 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 class OutputFilter{
-	template <typename T>
+public:
+	typedef std::streamsize (*write_callback_t)(void *p, const void *buffer, std::streamsize n);
+    virtual std::streamsize write(write_callback_t cb, void *ud, const void *input, std::streamsize length) = 0;
+    virtual bool flush(write_callback_t cb, void *ud) = 0;
+};
+
+template <typename T>
+class OutputFilterCopyable{
+	std::shared_ptr<T> impl;
+	
+	template <typename T2>
 	struct WriteLambdish{
-		T &dst;
-		WriteLambdish(T &dst): dst(dst){}
+		T2 &dst;
+		WriteLambdish(T2 &dst): dst(dst){}
 		static std::streamsize callback(void *p, const void *buffer, std::streamsize n){
-			return ((WriteLambdish<T> *)p)->write(buffer, n);
+			return ((WriteLambdish<T2> *)p)->write(buffer, n);
 		}
 	private:
 		std::streamsize write(const void *buffer, std::streamsize n){
 			return boost::iostreams::write(this->dst, (const char *)buffer, n);
 		}
 	};
-protected:
-	typedef std::streamsize (*write_callback_t)(void *p, const void *buffer, std::streamsize n);
-    virtual std::streamsize internal_write(write_callback_t cb, void *ud, const void *input, std::streamsize length) = 0;
-    virtual bool internal_flush(write_callback_t cb, void *ud) = 0;
 public:
+	OutputFilterCopyable(): impl(new T){}
+	OutputFilterCopyable(T *f): impl(f){}
+	OutputFilterCopyable(const OutputFilterCopyable<T> &b): impl(b.impl){}
+
     typedef char char_type;
     struct category :
 		boost::iostreams::output_filter_tag,
@@ -35,35 +45,44 @@ public:
     std::streamsize write(Sink &dst, const char *s, std::streamsize n)
     {
         WriteLambdish<Sink> l(dst);
-		return this->internal_write(l.callback, &l, s, n);
+		return this->impl->write(l.callback, &l, s, n);
     }
 
 	template <typename Sink>
 	bool flush(Sink &dst){
         WriteLambdish<Sink> l(dst);
-		return this->internal_flush(l.callback, &l) && boost::iostreams::flush(this->dst);
+		return this->impl->flush(l.callback, &l) && boost::iostreams::flush(dst);
 	}
 
-	virtual ~OutputFilter(){}
 };
 
 class InputFilter{
-	template <typename T>
+public:
+	typedef std::streamsize (*read_callback_t)(void *p, void *buffer, std::streamsize n);
+	virtual std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) = 0;
+};
+
+template <typename T>
+class InputFilterCopyable{
+	std::shared_ptr<T> impl;
+
+	template <typename T2>
 	struct ReadLambdish{
-		T &src;
-		ReadLambdish(T &src): src(src){}
+		T2 &src;
+		ReadLambdish(T2 &src): src(src){}
 		static std::streamsize callback(void *p, void *buffer, std::streamsize n){
-			return ((ReadLambdish<T> *)p)->read(buffer, n);
+			return ((ReadLambdish<T2> *)p)->read(buffer, n);
 		}
 	private:
 		std::streamsize read(void *buffer, std::streamsize n){
 			return boost::iostreams::read(this->src, (char *)buffer, n);
 		}
 	};
-protected:
-	typedef std::streamsize (*read_callback_t)(void *p, void *buffer, std::streamsize n);
-	virtual std::streamsize internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length) = 0;
 public:
+	InputFilterCopyable(): impl(new T){}
+	InputFilterCopyable(T *f): impl(f){}
+	InputFilterCopyable(const InputFilterCopyable<T> &b): impl(b.impl){}
+
 	typedef char char_type;
     struct category :
         boost::iostreams::input_filter_tag,
@@ -74,8 +93,19 @@ public:
     std::streamsize read(Source &src, char *s, std::streamsize n)
     {
 		ReadLambdish<Source> l(src);
-		return this->internal_read(l.callback, &l, s, n);
+		return this->impl->read(l.callback, &l, s, n);
     }
 
-	virtual ~InputFilter(){}
+	T &operator*(){
+		return *this->impl;
+	}
+	const T &operator*() const{
+		return *this->impl;
+	}
+	T *operator->(){
+		return this->impl.get();
+	}
+	const T *operator->() const{
+		return this->impl.get();
+	}
 };

@@ -22,8 +22,7 @@ public:
 class BoundedInputFilter : public InputFilter{
 	std::streamsize bytes_read,
 		simulated_length;
-protected:
-	std::streamsize internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 public:
 	BoundedInputFilter(std::streamsize length): bytes_read(0), simulated_length(length){}
+	std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 };

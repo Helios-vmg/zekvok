@@ -38,12 +38,11 @@ class LzmaOutputFilter : public OutputFilter{
 	bool initialize_single_threaded(int, size_t, bool);
 	bool initialize_multithreaded(int, size_t, bool);
 	bool pass_data_to_stream(lzma_ret ret, write_callback_t, void *);
-protected:
-	std::streamsize internal_write(write_callback_t cb, void *ud, const void *input, std::streamsize length) override;
-	bool internal_flush(write_callback_t cb, void *ud) override;
 public:
 	LzmaOutputFilter(bool &multithreaded, int compression_level = 7, size_t buffer_size = default_buffer_size, bool extreme_mode = false);
 	~LzmaOutputFilter();
+	std::streamsize write(write_callback_t cb, void *ud, const void *input, std::streamsize length) override;
+	bool flush(write_callback_t cb, void *ud) override;
 };
 
 class LzmaInputFilter : public InputFilter{
@@ -56,9 +55,8 @@ class LzmaInputFilter : public InputFilter{
 		bytes_written;
 	bool at_eof;
 
-protected:
-	std::streamsize internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 public:
 	LzmaInputFilter(size_t buffer_size = default_buffer_size);
 	~LzmaInputFilter();
+	std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 };
