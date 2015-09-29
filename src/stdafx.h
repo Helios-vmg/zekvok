@@ -26,6 +26,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/stream.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/ptr_container/ptr_container.hpp>
 #include <boost/coroutine/coroutine.hpp>

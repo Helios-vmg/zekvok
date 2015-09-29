@@ -117,3 +117,18 @@ void serialize_fixed_le_int(DstT &dst, const SrcT &src){
 		copy >>= 8;
 	}
 }
+
+template <typename T, unsigned N>
+struct n_bits_on{
+	static const T value = (n_bits_on<T, N - 1>::value << 1) | 1;
+};
+
+template <typename T>
+struct n_bits_on<T, 0>{
+	static const T value = 0;
+};
+
+template <typename T>
+struct all_bits_on{
+	static const T value = n_bits_on<T, sizeof(T) * 8>::value;
+};

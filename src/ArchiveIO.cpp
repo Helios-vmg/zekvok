@@ -120,16 +120,24 @@ ArchiveReader::read_everything_co_t::pull_type ArchiveReader::read_everything(){
 	});
 }
 
+ArchiveWriter::ArchiveWriter(const path_t &path){
+	this->stream.reset(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
+}
+
 void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end){
 	if (end - begin != 3)
 		throw std::exception("Incorrect usage");
 
+	boost::iostreams::filtering_ostream hash_filter;
+	InputFilterCopyable<HashInputFilter> overall_hash(new HashInputFilter(template_parameter_passer<CryptoPP::SHA256>()));
+	hash_filter.push(overall_hash);
+	hash_filter.push(*this->stream);
 	{
 		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
 		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 1));
 		filter.push(lzma);
-		filter.push(*this->stream);
+		filter.push(hash_filter);
 		this->filtered_stream = &filter;
 
 		auto co = begin->first();
@@ -137,18 +145,20 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 			*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
 		filter.flush();
 	}
-	this->initial_fso_offset = this->stream->tellp();
+	this->initial_fso_offset = overall_hash->get_bytes_processed();
 	{
 		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
 		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 8));
 		filter.push(lzma);
-		filter.push(*this->stream);
+		filter.push(hash_filter);
 		this->filtered_stream = &filter;
 
 		auto co = begin->second();
-		for (auto i : *co)
+		for (auto i : *co){
+			lzma->
 			this->add_fso(*i);
+		}
 		filter.flush();
 	}
 	{
@@ -156,7 +166,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 		bool mt = true;
 		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 8));
 		filter.push(lzma);
-		filter.push(*this->stream);
+		filter.push(hash_filter);
 		this->filtered_stream = &filter;
 
 		auto co = begin->third();

@@ -7,6 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "Transactions.h"
+#include "Utility.h"
 
 KernelTransaction::KernelTransaction(){
 	this->tx = CreateTransaction(nullptr, 0, 0, 0, 0, 0, nullptr);
@@ -61,11 +62,14 @@ TransactedFileSink::TransactedFileSink(const KernelTransaction &tx, const wchar_
 	SetFilePointer(this->handle, 0, 0, FILE_END);
 }
 
-size_t TransactedFileSink::write(const void *_buffer, size_t size){
+TransactedFileSink::~TransactedFileSink(){
+	CloseHandle(this->handle);
+}
+
+std::streamsize TransactedFileSink::write(const char *buffer, std::streamsize size){
 	size_t ret = 0;
-	const char *buffer = (const char *)_buffer;
 	while (size){
-		DWORD byte_count = size & 0xFFFFFFFF;
+		DWORD byte_count = size & all_bits_on<DWORD>::value;
 		DWORD bytes_written;
 		auto result = WriteFile(this->handle, buffer, byte_count, &bytes_written, nullptr);
 		if (!result)

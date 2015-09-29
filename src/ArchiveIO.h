@@ -10,6 +10,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Archive.h"
 #include "SimpleTypes.h"
 #include "serialization/fso.generated.h"
+#include "Transactions.h"
 
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
 
@@ -81,6 +82,7 @@ DERIVE_ArchiveWriter_helper(second);
 DERIVE_ArchiveWriter_helper(third);
 
 class ArchiveWriter{
+	KernelTransaction tx;
 	std::unique_ptr<std::ostream> stream;
 	std::ostream *filtered_stream;
 	std::vector<stream_id_t> stream_ids;

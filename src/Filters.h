@@ -7,6 +7,15 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+class FilteredOutputStream : public boost::iostreams::sink{
+protected:
+	std::ostream &stream;
+public:
+	FilteredOutputStream(std::ostream &stream): stream(stream){}
+	virtual ~FilteredOutputStream(){}
+	virtual std::streamsize write(const char* s, std::streamsize n) = 0;
+};
+
 class OutputFilter{
 public:
 	typedef std::streamsize (*write_callback_t)(void *p, const void *buffer, std::streamsize n);
