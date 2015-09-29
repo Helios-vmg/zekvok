@@ -44,6 +44,7 @@ public:
 		sha256_digest *dst;
 		stream_id_t id;
 		std::istream *stream;
+		std::uint64_t stream_size;
 	};
 	typedef const FileSystemObject *second_push_t;
 	typedef const VersionManifest *third_push_t;
@@ -82,8 +83,10 @@ DERIVE_ArchiveWriter_helper(third);
 class ArchiveWriter{
 	std::unique_ptr<std::ostream> stream;
 	std::ostream *filtered_stream;
+	std::vector<stream_id_t> stream_ids;
+	std::vector<std::uint64_t> stream_sizes;
 
-	sha256_digest add_file(stream_id_t, std::istream &);
+	sha256_digest add_file(stream_id_t, std::istream &, std::uint64_t);
 	void add_fso(const FileSystemObject &);
 	void add_version_manifest(const VersionManifest &);
 public:

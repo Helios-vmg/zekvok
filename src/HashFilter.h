@@ -8,6 +8,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 #include "Filters.h"
 
+template <typename T>
+struct template_parameter_passer{};
+
 class HashCalculator{
 	std::unique_ptr<CryptoPP::HashTransformation> hash;
 protected:
@@ -17,9 +20,10 @@ protected:
 	}
 public:
 	template <typename T>
-	HashCalculator(){
+	HashCalculator(const template_parameter_passer<T> &){
 		this->hash.reset(new T);
 	}
+	HashCalculator(const HashCalculator &) = delete;
 	virtual ~HashCalculator(){}
 	size_t get_hash_length() const;
 	void get_result(void *buffer, size_t max_length);
@@ -31,7 +35,8 @@ protected:
 	bool internal_flush(write_callback_t cb, void *ud) override;
 public:
 	template <typename T>
-	HashOutputFilter(): HashCalculator<T>(){}
+	HashOutputFilter(const template_parameter_passer<T> &x): HashCalculator(x){}
+	HashOutputFilter(const HashOutputFilter &) = delete;
 };
 
 class HashInputFilter : public InputFilter, public HashCalculator{
@@ -40,5 +45,6 @@ protected:
 	std::streamsize internal_read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
 public:
 	template <typename T>
-	HashInputFilter(): HashCalculator<T>(){}
+	HashInputFilter(const template_parameter_passer<T> &x): HashCalculator(x){}
+	HashInputFilter(const HashInputFilter &) = delete;
 };

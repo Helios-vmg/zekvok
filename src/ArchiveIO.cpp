@@ -11,6 +11,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Utility.h"
 #include "LzmaFilter.h"
 #include "BoundedStreamFilter.h"
+#include "HashFilter.h"
 
 ArchiveReader::ArchiveReader(const path_t &path){
 	this->stream.reset(new boost::filesystem::ifstream(path, std::ios::binary));
@@ -133,7 +134,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 
 		auto co = begin->first();
 		for (auto i : *co)
-			*i.dst = this->add_file(i.id, *i.stream);
+			*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
 		filter.flush();
 	}
 	{
@@ -164,7 +165,21 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	}
 }
 
-sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream){
+sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std::uint64_t stream_size){
+	this->stream_ids.push_back(id);
+	this->stream_sizes.push_back(stream_size);
+
+	HashInputFilter hash = template_parameter_passer<CryptoPP::SHA256>();
+	{
+		boost::iostreams::filtering_istream filter;
+		filter.push(hash);
+		filter.push(stream);
+
+		*this->filtered_stream << filter.rdbuf();
+	}
+	sha256_digest ret;
+	hash.get_result(ret.data(), ret.size());
+	return ret;
 }
 
 void ArchiveWriter::add_fso(const FileSystemObject &){
