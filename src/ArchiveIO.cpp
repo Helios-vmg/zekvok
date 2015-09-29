@@ -137,6 +137,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 			*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
 		filter.flush();
 	}
+	this->initial_fso_offset = this->stream->tellp();
 	{
 		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
@@ -148,6 +149,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 		auto co = begin->second();
 		for (auto i : *co)
 			this->add_fso(*i);
+		filter.flush();
 	}
 	{
 		boost::iostreams::filtering_ostream filter;
@@ -162,6 +164,7 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 			this->add_version_manifest(*i);
 			break;
 		}
+		filter.flush();
 	}
 }
 
@@ -179,10 +182,12 @@ sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std:
 	}
 	sha256_digest ret;
 	hash->get_result(ret.data(), ret.size());
+	this->any_file = true;
 	return ret;
 }
 
-void ArchiveWriter::add_fso(const FileSystemObject &){
+void ArchiveWriter::add_fso(const FileSystemObject &fso){
+
 }
 
 void ArchiveWriter::add_version_manifest(const VersionManifest &){

@@ -85,6 +85,8 @@ class ArchiveWriter{
 	std::ostream *filtered_stream;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
+	bool any_file;
+	std::uint64_t initial_fso_offset;
 
 	sha256_digest add_file(stream_id_t, std::istream &, std::uint64_t);
 	void add_fso(const FileSystemObject &);
