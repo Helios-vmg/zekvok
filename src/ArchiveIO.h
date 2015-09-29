@@ -93,6 +93,5 @@ class ArchiveWriter{
 	void add_version_manifest(const VersionManifest &);
 public:
 	ArchiveWriter(const path_t &);
-	
 	void process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end);
 };

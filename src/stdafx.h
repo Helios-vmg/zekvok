@@ -40,6 +40,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <cryptlib/osrng.h>
 #include <cryptlib/cryptlib.h>
 #include <Windows.h>
+#include <ktmw32.h>
 
 #ifdef max
 #undef max

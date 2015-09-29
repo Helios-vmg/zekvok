@@ -81,6 +81,9 @@
     <ClCompile Include="..\src\ArchiveIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Transactions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -165,6 +168,9 @@
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
     <ClInclude Include="..\src\ArchiveIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Transactions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
