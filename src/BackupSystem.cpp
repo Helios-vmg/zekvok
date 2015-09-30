@@ -191,6 +191,10 @@ void BackupSystem::create_initial_version(const OpaqueTimestamp &start_time){
 	this->generate_first_archive(start_time);
 }
 
+void BackupSystem::generate_first_archive(const OpaqueTimestamp &start_time){
+	this->generate_archive(start_time, &BackupSystem::generate_initial_stream);
+}
+
 std::function<BackupMode(const FileSystemObject &)> BackupSystem::make_map(const std::shared_ptr<std::vector<std::wstring>> &for_later_check){
 	return [for_later_check, this](const FileSystemObject &fso){
 		bool follow;
