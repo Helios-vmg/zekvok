@@ -23,30 +23,19 @@ void HashCalculator::get_result(void *buffer, size_t max_length){
 	memcpy(buffer, b.data, max_length);
 }
 
-std::streamsize HashOutputFilter::write(write_callback_t cb, void *ud, const void *input, std::streamsize length){
+std::streamsize HashOutputFilter::write(const char *input, std::streamsize length){
 	this->update(input, length);
-	std::streamsize ret = 0;
-	while (length){
-		auto temp = cb(ud, input, length);
-		ret += temp;
-		input = (const char *)input + temp;
-		length -= temp;
-	}
-	return ret;
+	return this->next_write(input, length);
 }
 
-bool HashOutputFilter::flush(write_callback_t cb, void *ud){
-	return true;
-}
-
-std::streamsize HashInputFilter::read(read_callback_t cb, void *ud, void *output, std::streamsize length){
+std::streamsize HashInputFilter::read(char *output, std::streamsize length){
 	auto head = output;
 	std::streamsize ret = 0;
-	bool eof = false;
+	bool bad = false;
 	while (length){
-		auto temp = cb(ud, output, length);
+		auto temp = this->next_read(output, length);
 		if (temp < 0){
-			eof = true;
+			bad = true;
 			break;
 		}
 		ret += temp;
@@ -54,5 +43,5 @@ std::streamsize HashInputFilter::read(read_callback_t cb, void *ud, void *output
 		length -= temp;
 	}
 	this->update(head, ret);
-	return !ret && eof ? -1 : ret;
+	return !ret && bad ? -1 : ret;
 }

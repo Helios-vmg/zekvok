@@ -39,14 +39,10 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	}else
 		this->stream->seekg(this->manifest_offset);
 	{
-		InputFilterCopyable<LzmaInputFilter> lzma;
-		InputFilterCopyable<BoundedInputFilter> bounded(new BoundedInputFilter(this->manifest_size));
-		boost::iostreams::filtering_istream filter;
-		filter.push(lzma);
-		filter.push(bounded);
-		filter.push(*this->stream);
+		boost::iostreams::stream<BoundedInputFilter> bounded(*this->stream, this->manifest_size);
+		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 
-		DeserializerStream ds(filter);
+		DeserializerStream ds(lzma);
 		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw std::exception("Error during deserialization");
@@ -67,18 +63,11 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	ret.reserve(this->version_manifest->archive_metadata.entry_sizes.size());
 	this->stream->seekg(this->base_objects_offset);
 	{
-		InputFilterCopyable<LzmaInputFilter> lzma;
-		InputFilterCopyable<BoundedInputFilter> bounded(new BoundedInputFilter(this->manifest_offset - this->base_objects_offset));
-		boost::iostreams::filtering_istream filter;
-		filter.push(lzma);
-		filter.push(bounded);
-		filter.push(*this->stream);
+		boost::iostreams::stream<BoundedInputFilter> bounded(*this->stream, this->manifest_offset - this->base_objects_offset);
+		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
-			InputFilterCopyable<BoundedInputFilter> second_bound(new BoundedInputFilter(s));
-			boost::iostreams::filtering_istream second_filter;
-			second_filter.push(second_bound);
-			second_filter.push(filter);
-			DeserializerStream ds(second_filter);
+			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
+			DeserializerStream ds(bounded2);
 			std::shared_ptr<FileSystemObject> fso(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
 			if (!fso)
 				throw std::exception("Error during deserialization");
@@ -93,24 +82,13 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	if (!this->version_manifest)
 		this->read_manifest();
 	this->stream->seekg(0);
-	{
-		InputFilterCopyable<LzmaInputFilter> lzma;
-		boost::iostreams::filtering_istream filter;
-		filter.push(lzma);
-		filter.push(*this->stream);
 
-		assert(this->stream_ids.size() == this->stream_sizes.size());
-		for (size_t i = 0; i < this->stream_ids.size(); i++){
-			InputFilterCopyable<BoundedInputFilter> bounded(new BoundedInputFilter(this->stream_sizes[i]));
-			boost::iostreams::filtering_istream second_filter;
-			second_filter.push(bounded);
-			second_filter.push(filter);
-			sink(std::make_pair(this->stream_ids[i], &second_filter));
-		}
-		DeserializerStream ds(filter);
-		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
-		if (!this->version_manifest)
-			throw std::exception("Error during deserialization");
+	boost::iostreams::stream<LzmaInputFilter> lzma(*this->stream);
+
+	assert(this->stream_ids.size() == this->stream_sizes.size());
+	for (size_t i = 0; i < this->stream_ids.size(); i++){
+		boost::iostreams::stream<BoundedInputFilter> bounded(lzma, this->stream_sizes[i]);
+		sink(std::make_pair(this->stream_ids[i], &bounded));
 	}
 }
 
@@ -128,53 +106,39 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	if (end - begin != 3)
 		throw std::exception("Incorrect usage");
 
-	boost::iostreams::filtering_ostream hash_filter;
-	InputFilterCopyable<HashInputFilter> overall_hash(new HashInputFilter(template_parameter_passer<CryptoPP::SHA256>()));
-	hash_filter.push(overall_hash);
-	hash_filter.push(*this->stream);
+	boost::iostreams::stream<HashOutputFilter> overall_hash(*this->stream, new CryptoPP::SHA256);
 	{
-		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
-		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 1));
-		filter.push(lzma);
-		filter.push(hash_filter);
-		this->filtered_stream = &filter;
+		boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
+		this->filtered_stream = &lzma;
 
 		auto co = begin->first();
 		for (auto i : *co)
 			*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
-		filter.flush();
+		this->filtered_stream->flush();
 	}
 	this->initial_fso_offset = overall_hash->get_bytes_processed();
 	{
-		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
-		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 8));
-		filter.push(lzma);
-		filter.push(hash_filter);
-		this->filtered_stream = &filter;
+		boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
+		this->filtered_stream = &lzma;
 
 		auto co = begin->second();
-		for (auto i : *co){
-			lzma->
+		for (auto i : *co)
 			this->add_fso(*i);
-		}
-		filter.flush();
+		this->filtered_stream->flush();
 	}
 	{
-		boost::iostreams::filtering_ostream filter;
 		bool mt = true;
-		OutputFilterCopyable<LzmaOutputFilter> lzma(new LzmaOutputFilter(mt, 8));
-		filter.push(lzma);
-		filter.push(hash_filter);
-		this->filtered_stream = &filter;
+		boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
+		this->filtered_stream = &lzma;
 
 		auto co = begin->third();
 		for (auto i : *co){
 			this->add_version_manifest(*i);
 			break;
 		}
-		filter.flush();
+		this->filtered_stream->flush();
 	}
 }
 
@@ -182,16 +146,12 @@ sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std:
 	this->stream_ids.push_back(id);
 	this->stream_sizes.push_back(stream_size);
 
-	InputFilterCopyable<HashInputFilter> hash(new HashInputFilter(template_parameter_passer<CryptoPP::SHA256>()));
-	{
-		boost::iostreams::filtering_istream filter;
-		filter.push(hash);
-		filter.push(stream);
-
-		*this->filtered_stream << filter.rdbuf();
-	}
 	sha256_digest ret;
-	hash->get_result(ret.data(), ret.size());
+	{
+		boost::iostreams::stream<HashInputFilter> hash(stream, new CryptoPP::SHA256);
+		*this->filtered_stream << hash.rdbuf();
+		hash->get_result(ret.data(), ret.size());
+	}
 	this->any_file = true;
 	return ret;
 }

@@ -29,34 +29,40 @@ public:
 };
 
 class LzmaOutputFilter : public OutputFilter{
-	lzma_stream lstream;
-	lzma_action action;
-	std::vector<uint8_t> output_buffer;
-	uint64_t bytes_read,
-		bytes_written;
+	struct impl{
+		lzma_stream lstream;
+		lzma_action action;
+		std::vector<uint8_t> output_buffer;
+		uint64_t bytes_read,
+			bytes_written;
+	};
+	std::shared_ptr<impl> data;
 
 	bool initialize_single_threaded(int, size_t, bool);
 	bool initialize_multithreaded(int, size_t, bool);
-	bool pass_data_to_stream(lzma_ret ret, write_callback_t, void *);
+	bool pass_data_to_stream(lzma_ret ret);
 public:
-	LzmaOutputFilter(bool &multithreaded, int compression_level = 7, size_t buffer_size = default_buffer_size, bool extreme_mode = false);
+	LzmaOutputFilter(std::ostream &stream, bool *multithreaded, int compression_level = 7, size_t buffer_size = default_buffer_size, bool extreme_mode = false);
 	~LzmaOutputFilter();
-	std::streamsize write(write_callback_t cb, void *ud, const void *input, std::streamsize length) override;
-	bool flush(write_callback_t cb, void *ud) override;
+	std::streamsize write(const char *s, std::streamsize n) override;
+	bool flush() override;
 };
 
 class LzmaInputFilter : public InputFilter{
-	lzma_stream lstream;
-	lzma_action action;
-	std::vector<uint8_t> input_buffer;
-	const uint8_t *queued_buffer;
-	size_t queued_bytes;
-	uint64_t bytes_read,
-		bytes_written;
-	bool at_eof;
+	struct impl{
+		lzma_stream lstream;
+		lzma_action action;
+		std::vector<uint8_t> input_buffer;
+		const uint8_t *queued_buffer;
+		size_t queued_bytes;
+		uint64_t bytes_read,
+			bytes_written;
+		bool at_eof;
+	};
+	std::shared_ptr<impl> data;
 
 public:
-	LzmaInputFilter(size_t buffer_size = default_buffer_size);
+	LzmaInputFilter(std::istream &, size_t buffer_size = default_buffer_size);
 	~LzmaInputFilter();
-	std::streamsize read(read_callback_t cb, void *ud, void *output, std::streamsize length) override;
+	std::streamsize read(char *s, std::streamsize n) override;
 };

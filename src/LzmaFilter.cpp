@@ -9,29 +9,37 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "LzmaFilter.h"
 #include "Utility.h"
 
-LzmaOutputFilter::LzmaOutputFilter(bool &multithreaded, int compression_level, size_t buffer_size, bool extreme_mode){
-	this->lstream = LZMA_STREAM_INIT;
+LzmaOutputFilter::LzmaOutputFilter(
+		std::ostream &stream,
+		bool *multithreaded,
+		int compression_level,
+		size_t buffer_size,
+		bool extreme_mode
+		): OutputFilter(stream){
+	this->data.reset(new impl);
+	auto d = this->data.get();
+	d->lstream = LZMA_STREAM_INIT;
 
-	auto f = !multithreaded ? &LzmaOutputFilter::initialize_single_threaded : &LzmaOutputFilter::initialize_multithreaded;
-	multithreaded = (this->*f)(compression_level, buffer_size, extreme_mode);
+	auto f = !*multithreaded ? &LzmaOutputFilter::initialize_single_threaded : &LzmaOutputFilter::initialize_multithreaded;
+	*multithreaded = (this->*f)(compression_level, buffer_size, extreme_mode);
 	
-	this->action = LZMA_RUN;
-	this->output_buffer.resize(buffer_size);
-	this->lstream.next_out = &this->output_buffer[0];
-	this->lstream.avail_out = this->output_buffer.size();
-	this->bytes_read = 0;
-	this->bytes_written = 0;
+	d->action = LZMA_RUN;
+	d->output_buffer.resize(buffer_size);
+	d->lstream.next_out = &d->output_buffer[0];
+	d->lstream.avail_out = d->output_buffer.size();
+	d->bytes_read = 0;
+	d->bytes_written = 0;
 }
 
 LzmaOutputFilter::~LzmaOutputFilter(){
-	lzma_end(&this->lstream);
+	lzma_end(&this->data->lstream);
 }
 
 bool LzmaOutputFilter::initialize_single_threaded(int compression_level, size_t buffer_size, bool extreme_mode){
 	uint32_t preset = compression_level;
 	if (extreme_mode)
 		preset |= LZMA_PRESET_EXTREME;
-	lzma_ret ret = lzma_easy_encoder(&this->lstream, preset, LZMA_CHECK_NONE);
+	lzma_ret ret = lzma_easy_encoder(&this->data->lstream, preset, LZMA_CHECK_NONE);
 	if (ret != LZMA_OK){
 		const char *msg;
 		switch (ret) {
@@ -72,7 +80,7 @@ bool LzmaOutputFilter::initialize_multithreaded(int compression_level, size_t bu
 	
 	mt.threads = std::max(mt.threads, 4U);
 
-	lzma_ret ret = lzma_stream_encoder_mt(&this->lstream, &mt);
+	lzma_ret ret = lzma_stream_encoder_mt(&this->data->lstream, &mt);
 
 	if (ret != LZMA_OK){
 		const char *msg;
@@ -95,20 +103,18 @@ bool LzmaOutputFilter::initialize_multithreaded(int compression_level, size_t bu
 	return true;
 }
 
-bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret, write_callback_t cb, void *ud){
-	if (!this->lstream.avail_out || ret == LZMA_STREAM_END) {
-		size_t write_size = this->output_buffer.size() - this->lstream.avail_out;
+bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret){
+	auto d = this->data.get();
+	if (!d->lstream.avail_out || ret == LZMA_STREAM_END) {
+		size_t write_size = d->output_buffer.size() - d->lstream.avail_out;
 
-		auto temp = &this->output_buffer[0];
-		while (write_size){
-			auto w = cb(ud, temp, write_size);
-			this->bytes_written += w;
-			temp += w;
-			write_size -= w;
-		}
+		auto temp = &d->output_buffer[0];
+		if (this->next_write((const char *)temp, write_size) < 0)
+			return false;
+		d->bytes_written += write_size;
 
-		this->lstream.next_out = &this->output_buffer[0];
-		this->lstream.avail_out = this->output_buffer.size();
+		d->lstream.next_out = &d->output_buffer[0];
+		d->lstream.avail_out = d->output_buffer.size();
 	}
 
 	if (ret != LZMA_OK){
@@ -132,34 +138,38 @@ bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret, write_callback_t cb, vo
 	return true;
 }
 
-std::streamsize LzmaOutputFilter::write(write_callback_t cb, void *ud, const void *buffer, std::streamsize length){
-	auto x0 = this->bytes_written;
+std::streamsize LzmaOutputFilter::write(const char *buffer, std::streamsize length){
+	auto d = this->data.get();
+	auto x0 = d->bytes_written;
 	lzma_ret lret;
 	do{
-		if (this->lstream.avail_in == 0){
+		if (d->lstream.avail_in == 0){
 			if (!length)
 				break;
-			this->bytes_read += length;
-			this->lstream.next_in = (const uint8_t *)buffer;
-			this->lstream.avail_in = length;
-			length -= this->lstream.avail_in;
+			d->bytes_read += length;
+			d->lstream.next_in = (const uint8_t *)buffer;
+			d->lstream.avail_in = length;
+			length -= d->lstream.avail_in;
 		}
-		lret = lzma_code(&this->lstream, this->action);
-	}while (this->pass_data_to_stream(lret, cb, ud));
-	return this->bytes_written - x0;
+		lret = lzma_code(&d->lstream, d->action);
+	}while (this->pass_data_to_stream(lret));
+	return d->bytes_written - x0;
 }
 
-bool LzmaOutputFilter::flush(write_callback_t cb, void *ud){
-	if (this->action != LZMA_RUN)
+bool LzmaOutputFilter::flush(){
+	if (this->data->action != LZMA_RUN)
 		return false;
-	this->action = LZMA_FINISH;
-	while (this->pass_data_to_stream(lzma_code(&this->lstream, this->action), cb, ud));
-	return true;
+	this->data->action = LZMA_FINISH;
+	while (this->pass_data_to_stream(lzma_code(&this->data->lstream, this->data->action)));
+	this->stream->flush();
+	return this->stream->good();
 }
 
-LzmaInputFilter::LzmaInputFilter(size_t buffer_size){
-	this->lstream = LZMA_STREAM_INIT;
-	lzma_ret ret = lzma_stream_decoder(&this->lstream, UINT64_MAX, LZMA_IGNORE_CHECK);
+LzmaInputFilter::LzmaInputFilter(std::istream &stream, size_t buffer_size): InputFilter(stream){
+	this->data.reset(new impl);
+	auto d = this->data.get();
+	d->lstream = LZMA_STREAM_INIT;
+	lzma_ret ret = lzma_stream_decoder(&d->lstream, UINT64_MAX, LZMA_IGNORE_CHECK);
 	if (ret != LZMA_OK){
 		const char *msg;
 		switch (ret) {
@@ -175,33 +185,35 @@ LzmaInputFilter::LzmaInputFilter(size_t buffer_size){
 		}
 		throw LzmaInitializationException(msg);
 	}
-	this->action = LZMA_RUN;
-	this->input_buffer.resize(buffer_size);
-	this->bytes_read = 0;
-	this->bytes_written = 0;
-	this->queued_buffer = &this->input_buffer[0];
-	this->queued_bytes = 0;
+	d->action = LZMA_RUN;
+	d->input_buffer.resize(buffer_size);
+	d->bytes_read = 0;
+	d->bytes_written = 0;
+	d->queued_buffer = &d->input_buffer[0];
+	d->queued_bytes = 0;
 }
 
 LzmaInputFilter::~LzmaInputFilter(){
-	lzma_end(&this->lstream);
+	lzma_end(&this->data->lstream);
 }
 
-std::streamsize LzmaInputFilter::read(read_callback_t cb, void *ud, void *buffer, std::streamsize size){
-	if (this->at_eof)
+std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
+	auto d = this->data.get();
+	if (d->at_eof)
 		return -1;
 	size_t ret = 0;
-	this->lstream.next_out = (uint8_t *)buffer;
-	this->lstream.avail_out = size;
-	while (this->lstream.avail_out){
-		if (this->lstream.avail_in == 0){
-			this->lstream.next_in = &this->input_buffer[0];
-			this->lstream.avail_in = cb(ud, &this->input_buffer[0], this->input_buffer.size());
-			this->bytes_read += this->lstream.avail_in;
+	d->lstream.next_out = (uint8_t *)buffer;
+	d->lstream.avail_out = size;
+	while (d->lstream.avail_out){
+		if (d->lstream.avail_in == 0){
+			d->lstream.next_in = &d->input_buffer[0];
+			auto r = this->next_read((char *)&d->input_buffer[0], d->input_buffer.size());
+			d->lstream.avail_in = r < 0 ? 0 : r;
+			d->bytes_read += d->lstream.avail_in;
 		}
-		if (this->lstream.avail_in == 0)
-			this->action = LZMA_FINISH;
-		lzma_ret ret_code = lzma_code(&this->lstream, action);
+		if (d->lstream.avail_in == 0)
+			d->action = LZMA_FINISH;
+		lzma_ret ret_code = lzma_code(&d->lstream, d->action);
 		if (ret_code != LZMA_OK) {
 			if (ret_code == LZMA_STREAM_END)
 				break;
@@ -229,8 +241,8 @@ std::streamsize LzmaInputFilter::read(read_callback_t cb, void *ud, void *buffer
 			throw LzmaOperationException(msg);
 		}
 	}
-	ret = size - this->lstream.avail_out;
-	this->bytes_written += ret;
-	this->at_eof = !ret && size;
+	ret = size - d->lstream.avail_out;
+	d->bytes_written += ret;
+	d->at_eof = !ret && size;
 	return ret;
 }
