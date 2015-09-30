@@ -8,6 +8,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include <string>
 #include <set>
 #include <vector>
@@ -31,6 +33,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <boost/ptr_container/ptr_container.hpp>
 #include <boost/coroutine/coroutine.hpp>
 #include <boost/any.hpp>
+#include <boost/regex.hpp>
 #define LZMA_API_STATIC
 #include <lzma.h>
 #include <cryptlib/sha.h>

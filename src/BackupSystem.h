@@ -22,6 +22,7 @@ class BackupSystem{
 	ChangeCriterium change_criterium;
 
 	void set_versions();
+	path_t get_version_path(version_number_t) const;
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();
