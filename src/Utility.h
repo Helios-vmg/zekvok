@@ -139,3 +139,35 @@ template <typename T>
 struct all_bits_on{
 	static const T value = n_bits_on<T, sizeof(T) * 8>::value;
 };
+
+template <typename T>
+std::vector<typename T::key_type> get_map_keys(const T &m){
+	std::vector<typename T::key_type> ret;
+	for (auto &kv : m)
+		ret.push_back(kv.first);
+	return ret;
+}
+
+template <typename T>
+std::basic_string<T> ensure_last_character_is_not_backslash(std::basic_string<T> s){
+	while (s.back() == '\\')
+		s.pop_back();
+	return s;
+}
+
+template <typename Dst, typename Src>
+std::vector<Dst> to_vector(Src &s){
+	std::vector<Dst> ret;
+	for (auto &x : s)
+		ret.push_back(x);
+	return ret;
+}
+
+template <typename T>
+std::basic_string<T> to_string(const char *s){
+	std::basic_string<T> ret;
+	ret.reserve(strlen(s));
+	for (; *s; s++)
+		ret.push_back(s);
+	return ret;
+}

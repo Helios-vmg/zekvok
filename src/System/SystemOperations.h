@@ -44,8 +44,13 @@ struct VolumeInfo{
 	std::wstring volume_path;
 	std::wstring volume_label;
 	DriveType drive_type;
+	std::vector<std::wstring> mounted_paths;
+	VolumeInfo(){}
+	VolumeInfo(const std::wstring &, const std::wstring &, DriveType);
 };
 
 typedef boost::coroutines::asymmetric_coroutine<const VolumeInfo &> enumerate_volumes_co_t;
 enumerate_volumes_co_t::pull_type enumerate_volumes();
+typedef boost::coroutines::asymmetric_coroutine<const std::wstring &> enumerate_mounted_paths_co_t;
+enumerate_mounted_paths_co_t::pull_type enumerate_mounted_paths(std::wstring volume_path);
 }

@@ -5,7 +5,7 @@ All rights reserved.
 Distributed under a permissive license. See COPYING.txt for details.
 */
 
-#include "..\stdafx.h"
+#include "../stdafx.h"
 #include "fso.generated.h"
 
 OpaqueTimestamp OpaqueTimestamp::utc_now(){
@@ -16,4 +16,8 @@ OpaqueTimestamp OpaqueTimestamp::utc_now(){
 	ret.timestamp <<= 32;
 	ret.timestamp |= ft.dwLowDateTime;
 	return ret;
+}
+
+void OpaqueTimestamp::operator=(std::uint64_t t){
+	this->timestamp = t;
 }

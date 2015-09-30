@@ -10,7 +10,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Archive.h"
 #include "SimpleTypes.h"
 #include "serialization/fso.generated.h"
-#include "Transactions.h"
+#include "System/Transactions.h"
 #include "HashFilter.h"
 
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;

@@ -9,6 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "BackupSystem.h"
 #include "ArchiveIO.h"
 #include "System/SystemOperations.h"
+#include "System/VSS.h"
 
 namespace fs = boost::filesystem;
 
@@ -26,9 +27,10 @@ BackupSystem::BackupSystem(const std::wstring &dst):
 	this->set_versions();
 }
 
+const boost::match_flag_type default_regex_flags = (boost::match_flag_type)(boost::match_default | boost::format_perl | boost::regex::icase);
+
 void BackupSystem::set_versions(){
-	static const boost::match_flag_type flags = (boost::match_flag_type)(boost::match_default | boost::format_perl | boost::match_prev_avail | boost::regex::icase);
-	boost::wregex re(L".*\\\\?version([0-9]+)\\.arc", flags);
+	boost::wregex re(L".*\\\\?version([0-9]+)\\.arc", default_regex_flags);
 	fs::directory_iterator i(this->target_path),
 		e;
 	for (; i != e; ++i){
@@ -36,7 +38,7 @@ void BackupSystem::set_versions(){
 		auto start = path.begin(),
 			end = path.end();
 		boost::match_results<decltype(start)> match;
-		if (!boost::regex_search(start, end, match, re, flags))
+		if (!boost::regex_search(start, end, match, re, default_regex_flags))
 			continue;
 		auto s = std::wstring(match[1].first,match[1].second);
 		std::wstringstream stream(s);
@@ -125,5 +127,41 @@ void BackupSystem::perform_backup(){
 		return;
 	}
 	std::cout << "Creating shadows.\n";
-	//TODO
+	VssSnapshot snapshot(get_map_keys(this->current_volumes));
+	for (auto &shadow : snapshot.get_snapshot_properties().get_shadows()){
+		start_time = shadow.created_at;
+		break;
+	}
+	this->set_path_mapper(snapshot);
+	this->perform_backup_inner(start_time);
+}
+
+template <typename T>
+std::basic_string<T> regex_escape(const std::basic_string<T> &s){
+	boost::basic_regex<T> esc(to_string<T>("[.^$|()\\[\\]{}*+?\\\\]"));
+	auto rep = to_string<T>("\\\\$&");
+	return regex_replace(url_to_escape, esc, rep, boost::match_default | boost::format_perl);
+}
+
+void map_path(const std::wstring &A, const std::wstring &B, std::vector<std::pair<boost::wregex, std::wstring>> &mapper){
+	std::wstring pattern;
+	pattern += L"(";
+	pattern += A;
+	pattern += L")(\\.*|$)";
+	boost::wregex re(pattern, default_regex_flags);
+	mapper.push_back(std::make_pair(re, B));
+}
+
+void BackupSystem::set_path_mapper(const VssSnapshot &snapshot){
+	this->path_mapper.clear();
+	this->reverse_path_mapper.clear();
+	for (auto &shadow : snapshot.get_snapshot_properties().get_shadows()){
+		auto volume = this->current_volumes[shadow.original_volume_name];
+		auto s = ensure_last_character_is_not_backslash(shadow.snapshot_device_object);
+		for (auto &path : volume.mounted_paths){
+			auto s2 = ensure_last_character_is_not_backslash(path);
+			map_path(s2, s, this->path_mapper);
+			map_path(s, s2, this->reverse_path_mapper);
+		}
+	}
 }

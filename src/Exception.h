@@ -20,5 +20,11 @@ public:
 class Win32Exception : public StdStringException{
 	DWORD error;
 public:
+	Win32Exception(){}
 	Win32Exception(DWORD error);
+};
+
+class HresultException : public Win32Exception{
+public:
+	HresultException(const char *context, HRESULT hres);
 };

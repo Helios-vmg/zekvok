@@ -12,6 +12,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "System/SystemOperations.h"
 #include "serialization/fso.generated.h"
 
+class VssSnapshot;
+
 class BackupSystem{
 	version_number_t version_count;
 	path_t target_path;
@@ -23,10 +25,13 @@ class BackupSystem{
 	bool use_snapshots;
 	ChangeCriterium change_criterium;
 	std::map<std::wstring, system_ops::VolumeInfo> current_volumes;
+	std::vector<std::pair<boost::wregex, std::wstring>> path_mapper;
+	std::vector<std::pair<boost::wregex, std::wstring>> reverse_path_mapper;
 
 	void set_versions();
 	path_t get_version_path(version_number_t) const;
 	void perform_backup_inner(OpaqueTimestamp &start_time);
+	void set_path_mapper(const VssSnapshot &);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();

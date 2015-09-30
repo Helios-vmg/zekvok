@@ -45,6 +45,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <cryptlib/cryptlib.h>
 #include <Windows.h>
 #include <ktmw32.h>
+#include <vss.h>
+#include <vswriter.h>
+#include <vsbackup.h>
+#include <comdef.h>
 
 #ifdef max
 #undef max
