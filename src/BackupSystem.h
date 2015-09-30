@@ -9,6 +9,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "SimpleTypes.h"
 #include "Utility.h"
+#include "System/SystemOperations.h"
+#include "serialization/fso.generated.h"
 
 class BackupSystem{
 	version_number_t version_count;
@@ -20,9 +22,11 @@ class BackupSystem{
 	std::map<std::wstring, NameIgnoreType, strcmpci> ignored_names;
 	bool use_snapshots;
 	ChangeCriterium change_criterium;
+	std::map<std::wstring, system_ops::VolumeInfo> current_volumes;
 
 	void set_versions();
 	path_t get_version_path(version_number_t) const;
+	void perform_backup_inner(OpaqueTimestamp &start_time);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();

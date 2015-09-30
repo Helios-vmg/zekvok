@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "stdafx.h"
 #include "BackupSystem.h"
 #include "ArchiveIO.h"
+#include "System/SystemOperations.h"
 
 namespace fs = boost::filesystem;
 
@@ -94,4 +95,35 @@ void BackupSystem::set_use_snapshots(bool use_snapshots){
 
 void BackupSystem::set_change_criterium(ChangeCriterium cc){
 	this->change_criterium = cc;
+}
+
+bool is_backupable(system_ops::DriveType type){
+	switch (type)
+    {
+        case system_ops::DriveType::Unknown:
+        case system_ops::DriveType::NoRootDirectory:
+        case system_ops::DriveType::Network:
+        case system_ops::DriveType::CDRom:
+            return false;
+        case system_ops::DriveType::Removable:
+        case system_ops::DriveType::Fixed:
+        case system_ops::DriveType::Ram:
+            return true;
+    }
+	return false;
+}
+
+void BackupSystem::perform_backup(){
+	auto start_time = OpaqueTimestamp::utc_now();
+	for (auto &vi : system_ops::enumerate_volumes()){
+		if (is_backupable(vi.drive_type))
+			continue;
+		this->current_volumes[vi.volume_path] = vi;
+	}
+	if (!this->use_snapshots){
+		this->perform_backup_inner(start_time);
+		return;
+	}
+	std::cout << "Creating shadows.\n";
+	//TODO
 }

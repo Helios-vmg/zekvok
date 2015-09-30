@@ -8,11 +8,14 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "stdafx.h"
 #include "Transactions.h"
 #include "Utility.h"
+#include "Exception.h"
 
 KernelTransaction::KernelTransaction(){
 	this->tx = CreateTransaction(nullptr, 0, 0, 0, 0, 0, nullptr);
-	if (this->tx == INVALID_HANDLE_VALUE)
-		throw std::exception("Win32 error");
+	if (this->tx == INVALID_HANDLE_VALUE){
+		auto error = GetLastError();
+		throw Win32Exception(error);
+	}
 }
 
 KernelTransaction::~KernelTransaction(){
@@ -57,8 +60,10 @@ TransactedFileSink::TransactedFileSink(const KernelTransaction &tx, const wchar_
 		if (this->handle != INVALID_HANDLE_VALUE)
 			break;
 	}
-	if (this->handle == INVALID_HANDLE_VALUE)
-		std::exception("Win32 error");
+	if (this->handle == INVALID_HANDLE_VALUE){
+		auto error = GetLastError();
+		throw Win32Exception(error);
+	}
 	SetFilePointer(this->handle, 0, 0, FILE_END);
 }
 

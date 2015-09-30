@@ -176,6 +176,7 @@
     <ClCompile Include="..\src\ArchiveIO.cpp" />
     <ClCompile Include="..\src\BackupSystem.cpp" />
     <ClCompile Include="..\src\BoundedStreamFilter.cpp" />
+    <ClCompile Include="..\src\Exception.cpp" />
     <ClCompile Include="..\src\HashFilter.cpp" />
     <ClCompile Include="..\src\LineProcessor.cpp" />
     <ClCompile Include="..\src\LzmaFilter.cpp" />
@@ -192,12 +193,29 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\src\serialization\Implementations.cpp" />
+    <ClCompile Include="..\src\serialization\Implementations.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\stdafx.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\src\serialization\OpaqueTimestamp.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\stdafx.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="..\src\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\src\System\SystemOperations.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="..\src\Transactions.cpp" />
   </ItemGroup>
@@ -210,6 +228,7 @@
     <ClInclude Include="..\src\ArchiveIO.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\BoundedStreamFilter.h" />
+    <ClInclude Include="..\src\Exception.h" />
     <ClInclude Include="..\src\Filters.h" />
     <ClInclude Include="..\src\HashFilter.h" />
     <ClInclude Include="..\src\LineProcessor.h" />
@@ -225,10 +244,12 @@
     <ClInclude Include="..\src\serialization\FilishFso.h" />
     <ClInclude Include="..\src\serialization\fso.generated.h" />
     <ClInclude Include="..\src\serialization\JunctionFso.h" />
+    <ClInclude Include="..\src\serialization\OpaqueTimestamp.h" />
     <ClInclude Include="..\src\serialization\RegularFileFso.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />
     <ClInclude Include="..\src\stdafx.h" />
     <ClInclude Include="..\src\SymbolicConstants.h" />
+    <ClInclude Include="..\src\System\SystemOperations.h" />
     <ClInclude Include="..\src\Transactions.h" />
     <ClInclude Include="..\src\Utility.h" />
   </ItemGroup>
