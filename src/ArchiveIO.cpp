@@ -106,40 +106,62 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	if (end - begin != 3)
 		throw std::exception("Incorrect usage");
 
-	boost::iostreams::stream<HashOutputFilter> overall_hash(*this->stream, new CryptoPP::SHA256);
+	sha256_digest complete_hash;
 	{
-		bool mt = true;
-		boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
-		this->filtered_stream = &lzma;
+		boost::iostreams::stream<HashOutputFilter> overall_hash(*this->stream, new CryptoPP::SHA256);
+		{
+			bool mt = true;
+			boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
+			this->filtered_stream = &lzma;
 
-		auto co = begin->first();
-		for (auto i : *co)
-			*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
-		this->filtered_stream->flush();
-	}
-	this->initial_fso_offset = overall_hash->get_bytes_processed();
-	{
-		bool mt = true;
-		boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
-		this->filtered_stream = &lzma;
-
-		auto co = begin->second();
-		for (auto i : *co)
-			this->add_fso(*i);
-		this->filtered_stream->flush();
-	}
-	{
-		bool mt = true;
-		boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
-		this->filtered_stream = &lzma;
-
-		auto co = begin->third();
-		for (auto i : *co){
-			this->add_version_manifest(*i);
-			break;
+			auto co = (begin++)->first();
+			for (auto i : *co)
+				*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
+			this->filtered_stream->flush();
 		}
-		this->filtered_stream->flush();
+		this->initial_fso_offset = overall_hash->get_bytes_processed();
+		{
+			bool mt = true;
+			boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
+			this->filtered_stream = &lzma;
+
+			auto co = (begin++)->second();
+			for (auto i : *co){
+				auto x0 = lzma->get_bytes_written();
+				this->add_fso(*i);
+				auto x1 = lzma->get_bytes_written();
+				this->base_object_entry_sizes.push_back(x1 - x0);
+			}
+			this->filtered_stream->flush();
+		}
+		{
+			bool mt = true;
+			boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
+			this->filtered_stream = &lzma;
+
+			auto co = (begin++)->third();
+			for (auto i : *co){
+				auto &manifest = *i;
+				manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
+				manifest.archive_metadata.stream_ids = this->stream_ids;
+				manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
+				auto x0 = overall_hash->get_bytes_processed();
+				{
+					SerializerStream ss(lzma);
+					ss.begin_serialization(manifest);
+				}
+				lzma.flush();
+				auto x1 = overall_hash->get_bytes_processed();
+				std::uint64_t manifest_length = x1 - x0;
+				auto s_manifest_length = serialize_fixed_le_int(manifest_length);
+				overall_hash.write((const char *)s_manifest_length.data(), s_manifest_length.size());
+				break;
+			}
+			this->filtered_stream->flush();
+		}
+		overall_hash->get_result(complete_hash.data(), complete_hash.size());
 	}
+	this->stream->write((const char *)complete_hash.data(), complete_hash.size());
 }
 
 sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std::uint64_t stream_size){
@@ -157,8 +179,6 @@ sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std:
 }
 
 void ArchiveWriter::add_fso(const FileSystemObject &fso){
-
-}
-
-void ArchiveWriter::add_version_manifest(const VersionManifest &){
+	SerializerStream ss(*this->filtered_stream);
+	ss.begin_serialization(fso, config::include_typehashes);
 }

@@ -48,7 +48,7 @@ public:
 		std::uint64_t stream_size;
 	};
 	typedef const FileSystemObject *second_push_t;
-	typedef const VersionManifest *third_push_t;
+	typedef VersionManifest *third_push_t;
 	typedef boost::coroutines::asymmetric_coroutine<first_push_t> first_co_t;
 	typedef boost::coroutines::asymmetric_coroutine<second_push_t> second_co_t;
 	typedef boost::coroutines::asymmetric_coroutine<third_push_t> third_co_t;
@@ -89,10 +89,10 @@ class ArchiveWriter{
 	std::vector<std::uint64_t> stream_sizes;
 	bool any_file;
 	std::uint64_t initial_fso_offset;
+	std::vector<std::uint64_t> base_object_entry_sizes;
 
 	sha256_digest add_file(stream_id_t, std::istream &, std::uint64_t);
 	void add_fso(const FileSystemObject &);
-	void add_version_manifest(const VersionManifest &);
 public:
 	ArchiveWriter(const path_t &);
 	void process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end);

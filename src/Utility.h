@@ -106,16 +106,23 @@ void deserialize_fixed_le_int(DstT &dst, const SrcT &src){
 }
 
 template <typename DstT, typename SrcT>
-void serialize_fixed_le_int(DstT &dst, const SrcT &src){
+void serialize_fixed_le_int(DstT *dst, const SrcT &src){
 	static_assert(CHAR_BIT == 8, "Only 8-bit byte platforms supported!");
 
-	std::uint8_t *p = (std::uint64_t *)src;
+	std::uint8_t *p = (std::uint8_t *)src;
 	std::make_unsigned<SrcT>::type copy = src;
 	const auto n = sizeof(src);
 	for (auto i = 0; i != n; i++){
 		p[i] = copy & 0xFF;
 		copy >>= 8;
 	}
+}
+
+template <typename SrcT>
+std::array<std::uint8_t, sizeof(SrcT)> serialize_fixed_le_int(const SrcT &src){
+	std::array<std::uint8_t, sizeof(SrcT)> ret;
+	serialize_fixed_le_int(ret.data(), src);
+	return ret;
 }
 
 template <typename T, unsigned N>

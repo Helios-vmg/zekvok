@@ -46,6 +46,9 @@ public:
 	~LzmaOutputFilter();
 	std::streamsize write(const char *s, std::streamsize n) override;
 	bool flush() override;
+	std::uint64_t get_bytes_written() const{
+		return this->data->bytes_written;
+	}
 };
 
 class LzmaInputFilter : public InputFilter{
