@@ -11,6 +11,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "SimpleTypes.h"
 #include "serialization/fso.generated.h"
 #include "Transactions.h"
+#include "HashFilter.h"
 
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
 
@@ -84,15 +85,17 @@ DERIVE_ArchiveWriter_helper(third);
 class ArchiveWriter{
 	KernelTransaction tx;
 	std::unique_ptr<std::ostream> stream;
-	std::ostream *filtered_stream;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
 	bool any_file;
 	std::uint64_t initial_fso_offset;
 	std::vector<std::uint64_t> base_object_entry_sizes;
 
-	sha256_digest add_file(stream_id_t, std::istream &, std::uint64_t);
-	void add_fso(const FileSystemObject &);
+	typedef boost::iostreams::stream<HashOutputFilter> hash_stream_t;
+
+	void add_files(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin);
+	void add_base_objects(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin);
+	void add_version_manifest(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin);
 public:
 	ArchiveWriter(const path_t &);
 	void process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end);

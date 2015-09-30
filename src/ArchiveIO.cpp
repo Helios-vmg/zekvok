@@ -108,77 +108,72 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 
 	sha256_digest complete_hash;
 	{
-		boost::iostreams::stream<HashOutputFilter> overall_hash(*this->stream, new CryptoPP::SHA256);
-		{
-			bool mt = true;
-			boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
-			this->filtered_stream = &lzma;
-
-			auto co = (begin++)->first();
-			for (auto i : *co)
-				*i.dst = this->add_file(i.id, *i.stream, i.stream_size);
-			this->filtered_stream->flush();
-		}
+		hash_stream_t overall_hash(*this->stream, new CryptoPP::SHA256);
+		this->add_files(overall_hash, begin);
 		this->initial_fso_offset = overall_hash->get_bytes_processed();
-		{
-			bool mt = true;
-			boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
-			this->filtered_stream = &lzma;
-
-			auto co = (begin++)->second();
-			for (auto i : *co){
-				auto x0 = lzma->get_bytes_written();
-				this->add_fso(*i);
-				auto x1 = lzma->get_bytes_written();
-				this->base_object_entry_sizes.push_back(x1 - x0);
-			}
-			this->filtered_stream->flush();
-		}
-		{
-			bool mt = true;
-			boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
-			this->filtered_stream = &lzma;
-
-			auto co = (begin++)->third();
-			for (auto i : *co){
-				auto &manifest = *i;
-				manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
-				manifest.archive_metadata.stream_ids = this->stream_ids;
-				manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
-				auto x0 = overall_hash->get_bytes_processed();
-				{
-					SerializerStream ss(lzma);
-					ss.begin_serialization(manifest);
-				}
-				lzma.flush();
-				auto x1 = overall_hash->get_bytes_processed();
-				std::uint64_t manifest_length = x1 - x0;
-				auto s_manifest_length = serialize_fixed_le_int(manifest_length);
-				overall_hash.write((const char *)s_manifest_length.data(), s_manifest_length.size());
-				break;
-			}
-			this->filtered_stream->flush();
-		}
+		this->add_base_objects(overall_hash, begin);
+		this->add_version_manifest(overall_hash, begin);
 		overall_hash->get_result(complete_hash.data(), complete_hash.size());
 	}
 	this->stream->write((const char *)complete_hash.data(), complete_hash.size());
 }
 
-sha256_digest ArchiveWriter::add_file(stream_id_t id, std::istream &stream, std::uint64_t stream_size){
-	this->stream_ids.push_back(id);
-	this->stream_sizes.push_back(stream_size);
+void ArchiveWriter::add_files(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin){
+	bool mt = true;
+	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
 
-	sha256_digest ret;
-	{
-		boost::iostreams::stream<HashInputFilter> hash(stream, new CryptoPP::SHA256);
-		*this->filtered_stream << hash.rdbuf();
-		hash->get_result(ret.data(), ret.size());
+	auto co = (begin++)->first();
+	for (auto i : *co){
+		this->stream_ids.push_back(i.id);
+		this->stream_sizes.push_back(i.stream_size);
+
+		sha256_digest &ret = *i.dst;
+		{
+			boost::iostreams::stream<HashInputFilter> hash(*i.stream, new CryptoPP::SHA256);
+			lzma << hash.rdbuf();
+			hash->get_result(ret.data(), ret.size());
+		}
+		this->any_file = true;
 	}
-	this->any_file = true;
-	return ret;
+	lzma.flush();
 }
 
-void ArchiveWriter::add_fso(const FileSystemObject &fso){
-	SerializerStream ss(*this->filtered_stream);
-	ss.begin_serialization(fso, config::include_typehashes);
+void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin){
+	bool mt = true;
+	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
+
+	auto co = (begin++)->second();
+	for (auto i : *co){
+		auto x0 = lzma->get_bytes_written();
+		SerializerStream ss(lzma);
+		ss.begin_serialization(*i, config::include_typehashes);
+		auto x1 = lzma->get_bytes_written();
+		this->base_object_entry_sizes.push_back(x1 - x0);
+	}
+	lzma.flush();
+}
+
+void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin){
+	bool mt = true;
+	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
+
+	auto co = (begin++)->third();
+	for (auto i : *co){
+		auto &manifest = *i;
+		manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
+		manifest.archive_metadata.stream_ids = this->stream_ids;
+		manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
+		auto x0 = overall_hash->get_bytes_processed();
+		{
+			SerializerStream ss(lzma);
+			ss.begin_serialization(manifest);
+		}
+		lzma.flush();
+		auto x1 = overall_hash->get_bytes_processed();
+		std::uint64_t manifest_length = x1 - x0;
+		auto s_manifest_length = serialize_fixed_le_int(manifest_length);
+		overall_hash.write((const char *)s_manifest_length.data(), s_manifest_length.size());
+		break;
+	}
+	lzma.flush();
 }
