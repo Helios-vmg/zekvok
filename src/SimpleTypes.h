@@ -29,3 +29,25 @@ enum class NameIgnoreType{
 
 typedef boost::filesystem::wpath path_t;
 typedef std::array<std::uint8_t, sha256_digest_length> sha256_digest;
+
+enum class BackupMode{
+	//File or directory will not be backed up.
+    NoBackup,
+    //Directory will be backed up. Only for directoryish file system objects.
+    //Link-like objects will be backed up as links.
+    Directory,
+    //File will be backed up unconditionally. Only for filish file system
+    //objects.
+    ForceFull,
+    //File will be backed up fully if changes were made to it. Only for
+    //filish file system objects.
+    Full,
+    //Used to signal that no changes have ocurred since the last time the
+    //file was backup up, and so a reference to the old version will be
+    //stored, rather than file data.
+    Unmodified,
+    //File will be backed up if changes were made to it, storing only the
+    //parts of the file that changed, using the rsync algorithm. Only for
+    //filish file system objects.
+    Rsync,
+};

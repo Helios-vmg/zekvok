@@ -203,5 +203,8 @@
     <ClInclude Include="..\src\System\VSS.h">
       <Filter>Header Files\System</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\serialization\fso.aux.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -36,7 +36,6 @@ class SnapshotProperties{
 	VSS_ID snapshot_set_id;
 	std::vector<VssShadow> shadows;
 public:
-	SnapshotProperties();
 	void set_snapshot_set_id(const VSS_ID &snapshot_set_id){
 		this->snapshot_set_id = snapshot_set_id;
 	}

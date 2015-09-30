@@ -11,12 +11,24 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "System/SystemOperations.h"
 #include "System/VSS.h"
 
+class SimpleErrorReporter : public FileSystemObject::ErrorReporter{
+public:
+	bool report_error(std::exception &e, const char *context) override{
+		std::cerr << "Exception was thrown";
+		if (context)
+			std::cerr << " while " << context;
+		std::cerr << ": " << e.what() << std::endl;
+		return true;
+	}
+};
+
 namespace fs = boost::filesystem;
 
 BackupSystem::BackupSystem(const std::wstring &dst):
 		version_count(-1),
 		use_snapshots(true),
-		change_criterium(ChangeCriterium::Default){
+		change_criterium(ChangeCriterium::Default),
+		base_objects_set(false){
 	this->target_path = dst;
 	if (fs::exists(this->target_path)){
 		if (!fs::is_directory(this->target_path))
@@ -164,4 +176,84 @@ void BackupSystem::set_path_mapper(const VssSnapshot &snapshot){
 			map_path(s, s2, this->reverse_path_mapper);
 		}
 	}
+}
+
+void BackupSystem::perform_backup_inner(const OpaqueTimestamp &start_time){
+	std::cout << "Performing backup.\n";
+	if (!this->get_version_count())
+		this->create_initial_version(start_time);
+	else
+		this->create_new_version(start_time);
+}
+
+void BackupSystem::create_initial_version(const OpaqueTimestamp &start_time){
+	this->set_base_objects();
+	this->generate_first_archive(start_time);
+}
+
+std::function<BackupMode(const FileSystemObject &)> BackupSystem::make_map(const std::shared_ptr<std::vector<std::wstring>> &for_later_check){
+	return [for_later_check, this](const FileSystemObject &fso){
+		bool follow;
+		auto ret = this->get_backup_mode_for_object(fso, follow);
+		if (follow && fso.get_link_target() && fso.get_link_target()->size()){
+			//follow_link_targets not yet implemented!
+			abort();
+			for_later_check->push_back(*fso.get_link_target());
+		}
+		return ret;
+	};
+}
+
+std::vector<path_t> BackupSystem::get_current_source_locations(){
+	if (!this->get_version_count())
+		return this->sources;
+	std::vector<path_t> ret;
+	for (auto &fso : this->old_objects){
+		if (!fso->get_is_main() || !fso->get_mapped_base_path())
+			continue;
+		ret.push_back(path_t(*fso->get_mapped_base_path()));
+	}
+	return ret;
+}
+
+void BackupSystem::set_base_objects(){
+	if (this->base_objects_set)
+		return;
+	this->base_objects_set = true;
+
+	std::shared_ptr<std::vector<std::wstring>> for_later_check(new std::vector<std::wstring>);
+	FileSystemObject::CreationSettings settings = {
+		std::shared_ptr<FileSystemObject::ErrorReporter>(new SimpleErrorReporter),
+		this->make_map(for_later_check)
+	};
+	for (auto &current_source_location : this->get_current_source_locations()){
+		auto mapped = this->map_forward(current_source_location);
+		std::shared_ptr<FileSystemObject> fso(FileSystemObject::create(mapped, current_source_location, settings));
+		fso->set_is_main(true);
+		this->base_objects.push_back(fso);
+	}
+
+	while (for_later_check->size()){
+		auto old_for_later_check = for_later_check;
+		for_later_check.reset(new std::vector<std::wstring>);
+		settings.backup_mode_map = this->make_map(for_later_check);
+		for (auto &path : *old_for_later_check){
+			if (this->covered(path))
+				continue;
+			std::shared_ptr<FileSystemObject> fso(
+				FileSystemObject::create(
+					this->map_forward(path),
+					path,
+					settings
+				)
+			);
+			this->base_objects.push_back(fso);
+		}
+	}
+
+	int i = 0;
+	for (auto &fso : this->base_objects)
+		fso->set_entry_number(i++);
+
+	this->recalculate_file_guids();
 }

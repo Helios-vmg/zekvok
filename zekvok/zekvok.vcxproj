@@ -92,7 +92,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>KtmW32.lib;liblzmad.lib;cryptlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>KtmW32.lib;vssapi.lib;liblzmad.lib;cryptlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -109,7 +109,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\lib64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>KtmW32.lib;liblzmad.lib;cryptlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>KtmW32.lib;vssapi.lib;liblzmad.lib;cryptlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -130,7 +130,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>KtmW32.lib;liblzma.lib;cryptlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>KtmW32.lib;vssapi.lib;liblzma.lib;cryptlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -151,7 +151,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\lib64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>KtmW32.lib;liblzma.lib;cryptlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>KtmW32.lib;vssapi.lib;liblzma.lib;cryptlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -253,6 +253,7 @@
     <ClInclude Include="..\src\serialization\FileSymlinkFso.h" />
     <ClInclude Include="..\src\serialization\FileSystemObject.h" />
     <ClInclude Include="..\src\serialization\FilishFso.h" />
+    <ClInclude Include="..\src\serialization\fso.aux.h" />
     <ClInclude Include="..\src\serialization\fso.generated.h" />
     <ClInclude Include="..\src\serialization\JunctionFso.h" />
     <ClInclude Include="..\src\serialization\OpaqueTimestamp.h" />
