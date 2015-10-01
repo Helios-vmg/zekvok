@@ -1,0 +1,2 @@
+public:
+	Sha256Digest(){}

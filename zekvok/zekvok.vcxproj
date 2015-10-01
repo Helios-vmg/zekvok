@@ -258,9 +258,11 @@
     <ClInclude Include="..\src\serialization\fso.aux.h" />
     <ClInclude Include="..\src\serialization\fso.generated.h" />
     <ClInclude Include="..\src\serialization\FullStream.h" />
+    <ClInclude Include="..\src\serialization\Guid.h" />
     <ClInclude Include="..\src\serialization\JunctionFso.h" />
     <ClInclude Include="..\src\serialization\OpaqueTimestamp.h" />
     <ClInclude Include="..\src\serialization\RegularFileFso.h" />
+    <ClInclude Include="..\src\serialization\Sha256Digest.h" />
     <ClInclude Include="..\src\serialization\UnmodifiedStream.h" />
     <ClInclude Include="..\src\serialization\VersionManifest.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />

@@ -31,6 +31,8 @@ typedef boost::filesystem::wpath path_t;
 const int sha256_digest_length = 256/8;
 typedef std::array<std::uint8_t, sha256_digest_length> sha256_digest;
 
+typedef std::array<std::uint8_t, 16> guid_t;
+
 enum class BackupMode{
 	//File or directory will not be backed up.
     NoBackup,

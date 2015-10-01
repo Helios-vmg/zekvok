@@ -347,3 +347,18 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 
 	archive.process(array, array + array_size(array));
 }
+
+std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemObject &fso, std::map<guid_t, std::shared_ptr<BackupStream>> &known_guids){
+	if (!this->should_be_added(fso, known_guids)){
+		this->fix_up_stream_reference(fso, known_guids);
+		return std::shared_ptr<BackupStream>();
+	}
+	auto ret = make_shared(new FullStream);
+	ret->set_unique_id(fso.get_stream_id());
+	ret->set_physical_size(fso.get_size());
+	ret->set_virtual_size(fso.get_size());
+	if (fso.get_file_system_guid().valid)
+		known_guids[fso.get_file_system_guid().data] = ret;
+	ret->add_file_system_object(&fso);
+	return ret;
+}

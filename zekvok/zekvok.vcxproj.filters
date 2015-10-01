@@ -221,5 +221,11 @@
     <ClInclude Include="..\src\serialization\VersionManifest.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\serialization\Guid.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\Sha256Digest.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

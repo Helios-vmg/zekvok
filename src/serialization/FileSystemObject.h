@@ -2,6 +2,7 @@ protected:
 	int entry_number;
 	BackupStream *backup_stream;
 public:
+	FileSystemObject(){}
 	std::shared_ptr<std::wstring> get_link_target() const{
 		return this->link_target;
 	}
@@ -30,6 +31,15 @@ public:
 		return this->hash;
 	}
 	void set_hash(const sha256_digest &);
+	std::uint64_t get_stream_id() const{
+		return this->stream_id;
+	}
+	std::uint64_t get_size() const{
+		return this->size;
+	}
+	const Guid &get_file_system_guid() const{
+		return this->file_system_guid;
+	}
 
 	class ErrorReporter{
 	public:

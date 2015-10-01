@@ -1,5 +1,6 @@
 <cpp name="fso">
 	<struct name="Sha256Digest">
+		<include header="&quot;Sha256Digest.h&quot;" />
 		<bool name="valid"/>
 		<array name="digest" length="32">
 			<uint8_t/>
@@ -7,6 +8,7 @@
 	</struct>
 	
 	<struct name="Guid">
+		<include header="&quot;Guid.h&quot;" />
 		<bool name="valid"/>
 		<array name="data" length="16">
 			<uint8_t/>
