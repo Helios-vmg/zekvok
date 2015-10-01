@@ -48,11 +48,11 @@
 	</class>
 	
 	<class name="DirectoryishFso">
-		<base name="FileSystemObject" />
+		<base base="FileSystemObject" />
 		<include header="&quot;DirectoryishFso.h&quot;" />
 	</class>
 	<class name="DirectoryFso">
-		<base name="DirectoryishFso" />
+		<base base="DirectoryishFso" />
 		<vector name="children" >
 			<shared_ptr>
 				<FileSystemObject/>
@@ -61,35 +61,35 @@
 		<include header="&quot;DirectoryFso.h&quot;" />
 	</class>
 	<class name="DirectorySymlinkFso">
-		<base name="DirectoryishFso" />
+		<base base="DirectoryishFso" />
 		<include header="&quot;DirectorySymlinkFso.h&quot;" />
 	</class>
 	<class name="JunctionFso">
-		<base name="DirectorySymlinkFso" />
+		<base base="DirectorySymlinkFso" />
 		<include header="&quot;JunctionFso.h&quot;" />
 	</class>
 	
 	<class name="FilishFso">
-		<base name="FileSystemObject" />
+		<base base="FileSystemObject" />
 		<include header="&quot;FilishFso.h&quot;" />
 	</class>
 	<class name="RegularFileFso">
-		<base name="FilishFso" />
+		<base base="FilishFso" />
 		<include header="&quot;RegularFileFso.h&quot;" />
 	</class>
 	<class name="FileHardlinkFso">
-		<base name="RegularFileFso" />
+		<base base="RegularFileFso" />
 		<vector name="peers">
 			<wstring/>
 		</vector>
 		<include header="&quot;FileHardlinkFso.h&quot;" />
 	</class>
 	<class name="FileSymlinkFso">
-		<base name="FilishFso" />
+		<base base="FilishFso" />
 		<include header="&quot;FileSymlinkFso.h&quot;" />
 	</class>
 	<class name="FileReparsePointFso">
-		<base name="FileSymlinkFso" />
+		<base base="FileSymlinkFso" />
 		<include header="&quot;FileReparsePointFso.h&quot;" />
 	</class>
 	
@@ -128,14 +128,14 @@
 	</class>
 	
 	<class name="UnmodifiedStream">
-		<base name="BackupStream" />
+		<base base="BackupStream" />
 		<uint64_t name="virtual_size" />
 		<int32_t name="containing_version" />
 		<include header="&quot;UnmodifiedStream.h&quot;" />
 	</class>
 	
 	<class name="FullStream">
-		<base name="BackupStream" />
+		<base base="BackupStream" />
 		<uint64_t name="virtual_size" />
 		<uint64_t name="physical_size" />
 		<include header="&quot;FullStream.h&quot;" />
@@ -143,7 +143,7 @@
 	
 	<!--
 	<class name="DiffStream">
-		<base name="BackupStream" />
+		<base base="BackupStream" />
 		<uint64_t name="virtual_size" />
 		<uint64_t name="physical_size" />
 	</<class>
