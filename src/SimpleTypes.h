@@ -54,3 +54,13 @@ enum class BackupMode{
     //filish file system objects.
     Rsync,
 };
+
+enum class FileSystemObjectType{
+	Directory,
+    RegularFile,
+    DirectorySymlink,
+    Junction,
+    FileSymlink,
+    FileReparsePoint,
+    FileHardlink,
+};

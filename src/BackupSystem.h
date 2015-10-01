@@ -53,8 +53,11 @@ class BackupSystem{
 	std::shared_ptr<BackupStream> generate_initial_stream(FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
 	std::map<stream_index_t, std::vector<std::shared_ptr<BackupStream>>> generate_streams(generate_archive_fp);
 	void get_dependencies(FileSystemObject *, std::set<version_number_t> &) const;
-	bool should_be_added(const FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
+	bool should_be_added(FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
 	static void fix_up_stream_reference(const FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
+	version_number_t get_new_version_number(){
+		return this->get_version_count();
+	}
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();

@@ -14,3 +14,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 //#include <map>
 //#include "../stdafx.h"
 #include "../SimpleTypes.h"
+
+#define DEFINE_INLINE_GETTER(x) const decltype(x) &get_##x() const{ return this->x; } 
+#define DEFINE_INLINE_SETTER(x) void set_##x(const decltype(x) &v){ this->x = v; }
+#define DEFINE_INLINE_SETTER_GETTER(x) DEFINE_INLINE_GETTER(x) DEFINE_INLINE_SETTER(x)

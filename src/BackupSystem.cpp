@@ -362,3 +362,17 @@ std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemOb
 	ret->add_file_system_object(&fso);
 	return ret;
 }
+
+bool BackupSystem::should_be_added(FileSystemObject &fso, std::map<guid_t, std::shared_ptr<BackupStream>> &known_guids){
+	fso.set_latest_version(-1);
+	if (fso.is_directoryish())
+		return false;
+	if (fso.get_backup_mode() == BackupMode::NoBackup)
+		return false;
+	if (fso.is_linkish() && fso.get_type() == FileSystemObjectType::FileHardlink)
+		return false;
+	fso.set_latest_version(this->get_new_version_number());
+	if (fso.get_file_system_guid().valid && known_guids.find(fso.get_file_system_guid().data) != known_guids.end())
+        return false;
+    return true;
+}
