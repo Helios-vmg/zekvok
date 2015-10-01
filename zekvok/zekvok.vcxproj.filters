@@ -206,5 +206,20 @@
     <ClInclude Include="..\src\serialization\fso.aux.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\serialization\BackupStream.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\FullStream.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\UnmodifiedStream.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\ArchiveMetadata.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\VersionManifest.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

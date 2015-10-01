@@ -245,6 +245,8 @@
     <ClInclude Include="..\src\LineProcessor.h" />
     <ClInclude Include="..\src\LzmaFilter.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
+    <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
+    <ClInclude Include="..\src\serialization\BackupStream.h" />
     <ClInclude Include="..\src\serialization\DirectoryFso.h" />
     <ClInclude Include="..\src\serialization\DirectoryishFso.h" />
     <ClInclude Include="..\src\serialization\DirectorySymlinkFso.h" />
@@ -255,9 +257,12 @@
     <ClInclude Include="..\src\serialization\FilishFso.h" />
     <ClInclude Include="..\src\serialization\fso.aux.h" />
     <ClInclude Include="..\src\serialization\fso.generated.h" />
+    <ClInclude Include="..\src\serialization\FullStream.h" />
     <ClInclude Include="..\src\serialization\JunctionFso.h" />
     <ClInclude Include="..\src\serialization\OpaqueTimestamp.h" />
     <ClInclude Include="..\src\serialization\RegularFileFso.h" />
+    <ClInclude Include="..\src\serialization\UnmodifiedStream.h" />
+    <ClInclude Include="..\src\serialization\VersionManifest.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />
     <ClInclude Include="..\src\stdafx.h" />
     <ClInclude Include="..\src\SymbolicConstants.h" />

@@ -102,7 +102,7 @@ ArchiveWriter::ArchiveWriter(const path_t &path){
 	this->stream.reset(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
 }
 
-void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *end){
+void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::unique_ptr<ArchiveWriter_helper> *end){
 	if (end - begin != 3)
 		throw std::exception("Incorrect usage");
 
@@ -118,11 +118,11 @@ void ArchiveWriter::process(ArchiveWriter_helper *begin, ArchiveWriter_helper *e
 	this->stream->write((const char *)complete_hash.data(), complete_hash.size());
 }
 
-void ArchiveWriter::add_files(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin){
+void ArchiveWriter::add_files(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
 	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
 
-	auto co = (begin++)->first();
+	auto co = (*(begin++))->first();
 	for (auto i : *co){
 		this->stream_ids.push_back(i.id);
 		this->stream_sizes.push_back(i.stream_size);
@@ -138,11 +138,11 @@ void ArchiveWriter::add_files(hash_stream_t &overall_hash, ArchiveWriter_helper 
 	lzma.flush();
 }
 
-void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin){
+void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
 	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
 
-	auto co = (begin++)->second();
+	auto co = (*(begin++))->second();
 	for (auto i : *co){
 		auto x0 = lzma->get_bytes_written();
 		SerializerStream ss(lzma);
@@ -153,11 +153,11 @@ void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, ArchiveWriter_
 	lzma.flush();
 }
 
-void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, ArchiveWriter_helper *&begin){
+void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
 	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
 
-	auto co = (begin++)->third();
+	auto co = (*(begin++))->third();
 	for (auto i : *co){
 		auto &manifest = *i;
 		manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;

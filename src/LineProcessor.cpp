@@ -9,11 +9,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "LineProcessor.h"
 #include "BackupSystem.h"
 
-template <typename T, size_t N>
-size_t array_size(const T (&)[N]){
-	return N;
-}
-
 LineProcessor::LineProcessor(int argc, char **argv):
 		selected_version(-1){
 

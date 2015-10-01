@@ -171,3 +171,13 @@ std::basic_string<T> to_string(const char *s){
 		ret.push_back(s);
 	return ret;
 }
+
+template <typename T>
+std::unique_ptr<T> make_unique(T *p){
+	return std::unique_ptr<T>(p);
+}
+
+template <typename T, size_t N>
+size_t array_size(const T (&)[N]){
+	return N;
+}

@@ -10,6 +10,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "ArchiveIO.h"
 #include "System/SystemOperations.h"
 #include "System/VSS.h"
+#include "SymbolicConstants.h"
+#include "serialization_utils.h"
+#include "Utility.h"
 
 class SimpleErrorReporter : public FileSystemObject::ErrorReporter{
 public:
@@ -28,7 +31,9 @@ BackupSystem::BackupSystem(const std::wstring &dst):
 		version_count(-1),
 		use_snapshots(true),
 		change_criterium(ChangeCriterium::Default),
-		base_objects_set(false){
+		base_objects_set(false),
+		next_stream_id(first_valid_stream_id),
+		next_differential_chain_id(first_valid_differential_chain_id){
 	this->target_path = dst;
 	if (fs::exists(this->target_path)){
 		if (!fs::is_directory(this->target_path))
@@ -260,4 +265,85 @@ void BackupSystem::set_base_objects(){
 		fso->set_entry_number(i++);
 
 	this->recalculate_file_guids();
+}
+
+void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_archive_fp generator, version_number_t version){
+	auto first_stream_id = this->next_stream_id;
+	auto first_diff_id = this->next_differential_chain_id;
+	auto version_path = this->get_version_path(version);
+
+	ArchiveWriter archive(version_path);
+	auto stream_dict = this->generate_streams(generator);
+	std::set<version_number_t> version_dependencies;
+
+	std::unique_ptr<ArchiveWriter_helper> array[] = {
+		make_unique(new ArchiveWriter_helper_first(
+			make_shared(new ArchiveWriter_helper::first_co_t::pull_type(
+				[&](ArchiveWriter_helper::first_co_t::push_type &sink){
+					for (auto &kv : stream_dict){
+						{
+							auto base_object = this->base_objects[kv.first];
+							for (auto &i : kv.second)
+								for (auto &j : i->get_file_system_objects())
+									j->set_backup_stream(i.get());
+
+							for (auto &i : base_object->get_iterator())
+								this->get_dependencies(i, version_dependencies);
+						}
+
+						for (auto &backup_stream : kv.second){
+							auto fso = backup_stream->get_file_system_objects()[0];
+							std::wcout << *fso->get_unmapped_base_path() << std::endl;
+							bool compute = !fso->get_hash().valid;
+							sha256_digest digest;
+							std::uint64_t size;
+							auto stream = backup_stream->open_for_exclusive_read(size);
+							ArchiveWriter_helper::first_push_t s = {
+								&digest,
+								backup_stream->get_unique_id(),
+								stream.get(),
+								size,
+							};
+							sink(s);
+							fso->set_hash(digest);
+						}
+					}
+				}
+			))
+		)),
+		make_unique(new ArchiveWriter_helper_second(
+			make_shared(new ArchiveWriter_helper::second_co_t::pull_type(
+				[&](ArchiveWriter_helper::second_co_t::push_type &sink){
+					for (auto &kv : stream_dict)
+						sink(this->base_objects[kv.first].get());
+				}
+			))
+		)),
+		make_unique(new ArchiveWriter_helper_third(
+			make_shared(new ArchiveWriter_helper::third_co_t::pull_type(
+				[&](ArchiveWriter_helper::third_co_t::push_type &sink){
+					VersionManifest manifest;
+					manifest.creation_time = start_time;
+					manifest.version_number = version;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#pragma warning(disable: 4267)
+#endif
+					manifest.entry_count = base_objects.size();
+					manifest.first_stream_id = first_stream_id;
+					manifest.first_differential_chain_id = first_diff_id;
+					manifest.next_stream_id = this->next_stream_id;
+					manifest.next_differential_chain_id = this->next_differential_chain_id;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+					manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
+					sink(&manifest);
+				}
+			))
+		)),
+	};
+
+	archive.process(array, array + array_size(array));
 }

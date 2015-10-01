@@ -30,6 +30,8 @@ class BackupSystem{
 	bool base_objects_set;
 	std::vector<std::shared_ptr<FileSystemObject>> old_objects;
 	std::vector<std::shared_ptr<FileSystemObject>> base_objects;
+	stream_id_t next_stream_id;
+	stream_id_t next_differential_chain_id;
 
 	void set_versions();
 	path_t get_version_path(version_number_t) const;
@@ -39,8 +41,7 @@ class BackupSystem{
 	void create_new_version(const OpaqueTimestamp &start_time);
 	void set_base_objects();
 	void generate_first_archive(const OpaqueTimestamp &start_time);
-	typedef void *BackupStream;
-	typedef BackupStream (BackupSystem::*generate_archive_fp)(const FileSystemObject &, std::map<std::array<std::uint8_t, 16>, BackupStream> &);
+	typedef std::shared_ptr<BackupStream> (BackupSystem::*generate_archive_fp)(const FileSystemObject &, std::map<std::array<std::uint8_t, 16>, std::shared_ptr<BackupStream>> &);
 	void generate_archive(const OpaqueTimestamp &start_time, generate_archive_fp, version_number_t = 0);
 	std::function<BackupMode(const FileSystemObject &)> make_map(const std::shared_ptr<std::vector<std::wstring>> &for_later_check);
 	BackupMode get_backup_mode_for_object(const FileSystemObject &, bool &follow_link_targets);
@@ -49,7 +50,9 @@ class BackupSystem{
 	path_t map_back(const path_t &);
 	bool covered(const path_t &);
 	void recalculate_file_guids();
-	BackupStream generate_initial_stream(const FileSystemObject &, std::map<std::array<std::uint8_t, 16>, BackupStream> &);
+	std::shared_ptr<BackupStream> generate_initial_stream(const FileSystemObject &, std::map<std::array<std::uint8_t, 16>, std::shared_ptr<BackupStream>> &);
+	std::map<stream_index_t, std::vector<std::shared_ptr<BackupStream>>> generate_streams(generate_archive_fp);
+	void get_dependencies(FileSystemObject *, std::set<version_number_t> &) const;
 
 public:
 	BackupSystem(const std::wstring &);
