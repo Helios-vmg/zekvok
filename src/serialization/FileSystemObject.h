@@ -33,7 +33,11 @@ public:
 
 	typedef boost::coroutines::asymmetric_coroutine<FileSystemObject *> iterate_co_t;
 	iterate_co_t::pull_type get_iterator() const;
-	virtual bool is_directoryish() const = 0;
-	virtual bool is_linkish() const = 0;
+	virtual bool is_directoryish() const{
+		return false;
+	}
+	virtual bool is_linkish() const{
+		return false;
+	}
 	virtual FileSystemObjectType get_type() const = 0;
 

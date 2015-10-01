@@ -20,7 +20,7 @@
 		<include header="&quot;OpaqueTimestamp.h&quot;" />
 	</class>
 	
-	<class name="FileSystemObject">
+	<class name="FileSystemObject" is_abstract="1">
 		<protected/>
 		<uint64_t name="stream_id" />
 		<uint64_t name="differential_chain_id" />
@@ -49,7 +49,7 @@
 		<include header="&quot;FileSystemObject.h&quot;" />
 	</class>
 	
-	<class name="DirectoryishFso">
+	<class name="DirectoryishFso" is_abstract="1">
 		<base base="FileSystemObject" />
 		<include header="&quot;DirectoryishFso.h&quot;" />
 	</class>
@@ -71,7 +71,7 @@
 		<include header="&quot;JunctionFso.h&quot;" />
 	</class>
 	
-	<class name="FilishFso">
+	<class name="FilishFso" is_abstract="1">
 		<base base="FileSystemObject" />
 		<include header="&quot;FilishFso.h&quot;" />
 	</class>
