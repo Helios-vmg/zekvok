@@ -2,6 +2,7 @@ protected:
 	int entry_number;
 	BackupStream *backup_stream;
 	BackupMode backup_mode;
+	bool archive_flag;
 public:
 	FileSystemObject(){}
 	DEFINE_INLINE_SETTER_GETTER(link_target)
@@ -18,6 +19,8 @@ public:
 	DEFINE_INLINE_SETTER_GETTER(latest_version)
 	DEFINE_INLINE_SETTER_GETTER(backup_mode)
 	DEFINE_INLINE_GETTER(name)
+	DEFINE_INLINE_SETTER_GETTER(archive_flag)
+	DEFINE_INLINE_SETTER_GETTER(modification_time)
 	path_t get_path() const;
 	bool contains(const path_t &) const;
 	void set_unique_ids(BackupSystem *);
@@ -44,4 +47,6 @@ public:
 		return false;
 	}
 	virtual FileSystemObjectType get_type() const = 0;
-
+	FileSystemObject *find(const path_t &) const;
+	virtual bool compute_hash(sha256_digest &dst) const = 0;
+	virtual bool compute_hash() const = 0;

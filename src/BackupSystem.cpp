@@ -510,3 +510,103 @@ void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	}
 	this->generate_archive(start_time, &BackupSystem::check_and_maybe_add, this->get_new_version_number());
 }
+
+void BackupSystem::set_old_objects_map(){
+	this->old_objects_map.clear();
+	for (auto &old_object : this->old_objects)
+		for (auto &fso : old_object->get_iterator())
+			this->old_objects_map[simplify_path(*fso->get_mapped_base_path())] = fso;
+}
+
+std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject &fso, known_guids_t &known_guids){
+	std::shared_ptr<BackupStream> ret;
+	if (!this->should_be_added(fso, known_guids)){
+		this->fix_up_stream_reference(fso, known_guids);
+		return ret;
+	}
+	auto existing_version = invalid_version_number;
+	if (fso.get_backup_mode() == BackupMode::Full && !this->file_has_changed(existing_version, fso))
+		fso.set_backup_mode(BackupMode::Unmodified);
+	switch (fso.get_backup_mode()){
+		case BackupMode::Unmodified:
+			{
+				auto temp = make_unique(new UnmodifiedStream);
+				temp->set_unique_id(fso.get_stream_id());
+				temp->set_containing_version(existing_version);
+				temp->set_virtual_size(fso.get_size());
+				ret = std::move(temp);
+			}
+			ret->add_file_system_object(&fso);
+			break;
+		case BackupMode::ForceFull:
+		case BackupMode::Full:
+			{
+				auto temp = make_unique(new FullStream);
+				temp->set_unique_id(fso.get_stream_id());
+				temp->set_physical_size(fso.get_size());
+				temp->set_virtual_size(fso.get_size());
+				ret = std::move(temp);
+			}
+			ret->add_file_system_object(&fso);
+			break;
+		case BackupMode::Rsync:
+			throw NotImplementedException();
+		default:
+			throw InvalidSwitchVariableException();
+	}
+	assert(!!ret);
+	auto &guid = fso.get_file_system_guid();
+	if (guid.valid)
+		known_guids[guid.data] = ret;
+	return ret;
+}
+
+bool compare_hashes(const FileSystemObject &, const FileSystemObject &);
+
+bool BackupSystem::file_has_changed(version_number_t &dst, FileSystemObject &new_file){
+	dst = invalid_version_number;
+	path_t path = *new_file.get_mapped_base_path();
+	FileSystemObject *old_file;
+	for (auto &fso : this->old_objects){
+		auto found = fso->find(path);
+		if (!found)
+			continue;
+		old_file = found;
+		break;
+	}
+	if (!old_file){
+		new_file.compute_hash();
+		return true;
+	}
+	assert(old_file);
+	auto criterium = this->get_change_criterium(new_file);
+	bool ret;
+	switch (criterium){
+		case ChangeCriterium::ArchiveFlag:
+			ret = new_file.get_archive_flag();
+			break;
+		case ChangeCriterium::Size:
+			ret = new_file.get_size() != old_file->get_size();
+			break;
+		case ChangeCriterium::Date:
+			ret = new_file.get_modification_time() != old_file->get_modification_time();
+			break;
+		case ChangeCriterium::Hash:
+			ret = compare_hashes(new_file, *old_file);
+			break;
+		case ChangeCriterium::HashAuto:
+			ret = this->file_has_changed(new_file, *old_file);
+			break;
+		default:
+			throw InvalidSwitchVariableException();
+	}
+	if (!ret){
+		auto &hash = old_file->get_hash();
+		if (hash.valid)
+			new_file.set_hash(hash.digest);
+		auto v = old_file->get_latest_version();
+		new_file.set_latest_version(v);
+		dst = v;
+	}
+	return ret;
+}

@@ -30,7 +30,7 @@ class BackupSystem{
 		reverse_path_mapper;
 	bool base_objects_set;
 	std::vector<std::shared_ptr<FileSystemObject>> old_objects;
-	std::map<std::wstring, std::shared_ptr<FileSystemObject>, strcmpci> old_objects_map;
+	std::map<std::wstring, FileSystemObject *, strcmpci> old_objects_map;
 	std::vector<std::shared_ptr<FileSystemObject>> base_objects;
 	stream_id_t next_stream_id;
 	stream_id_t next_differential_chain_id;
@@ -67,6 +67,9 @@ class BackupSystem{
 	}
 	void set_old_objects_map();
 	std::shared_ptr<BackupStream> check_and_maybe_add(FileSystemObject &, known_guids_t &);
+	bool file_has_changed(version_number_t &, FileSystemObject &);
+	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
+	ChangeCriterium get_change_criterium(const FileSystemObject &);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();

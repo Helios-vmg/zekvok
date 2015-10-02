@@ -12,6 +12,7 @@ public:
 	StdStringException(){}
 	StdStringException(const char *msg): message(msg){}
 	StdStringException(const std::string &msg): message(msg){}
+	virtual ~StdStringException(){}
 	const char *what() const override{
 		return this->message.c_str();
 	}
@@ -27,4 +28,22 @@ public:
 class HresultException : public Win32Exception{
 public:
 	HresultException(const char *context, HRESULT hres);
+};
+
+class FatalException : public std::exception{
+public:
+};
+
+class InvalidSwitchVariableException : public FatalException{
+public:
+	const char *what() const override{
+		return "switch variable outside permissible range";
+	}
+};
+
+class NotImplementedException : public FatalException{
+public:
+	const char *what() const override{
+		return "This feature not yet implemented";
+	}
 };
