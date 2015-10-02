@@ -486,3 +486,27 @@ void BackupSystem::fix_up_stream_reference(FileSystemObject &fso, known_guids_t 
 		fso.set_latest_version(fsos.front()->get_latest_version());
 	stream->add_file_system_object(&fso);
 }
+
+std::wstring simplify_path(const std::wstring &);
+
+void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
+	{
+		ArchiveReader archive(this->get_version_path(this->versions.back()));
+		auto manifest = archive.read_manifest();
+		this->old_objects = archive.get_base_objects();
+		this->next_stream_id = manifest->next_stream_id;
+		this->next_differential_chain_id = manifest->next_differential_chain_id;
+	}
+	this->set_old_objects_map();
+	this->set_base_objects();
+	for (auto &base_object : this->base_objects){
+		for (auto &fso : base_object->get_iterator()){
+			auto it = this->old_objects_map.find(simplify_path(*fso->get_mapped_base_path()));
+			if (it == this->old_objects_map.end())
+				continue;
+			fso->set_stream_id(it->second->get_stream_id());
+			break;
+		}
+	}
+	this->generate_archive(start_time, &BackupSystem::check_and_maybe_add, this->get_new_version_number());
+}
