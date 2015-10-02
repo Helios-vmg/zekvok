@@ -22,7 +22,8 @@ enum class ChangeCriterium{
 };
 
 enum class NameIgnoreType{
-	File = 0,
+	None = 0,
+	File,
 	Directory,
 	All,
 };

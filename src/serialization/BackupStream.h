@@ -5,13 +5,10 @@ public:
 	void add_file_system_object(FileSystemObject *fso){
 		this->file_system_objects.push_back(fso);
 	}
-	const std::vector<FileSystemObject *> &get_file_system_objects() const{
-		return this->file_system_objects;
-	}
-	void set_unique_id(std::uint64_t unique_id){
-		this->unique_id = unique_id;
-	}
-	std::uint64_t get_unique_id() const{
-		return this->unique_id;
-	}
+	DEFINE_INLINE_GETTER(file_system_objects)
+	DEFINE_INLINE_SETTER_GETTER(unique_id)
 	std::shared_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
+	virtual bool has_data() const{
+		return true;
+	}
+	virtual void get_dependencies(std::set<version_number_t> &dst) const = 0;

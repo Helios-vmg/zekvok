@@ -124,7 +124,7 @@
 		<include header="&quot;VersionManifest.h&quot;" />
 	</struct>
 	
-	<class name="BackupStream">
+	<class name="BackupStream" is_abstract="1">
 		<uint64_t name="unique_id" />
 		<include header="&quot;BackupStream.h&quot;" />
 	</class>

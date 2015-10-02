@@ -12,4 +12,4 @@ public:
 	void set_physical_size(std::uint64_t physical_size){
 		this->physical_size = physical_size;
 	}
-
+	void get_dependencies(std::set<version_number_t> &dst) const;

@@ -177,8 +177,8 @@ void BackupSystem::set_path_mapper(const VssSnapshot &snapshot){
 		auto s = ensure_last_character_is_not_backslash(shadow.snapshot_device_object);
 		for (auto &path : volume.mounted_paths){
 			auto s2 = ensure_last_character_is_not_backslash(path);
-			map_path(s2, s, this->path_mapper);
-			map_path(s, s2, this->reverse_path_mapper);
+			::map_path(s2, s, this->path_mapper);
+			::map_path(s, s2, this->reverse_path_mapper);
 		}
 	}
 }
@@ -288,7 +288,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 									j->set_backup_stream(i.get());
 
 							for (auto &i : base_object->get_iterator())
-								this->get_dependencies(i, version_dependencies);
+								this->get_dependencies(version_dependencies, *i);
 						}
 
 						for (auto &backup_stream : kv.second){
@@ -348,7 +348,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 	archive.process(array, array + array_size(array));
 }
 
-std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemObject &fso, std::map<guid_t, std::shared_ptr<BackupStream>> &known_guids){
+std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemObject &fso, known_guids_t &known_guids){
 	if (!this->should_be_added(fso, known_guids)){
 		this->fix_up_stream_reference(fso, known_guids);
 		return std::shared_ptr<BackupStream>();
@@ -363,7 +363,7 @@ std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemOb
 	return ret;
 }
 
-bool BackupSystem::should_be_added(FileSystemObject &fso, std::map<guid_t, std::shared_ptr<BackupStream>> &known_guids){
+bool BackupSystem::should_be_added(FileSystemObject &fso, known_guids_t &known_guids){
 	fso.set_latest_version(-1);
 	if (fso.is_directoryish())
 		return false;
@@ -371,8 +371,118 @@ bool BackupSystem::should_be_added(FileSystemObject &fso, std::map<guid_t, std::
 		return false;
 	if (fso.is_linkish() && fso.get_type() == FileSystemObjectType::FileHardlink)
 		return false;
-	fso.set_latest_version(this->get_new_version_number());
-	if (fso.get_file_system_guid().valid && known_guids.find(fso.get_file_system_guid().data) != known_guids.end())
-        return false;
-    return true;
+	auto &guid = fso.get_file_system_guid();
+	if (guid.valid && known_guids.find(guid.data) != known_guids.end())
+		return false;
+	return true;
+}
+
+BackupMode BackupSystem::get_backup_mode_for_object(const FileSystemObject &fso, bool &follow_link_targets){
+	follow_link_targets = false;
+	bool dir = fso.is_directoryish();
+	auto it = this->ignored_names.find(fso.get_name());
+	if (it != this->ignored_names.end()){
+		auto ignore_type = it->second;
+		if (((unsigned)ignore_type & (unsigned)NameIgnoreType::File) && !dir)
+			return BackupMode::NoBackup;
+		if (((unsigned)ignore_type & (unsigned)NameIgnoreType::Directory) && dir)
+			return BackupMode::NoBackup;
+	}
+	if (this->ignored_extensions.find(path_t(fso.get_name()).extension().wstring()) != this->ignored_extensions.end() && !dir)
+		return BackupMode::NoBackup;
+	if (this->ignored_paths.find(*fso.get_unmapped_base_path()) != this->ignored_paths.end())
+		return BackupMode::NoBackup;
+	return dir ? BackupMode::Directory : BackupMode::Full;
+}
+
+path_t BackupSystem::map_forward(const path_t &path){
+	return this->map_path(path, this->path_mapper);
+}
+
+path_t BackupSystem::map_back(const path_t &path){
+	return this->map_path(path, this->reverse_path_mapper);
+}
+
+path_t BackupSystem::map_path(const path_t &path, const path_mapper_t &mapper){
+	path_t ret;
+	stream_index_t longest = 0;
+	for (auto &tuple : mapper){
+		auto temp = path.wstring();
+		auto start = temp.begin(),
+			end = temp.end();
+		boost::match_results<decltype(start)> match;
+		auto &re = tuple.first;
+		if (!boost::regex_search(start, end, match, re, default_regex_flags))
+			continue;
+		std::wstring g1(match[1].first, match[1].second);
+		if (g1.size() <= longest)
+			continue;
+		longest = g1.size();
+		std::wstring g2(match[2].first, match[2].second);
+		ret = tuple.second + g2;
+	}
+	return !longest ? path : ret;
+}
+
+bool BackupSystem::covered(const path_t &path){
+	for (auto &fso : this->base_objects)
+		if (fso->contains(path))
+			return true;
+	return false;
+}
+
+void BackupSystem::recalculate_file_guids(){
+	while (this->recalculate_file_guids_queue.size()){
+		auto fso = this->recalculate_file_guids_queue.front();
+		this->recalculate_file_guids_queue.pop_front();
+		auto path = this->map_back(fso->get_path());
+		fso->set_file_system_guid(path, false);
+	}
+}
+
+BackupSystem::stream_dict_t BackupSystem::generate_streams(generate_archive_fp generator){
+	known_guids_t known_guids;
+	stream_dict_t stream_dict;
+	for (stream_index_t i = 0; i < this->base_objects.size(); i++){
+		auto fso = this->base_objects[i];
+		std::vector<std::shared_ptr<BackupStream>> streams;
+		for (auto &child : fso->get_iterator()){
+			auto stream = (this->*generator)(*child, known_guids);
+			if (!stream || !stream->has_data())
+				continue;
+			child->set_unique_ids(this);
+			stream->set_unique_id(child->get_stream_id());
+			streams.push_back(stream);
+			this->streams.push_back(stream);
+		}
+		stream_dict[i] = std::move(streams);
+	}
+	return stream_dict;
+}
+
+void BackupSystem::get_dependencies(std::set<version_number_t> &dst, FileSystemObject &fso) const{
+	if (fso.get_latest_version() == invalid_version_number)
+		return;
+	if (!fso.get_backup_stream())
+		dst.insert(fso.get_latest_version());
+	else
+		fso.get_backup_stream()->get_dependencies(dst);
+}
+
+void BackupSystem::fix_up_stream_reference(FileSystemObject &fso, known_guids_t &known_guids){
+	if (fso.get_type() == FileSystemObjectType::FileHardlink)
+		return;
+	auto &guid = fso.get_file_system_guid();
+	if (guid.valid)
+		return;
+	auto it = known_guids.find(guid.data);
+	if (it == known_guids.end())
+		return;
+	auto stream = it->second;
+	fso.set_stream_id(stream->get_unique_id());
+	fso.set_backup_stream(stream.get());
+	auto &fsos = stream->get_file_system_objects();
+	if (fsos.size())
+		fso.set_latest_version(fsos.front()->get_latest_version());
+	stream->add_file_system_object(&fso);
 }

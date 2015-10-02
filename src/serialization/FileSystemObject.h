@@ -17,6 +17,10 @@ public:
 	DEFINE_INLINE_GETTER(file_system_guid)
 	DEFINE_INLINE_SETTER_GETTER(latest_version)
 	DEFINE_INLINE_SETTER_GETTER(backup_mode)
+	DEFINE_INLINE_GETTER(name)
+	path_t get_path() const;
+	bool contains(const path_t &) const;
+	void set_unique_ids(BackupSystem *);
 
 	class ErrorReporter{
 	public:

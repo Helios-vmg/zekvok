@@ -181,7 +181,7 @@ void LineProcessor::process_exclude_name(const std::wstring *begin, const std::w
 		if (!strcmpci::equal(*begin, strings[i]))
 			continue;
 		this->ensure_backup_initialized();
-		this->backup_system->add_ignored_name(begin[1], (NameIgnoreType)i);
+		this->backup_system->add_ignored_name(begin[1], (NameIgnoreType)(i + 1));
 		break;
 	}
 }

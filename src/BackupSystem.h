@@ -25,13 +25,16 @@ class BackupSystem{
 	bool use_snapshots;
 	ChangeCriterium change_criterium;
 	std::map<std::wstring, system_ops::VolumeInfo> current_volumes;
-	std::vector<std::pair<boost::wregex, std::wstring>> path_mapper;
-	std::vector<std::pair<boost::wregex, std::wstring>> reverse_path_mapper;
+	typedef std::vector<std::pair<boost::wregex, std::wstring>> path_mapper_t;
+	path_mapper_t path_mapper,
+		reverse_path_mapper;
 	bool base_objects_set;
 	std::vector<std::shared_ptr<FileSystemObject>> old_objects;
 	std::vector<std::shared_ptr<FileSystemObject>> base_objects;
 	stream_id_t next_stream_id;
 	stream_id_t next_differential_chain_id;
+	std::deque<FilishFso *> recalculate_file_guids_queue;
+	std::vector<std::shared_ptr<BackupStream>> streams;
 
 	void set_versions();
 	path_t get_version_path(version_number_t) const;
@@ -41,20 +44,23 @@ class BackupSystem{
 	void create_new_version(const OpaqueTimestamp &start_time);
 	void set_base_objects();
 	void generate_first_archive(const OpaqueTimestamp &start_time);
-	typedef std::shared_ptr<BackupStream> (BackupSystem::*generate_archive_fp)(FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
+	typedef std::map<guid_t, std::shared_ptr<BackupStream>> known_guids_t;
+	typedef std::shared_ptr<BackupStream> (BackupSystem::*generate_archive_fp)(FileSystemObject &, known_guids_t &);
 	void generate_archive(const OpaqueTimestamp &start_time, generate_archive_fp, version_number_t = 0);
 	std::function<BackupMode(const FileSystemObject &)> make_map(const std::shared_ptr<std::vector<std::wstring>> &for_later_check);
 	BackupMode get_backup_mode_for_object(const FileSystemObject &, bool &follow_link_targets);
 	std::vector<path_t> get_current_source_locations();
 	path_t map_forward(const path_t &);
 	path_t map_back(const path_t &);
+	path_t map_path(const path_t &, const path_mapper_t &);
 	bool covered(const path_t &);
 	void recalculate_file_guids();
-	std::shared_ptr<BackupStream> generate_initial_stream(FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
-	std::map<stream_index_t, std::vector<std::shared_ptr<BackupStream>>> generate_streams(generate_archive_fp);
-	void get_dependencies(FileSystemObject *, std::set<version_number_t> &) const;
-	bool should_be_added(FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
-	static void fix_up_stream_reference(const FileSystemObject &, std::map<guid_t, std::shared_ptr<BackupStream>> &);
+	std::shared_ptr<BackupStream> generate_initial_stream(FileSystemObject &, known_guids_t &);
+	typedef std::map<stream_index_t, std::vector<std::shared_ptr<BackupStream>>> stream_dict_t;
+	stream_dict_t generate_streams(generate_archive_fp);
+	void get_dependencies(std::set<version_number_t> &, FileSystemObject &) const;
+	bool should_be_added(FileSystemObject &, known_guids_t &);
+	static void fix_up_stream_reference(FileSystemObject &, known_guids_t &);
 	version_number_t get_new_version_number(){
 		return this->get_version_count();
 	}
