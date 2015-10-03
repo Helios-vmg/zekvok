@@ -60,4 +60,5 @@ std::uint64_t get_file_size(const std::wstring &path);
 guid_t get_file_guid(const std::wstring &path);
 std::vector<std::wstring> list_all_hardlinks(const std::wstring &path);
 std::wstring get_reparse_point_target(const std::wstring &path);
+bool get_archive_bit(const std::wstring &path);
 }

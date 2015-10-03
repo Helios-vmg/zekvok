@@ -13,7 +13,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../System/SystemOperations.h"
 
 //------------------------------------------------------------------------------
-//CONSTRUCTORS
+// CONSTRUCTORS (A)
 //------------------------------------------------------------------------------
 
 FileSystemObject::FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings){
@@ -58,14 +58,157 @@ FileSymlinkFso::FileSymlinkFso(const path_t &path, const path_t &unmapped_path, 
 	this->set_backup_mode();
 }
 
+FileReparsePointFso::FileReparsePointFso(){
+	throw NotImplementedException();
+}
+
 FileReparsePointFso::FileReparsePointFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings): FileSymlinkFso(path, unmapped_path, settings){
-	this->set_members(path);
-	this->set_backup_mode();
+	throw NotImplementedException();
 }
 
 FileHardlinkFso::FileHardlinkFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings): RegularFileFso(path, unmapped_path, settings){
 	this->peers = system_ops::list_all_hardlinks(path.wstring());
 	this->set_backup_mode();
+}
+
+//------------------------------------------------------------------------------
+// CONSTRUCTORS (B)
+//------------------------------------------------------------------------------
+
+FileSystemObject::FileSystemObject(FileSystemObject *parent, const std::wstring &name, const path_t *path){
+	this->parent = parent;
+	this->name = name;
+	this->set_file_attributes(path ? *path : this->get_mapped_path());
+}
+
+DirectoryishFso::DirectoryishFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		FileSystemObject(parent, name, path){
+}
+
+DirectoryFso::DirectoryFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		DirectoryishFso(parent, name, path){
+	this->set_backup_mode();
+	if (this->backup_mode == BackupMode::Directory)
+		this->children = this->construct_children_list(path ? *path : this->get_mapped_path());
+}
+
+DirectorySymlinkFso::DirectorySymlinkFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		DirectoryishFso(parent, name, path){
+	this->set_target(path ? *path : this->get_mapped_path());
+	this->set_backup_mode();
+}
+
+JunctionFso::JunctionFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		DirectorySymlinkFso(parent, name, path){
+}
+
+FilishFso::FilishFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		FileSystemObject(parent, name, path){
+	this->set_members(path ? *path : this->get_mapped_path());
+}
+
+RegularFileFso::RegularFileFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		FilishFso(parent, name, path){
+	this->set_backup_mode();
+}
+
+FileHardlinkFso::FileHardlinkFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		RegularFileFso(parent, name, path){
+	this->peers = system_ops::list_all_hardlinks((path ? *path : this->get_mapped_path()).wstring());
+	this->set_backup_mode();
+}
+
+FileSymlinkFso::FileSymlinkFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		FilishFso(parent, name, path){
+	this->set_members(path ? *path : this->get_mapped_path());
+	this->set_backup_mode();
+}
+
+FileReparsePointFso::FileReparsePointFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
+		FileSymlinkFso(parent, name, path){
+	throw NotImplementedException();
+}
+
+//------------------------------------------------------------------------------
+// get_iterator()
+//------------------------------------------------------------------------------
+
+void DirectoryFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	sink(this);
+	for (auto &child : this->children)
+		child->iterate(sink);
+}
+
+FileSystemObject::iterate_co_t::pull_type DirectoryFso::get_iterator(){
+	return FileSystemObject::iterate_co_t::pull_type(
+		[this](FileSystemObject::iterate_co_t::push_type &sink){
+			this->iterate(sink);
+		}
+	);
+}
+
+void DirectorySymlinkFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	sink(this);
+}
+
+FileSystemObject::iterate_co_t::pull_type DirectorySymlinkFso::get_iterator(){
+	return FileSystemObject::iterate_co_t::pull_type(
+		[this](FileSystemObject::iterate_co_t::push_type &sink){
+			this->iterate(sink);
+		}
+	);
+}
+
+void FilishFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	sink(this);
+}
+
+FileSystemObject::iterate_co_t::pull_type FilishFso::get_iterator(){
+	return FileSystemObject::iterate_co_t::pull_type(
+		[this](FileSystemObject::iterate_co_t::push_type &sink){
+			this->iterate(sink);
+		}
+	);
+}
+
+//------------------------------------------------------------------------------
+// get_type()
+//------------------------------------------------------------------------------
+
+#define DEFINE_get_type(x) FileSystemObjectType x##Fso::get_type() const{ return FileSystemObjectType::x; }
+
+DEFINE_get_type(Directory)
+DEFINE_get_type(RegularFile)
+DEFINE_get_type(DirectorySymlink)
+DEFINE_get_type(Junction)
+DEFINE_get_type(FileSymlink)
+DEFINE_get_type(FileReparsePoint)
+DEFINE_get_type(FileHardlink)
+
+//------------------------------------------------------------------------------
+// find()
+//------------------------------------------------------------------------------
+
+FileSystemObject *FileSystemObject::find(const path_t &_path) const{
+	path_t my_base = *this->get_mapped_base_path();
+	auto path = _path;
+	my_base.normalize();
+	path.normalize();
+	auto b0 = my_base.begin(),
+		e0 = my_base.end();
+	auto b1 = path.begin(),
+		e1 = path.end();
+	for (; b0 != e0 && b1 != e1; ++b0, ++b1)
+		if (!strcmpci().equal(b0->wstring(), b1->wstring()))
+			return nullptr;
+	if (b0 != e0)
+		return nullptr;
+	if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
+		return nullptr;
+	b1++;
+	if (b1 == e1)
+		return nullptr;
+
 }
 
 //------------------------------------------------------------------------------
@@ -174,28 +317,6 @@ std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uin
 	return make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
 }
 
-FileSystemObject *FileSystemObject::find(const path_t &_path) const{
-	path_t my_base = *this->get_mapped_base_path();
-	auto path = _path;
-	my_base.normalize();
-	path.normalize();
-	auto b0 = my_base.begin(),
-		e0 = my_base.end();
-	auto b1 = path.begin(),
-		e1 = path.end();
-	for (; b0 != e0 && b1 != e1; ++b0, ++b1)
-		if (!strcmpci().equal(b0->wstring(), b1->wstring()))
-			return nullptr;
-	if (b0 != e0)
-		return nullptr;
-	if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
-		return nullptr;
-	b1++;
-	if (b1 == e1)
-		return nullptr;
-
-}
-
 void FilishFso::set_file_system_guid(const path_t &path, bool retry){
 	this->file_system_guid.valid = false;
 	try{
@@ -281,4 +402,55 @@ void FileSymlinkFso::set_members(const path_t &path){
 			throw;
 	}
 	this->link_target.reset(new decltype(s)(s));
+}
+
+void FileSystemObject::set_file_attributes(const path_t &path){
+	try{
+		this->archive_flag = system_ops::get_archive_bit(path.wstring());
+	}catch (NonFatalException &e){
+		if (!this->report_error(e, "getting file system object attributes for \"" + path.string() + "\""))
+			throw;
+		this->archive_flag = true;
+	}
+	try{
+		this->modification_time.set_to_file_modification_time(path.wstring());
+	}catch (NonFatalException &e){
+		if (!this->report_error(e, "getting file system object attributes for \"" + path.string() + "\""))
+			throw;
+	}
+}
+
+void FilishFso::set_members(const path_t &path){
+	this->size = 0;
+	try{
+		this->size = system_ops::get_file_size(path.wstring());
+	}catch (NonFatalException &e){
+		if (!this->report_error(e, "getting file size for \"" + path.string() + "\""))
+			throw;
+	}
+}
+
+void FileSystemObject::add_exception(const std::exception &e){
+	this->exceptions.push_back(e.what());
+}
+
+FileSystemObject *DirectoryishFso::create_child(const std::wstring &name, const path_t *_path){
+	path_t path;
+	if (_path)
+		path = *_path;
+	else{
+		path = *this->get_mapped_base_path();
+		path /= name;
+	}
+	switch (system_ops::get_file_system_object_type(path.wstring())){
+#define DirectoryishFso_create_child_SWITCH_CASE(x) case FileSystemObjectType::x: return new x##Fso(this, name, &path)
+		DirectoryishFso_create_child_SWITCH_CASE(Directory);
+		DirectoryishFso_create_child_SWITCH_CASE(RegularFile);
+		DirectoryishFso_create_child_SWITCH_CASE(DirectorySymlink);
+		DirectoryishFso_create_child_SWITCH_CASE(Junction);
+		DirectoryishFso_create_child_SWITCH_CASE(FileSymlink);
+		DirectoryishFso_create_child_SWITCH_CASE(FileReparsePoint);
+		DirectoryishFso_create_child_SWITCH_CASE(FileHardlink);
+	}
+	throw InvalidSwitchVariableException();
 }

@@ -120,15 +120,6 @@ bool is_directory(const wchar_t *path){
 	return (GetFileAttributesW(path) & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
 }
 
-struct AutoHandle{
-	HANDLE handle;
-	AutoHandle(HANDLE handle) : handle(handle){}
-	~AutoHandle(){
-		if (this->handle && this->handle != INVALID_HANDLE_VALUE)
-			CloseHandle(this->handle);
-	}
-};
-
 DWORD hardlink_count(const wchar_t *path){
 	AutoHandle handle = CreateFileW(path, 0, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 	DWORD ret = 0;
@@ -312,6 +303,62 @@ std::wstring get_reparse_point_target(const std::wstring &_path){
 			throw;
 	}
 	return ret;
+}
+
+std::vector<std::wstring> list_all_hardlinks(const std::wstring &_path){
+	auto path = path_from_string(_path);
+	HANDLE handle;
+	const DWORD default_size = 1 << 10;
+	std::vector<std::wstring> ret;
+	{
+		DWORD size = default_size;
+		std::vector<wchar_t> buffer(size);
+		while (1){
+			handle = FindFirstFileNameW(path.c_str(), 0, &size, &buffer[0]);
+			if (handle == INVALID_HANDLE_VALUE){
+				auto error = GetLastError();
+				if (error == ERROR_MORE_DATA){
+					buffer.resize(size);
+					continue;
+				}
+				throw Win32Exception(error);
+			}
+			break;
+		}
+		buffer.resize(size);
+		buffer.push_back(0);
+		ret.push_back(std::wstring(&buffer[0], &buffer[buffer.size() - 1]));
+	}
+	while (1){
+		bool Continue = true;
+		DWORD size = default_size;
+		std::vector<wchar_t> buffer(size);
+		while (1){
+			Continue = !!FindNextFileNameW(handle, &size, &buffer[0]);
+			if (!Continue){
+				auto error = GetLastError();
+				if (error == ERROR_MORE_DATA){
+					buffer.resize(size);
+					continue;
+				}
+				if (error == ERROR_HANDLE_EOF)
+					break;
+				throw Win32Exception(error);
+			}
+		}
+		if (!Continue)
+			break;
+		buffer.resize(size);
+		buffer.push_back(0);
+		ret.push_back(std::wstring(&buffer[0], &buffer[buffer.size() - 1]));
+	}
+	FindClose(handle);
+	return ret;
+}
+
+bool get_archive_bit(const std::wstring &_path){
+	auto path = path_from_string(_path);
+	return (GetFileAttributesW(path.c_str()) & FILE_ATTRIBUTE_ARCHIVE) == FILE_ATTRIBUTE_ARCHIVE;
 }
 
 }

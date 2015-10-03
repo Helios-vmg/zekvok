@@ -11,6 +11,7 @@ public:
 		std::shared_ptr<ErrorReporter> reporter;
 		std::function<BackupMode(const FileSystemObject &)> backup_mode_map;
 	};
+	typedef boost::coroutines::asymmetric_coroutine<FileSystemObject *> iterate_co_t;
 
 private:
 	std::shared_ptr<ErrorReporter> reporter;
@@ -40,6 +41,7 @@ protected:
 public:
 	FileSystemObject(){}
 	FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);
+	FileSystemObject(FileSystemObject *parent, const std::wstring &name, const path_t *path = nullptr);
 	DEFINE_INLINE_SETTER_GETTER(link_target)
 	DEFINE_INLINE_SETTER_GETTER(is_main)
 	DEFINE_INLINE_SETTER_GETTER(mapped_base_path)
@@ -65,7 +67,6 @@ public:
 
 	static FileSystemObject *create(const path_t &path, const path_t &unmapped_path, CreationSettings &);
 
-	typedef boost::coroutines::asymmetric_coroutine<FileSystemObject *> iterate_co_t;
 	virtual iterate_co_t::pull_type get_iterator() = 0;
 	virtual bool is_directoryish() const{
 		return false;
@@ -80,3 +81,4 @@ public:
 	virtual bool compute_hash() const = 0;
 	std::shared_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
 	bool report_error(const std::exception &, const std::string &context);
+	virtual void iterate(iterate_co_t::push_type &sink) = 0;

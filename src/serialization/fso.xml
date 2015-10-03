@@ -39,7 +39,7 @@
 		<Sha256Digest name="hash" />
 		<Guid name="file_system_guid" />
 		<vector name="exceptions">
-			<wstring/>
+			<string/>
 		</vector>
 		<bool name="is_main" />
 		<pointer name="parent">
