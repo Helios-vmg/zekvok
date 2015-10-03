@@ -249,6 +249,7 @@
     <ClInclude Include="..\serialization\postsrc\SerializerStream.h" />
     <ClInclude Include="..\src\Archive.h" />
     <ClInclude Include="..\src\ArchiveIO.h" />
+    <ClInclude Include="..\src\AutoHandle.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\BoundedStreamFilter.h" />
     <ClInclude Include="..\src\Exception.h" />

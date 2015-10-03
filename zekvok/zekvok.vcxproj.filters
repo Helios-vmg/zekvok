@@ -233,5 +233,8 @@
     <ClInclude Include="..\src\serialization\Sha256Digest.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\AutoHandle.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -6,4 +6,7 @@ public:
 	DirectoryFso(FileSystemObject *parent, const std::wstring &name, const path_t *path = nullptr);
 	virtual FileSystemObjectType get_type() const;
 	iterate_co_t::pull_type get_iterator() override;
-	FileSystemObject *find(path_t::iterator begin, path_t::iterator end) const;
+	const FileSystemObject *find(path_t::iterator begin, path_t::iterator end) const override;
+	FileSystemObject *find(path_t::iterator begin, path_t::iterator end) override{
+		return (FileSystemObject *)(((const FileSystemObject *)this)->find(begin, end));
+	}

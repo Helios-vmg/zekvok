@@ -189,10 +189,10 @@ DEFINE_get_type(FileHardlink)
 // find()
 //------------------------------------------------------------------------------
 
-FileSystemObject *FileSystemObject::find(const path_t &_path) const{
+const FileSystemObject *FileSystemObject::find(const path_t &_path) const{
 	path_t my_base = *this->get_mapped_base_path();
-	auto path = _path;
 	my_base.normalize();
+	auto path = _path;
 	path.normalize();
 	auto b0 = my_base.begin(),
 		e0 = my_base.end();
@@ -208,7 +208,44 @@ FileSystemObject *FileSystemObject::find(const path_t &_path) const{
 	b1++;
 	if (b1 == e1)
 		return nullptr;
+	return this->find(b1, e1);
+}
 
+const FileSystemObject *DirectoryFso::find(path_t::iterator begin, path_t::iterator end) const{
+	if (begin == end)
+		return nullptr;
+	if (!strcmpci().equal(begin->wstring(), this->name))
+		return nullptr;
+	auto next = begin;
+	++next;
+	if (next == end)
+		return this;
+	for (auto &child : this->children){
+		auto candidate = child->find(next, end);
+		if (candidate)
+			return candidate;
+	}
+	return nullptr;
+}
+
+const FileSystemObject *DirectorySymlinkFso::find(path_t::iterator begin, path_t::iterator end) const{
+	if (begin == end)
+		return nullptr;
+	auto next = begin;
+	++next;
+	if (next != end)
+		return nullptr;
+	return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+}
+
+const FileSystemObject *FilishFso::find(path_t::iterator begin, path_t::iterator end) const{
+	if (begin == end)
+		return nullptr;
+	auto next = begin;
+	++next;
+	if (next != end)
+		return nullptr;
+	return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
 }
 
 //------------------------------------------------------------------------------

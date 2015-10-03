@@ -202,12 +202,3 @@ std::basic_string<T> to_lower(const std::basic_string<T> &s){
 		ret.push_back(tolower(c));
 	return ret;
 }
-
-struct AutoHandle{
-	HANDLE handle;
-	AutoHandle(HANDLE handle) : handle(handle){}
-	~AutoHandle(){
-		if (this->handle && this->handle != INVALID_HANDLE_VALUE)
-			CloseHandle(this->handle);
-	}
-};

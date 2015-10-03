@@ -10,6 +10,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../Exception.h"
 #include "../Utility.h"
 #include "../SymbolicConstants.h"
+#include "../AutoHandle.h"
 
 namespace system_ops{
 

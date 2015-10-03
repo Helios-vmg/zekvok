@@ -1,5 +1,6 @@
 private:
 	void set_members(const path_t &path);
+	
 protected:
 	virtual void iterate(FileSystemObject::iterate_co_t::push_type &sink) override;
 public:
@@ -10,4 +11,7 @@ public:
 	bool compute_hash(sha256_digest &dst) const override;
 	bool compute_hash() const override;
 	iterate_co_t::pull_type get_iterator() override;
-	FileSystemObject *find(path_t::iterator begin, path_t::iterator end) const;
+	const FileSystemObject *find(path_t::iterator begin, path_t::iterator end) const;
+	FileSystemObject *find(path_t::iterator begin, path_t::iterator end){
+		return (FileSystemObject *)(((const FileSystemObject *)this)->find(begin, end));
+	}
