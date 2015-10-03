@@ -27,3 +27,13 @@ HresultException::HresultException(const char *context, HRESULT hres){
 	stream << ")";
 	this->message = stream.str();
 }
+
+FileNotFoundException::FileNotFoundException(const path_t &path): path(path){
+	this->message = "File not found: ";
+	this->message += this->path.string();
+}
+
+UnableToObtainGuidException::UnableToObtainGuidException(const path_t &path): path(path){
+	this->message = "Unable to obtain file system GUID: ";
+	this->message += this->path.string();
+}

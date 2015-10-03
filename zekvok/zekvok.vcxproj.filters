@@ -105,6 +105,9 @@
     <ClCompile Include="..\src\serialization\FileSystemObject.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\serialization\BackupStream.cpp">
+      <Filter>Source Files\Serialization</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">

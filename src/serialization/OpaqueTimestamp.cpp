@@ -21,3 +21,10 @@ OpaqueTimestamp OpaqueTimestamp::utc_now(){
 void OpaqueTimestamp::operator=(std::uint64_t t){
 	this->timestamp = t;
 }
+bool OpaqueTimestamp::operator==(const OpaqueTimestamp &b) const{
+	return this->timestamp == b.timestamp;
+}
+
+bool OpaqueTimestamp::operator!=(const OpaqueTimestamp &b) const{
+	return this->timestamp != b.timestamp;
+}

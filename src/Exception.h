@@ -5,7 +5,14 @@ All rights reserved.
 Distributed under a permissive license. See COPYING.txt for details.
 */
 
-class StdStringException : public std::exception{
+#include "SimpleTypes.h"
+
+class NonFatalException : public std::exception{
+public:
+	virtual ~NonFatalException(){}
+};
+
+class StdStringException : public NonFatalException{
 protected:
 	std::string message;
 public:
@@ -13,7 +20,7 @@ public:
 	StdStringException(const char *msg): message(msg){}
 	StdStringException(const std::string &msg): message(msg){}
 	virtual ~StdStringException(){}
-	const char *what() const override{
+	virtual const char *what() const override{
 		return this->message.c_str();
 	}
 };
@@ -21,11 +28,25 @@ public:
 class Win32Exception : public StdStringException{
 	DWORD error;
 public:
-	Win32Exception(){}
 	Win32Exception(DWORD error);
+	DWORD get_error() const{
+		return this->error;
+	}
 };
 
-class HresultException : public Win32Exception{
+class FileNotFoundException : public StdStringException{
+	path_t path;
+public:
+	FileNotFoundException(const path_t &path);
+};
+
+class UnableToObtainGuidException : public StdStringException{
+	path_t path;
+public:
+	UnableToObtainGuidException(const path_t &path);
+};
+
+class HresultException : public StdStringException{
 public:
 	HresultException(const char *context, HRESULT hres);
 };

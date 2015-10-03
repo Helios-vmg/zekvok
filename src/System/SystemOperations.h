@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "../SimpleTypes.h"
+
 namespace system_ops{
 
 enum class DriveType{
@@ -53,4 +55,9 @@ typedef boost::coroutines::asymmetric_coroutine<const VolumeInfo &> enumerate_vo
 enumerate_volumes_co_t::pull_type enumerate_volumes();
 typedef boost::coroutines::asymmetric_coroutine<const std::wstring &> enumerate_mounted_paths_co_t;
 enumerate_mounted_paths_co_t::pull_type enumerate_mounted_paths(std::wstring volume_path);
+FileSystemObjectType get_file_system_object_type(const std::wstring &);
+std::uint64_t get_file_size(const std::wstring &path);
+guid_t get_file_guid(const std::wstring &path);
+std::vector<std::wstring> list_all_hardlinks(const std::wstring &path);
+std::wstring get_reparse_point_target(const std::wstring &path);
 }

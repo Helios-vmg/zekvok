@@ -14,9 +14,11 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "serialization_utils.h"
 #include "Utility.h"
 
+const wchar_t * const system_path_prefix = L"\\\\?\\";
+
 class SimpleErrorReporter : public FileSystemObject::ErrorReporter{
 public:
-	bool report_error(std::exception &e, const char *context) override{
+	bool report_error(const std::exception &e, const char *context) override{
 		std::cerr << "Exception was thrown";
 		if (context)
 			std::cerr << " while " << context;
@@ -232,7 +234,8 @@ void BackupSystem::set_base_objects(){
 
 	std::shared_ptr<std::vector<std::wstring>> for_later_check(new std::vector<std::wstring>);
 	FileSystemObject::CreationSettings settings = {
-		std::shared_ptr<FileSystemObject::ErrorReporter>(new SimpleErrorReporter),
+		this,
+		make_shared(new SimpleErrorReporter),
 		this->make_map(for_later_check)
 	};
 	for (auto &current_source_location : this->get_current_source_locations()){
@@ -297,7 +300,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 							bool compute = !fso->get_hash().valid;
 							sha256_digest digest;
 							std::uint64_t size;
-							auto stream = backup_stream->open_for_exclusive_read(size);
+							auto stream = fso->open_for_exclusive_read(size);
 							ArchiveWriter_helper::first_push_t s = {
 								&digest,
 								backup_stream->get_unique_id(),
@@ -487,7 +490,19 @@ void BackupSystem::fix_up_stream_reference(FileSystemObject &fso, known_guids_t 
 	stream->add_file_system_object(&fso);
 }
 
-std::wstring simplify_path(const std::wstring &);
+std::wstring normalize_path(const std::wstring &path){
+	std::wstring ret;
+	size_t skip = 0;
+	if (starts_with(path, system_path_prefix)){
+		ret = system_path_prefix;
+		ret += path_t(path.substr(4)).normalize().wstring();
+	}
+	return ret;
+}
+
+std::wstring simplify_path(const std::wstring &path){
+	return to_lower(normalize_path(path));
+}
 
 void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	{
@@ -561,7 +576,14 @@ std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject
 	return ret;
 }
 
-bool compare_hashes(const FileSystemObject &, const FileSystemObject &);
+bool compare_hashes(const FileSystemObject &new_file, const FileSystemObject &old_file){
+	auto &old_hash = old_file.get_hash();
+	if (!old_hash.valid)
+		return true;
+	if (!new_file.compute_hash())
+		return true;
+	return new_file.get_hash().digest == old_hash.digest;
+}
 
 bool BackupSystem::file_has_changed(version_number_t &dst, FileSystemObject &new_file){
 	dst = invalid_version_number;
@@ -625,4 +647,12 @@ ChangeCriterium BackupSystem::get_change_criterium(const FileSystemObject &fso){
 		case ChangeCriterium::HashAuto:
 			return fso.get_size() < 1024 * 1024 ? ChangeCriterium::Hash : ChangeCriterium::Date;
 	}
+}
+
+stream_id_t BackupSystem::get_stream_id(){
+	return this->next_stream_id++;
+}
+
+void BackupSystem::enqueue_file_for_guid_get(FilishFso *fso){
+	this->recalculate_file_guids_queue.push_back(fso);
 }

@@ -181,3 +181,24 @@ template <typename T, size_t N>
 size_t array_size(const T (&)[N]){
 	return N;
 }
+
+template <typename T>
+bool starts_with(const std::basic_string<T> &a, const T *b){
+	size_t l = 0;
+	for (; b[l]; l++);
+	if (a.size() < l)
+		return false;
+	while (l--)
+		if (a[l] != b[l])
+			return false;
+	return true;
+}
+
+template <typename T>
+std::basic_string<T> to_lower(const std::basic_string<T> &s){
+	std::basic_string<T> ret;
+	ret.reserve(s.size());
+	for (auto c : s)
+		ret.push_back(tolower(c));
+	return ret;
+}
