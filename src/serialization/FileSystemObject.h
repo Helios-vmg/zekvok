@@ -3,6 +3,14 @@ protected:
 	BackupStream *backup_stream;
 	BackupMode backup_mode;
 	bool archive_flag;
+
+	enum class BasePathType{
+		Mapped,
+		Unmapped,
+		Override,
+	};
+
+	path_t path_override_base(const std::wstring * = nullptr, BasePathType = BasePathType::Mapped) const;
 public:
 	FileSystemObject(){}
 	DEFINE_INLINE_SETTER_GETTER(link_target)
@@ -21,9 +29,12 @@ public:
 	DEFINE_INLINE_GETTER(name)
 	DEFINE_INLINE_SETTER_GETTER(archive_flag)
 	DEFINE_INLINE_SETTER_GETTER(modification_time)
-	path_t get_path() const;
+	DEFINE_INLINE_SETTER_GETTER(parent)
+	path_t get_mapped_path() const;
+	path_t get_unmapped_path() const;
+	path_t get_path_without_base() const;
 	bool contains(const path_t &) const;
-	void set_unique_ids(BackupSystem *);
+	virtual void set_unique_ids(BackupSystem &);
 
 	class ErrorReporter{
 	public:
@@ -39,7 +50,7 @@ public:
 	static FileSystemObject *create(const path_t &path, const path_t &unmapped_path, CreationSettings &);
 
 	typedef boost::coroutines::asymmetric_coroutine<FileSystemObject *> iterate_co_t;
-	iterate_co_t::pull_type get_iterator() const;
+	virtual iterate_co_t::pull_type get_iterator() = 0;
 	virtual bool is_directoryish() const{
 		return false;
 	}

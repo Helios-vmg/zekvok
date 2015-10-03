@@ -435,7 +435,7 @@ void BackupSystem::recalculate_file_guids(){
 	while (this->recalculate_file_guids_queue.size()){
 		auto fso = this->recalculate_file_guids_queue.front();
 		this->recalculate_file_guids_queue.pop_front();
-		auto path = this->map_back(fso->get_path());
+		auto path = this->map_back(fso->get_mapped_path());
 		fso->set_file_system_guid(path, false);
 	}
 }
@@ -450,7 +450,7 @@ BackupSystem::stream_dict_t BackupSystem::generate_streams(generate_archive_fp g
 			auto stream = (this->*generator)(*child, known_guids);
 			if (!stream || !stream->has_data())
 				continue;
-			child->set_unique_ids(this);
+			child->set_unique_ids(*this);
 			stream->set_unique_id(child->get_stream_id());
 			streams.push_back(stream);
 			this->streams.push_back(stream);
@@ -609,4 +609,20 @@ bool BackupSystem::file_has_changed(version_number_t &dst, FileSystemObject &new
 		dst = v;
 	}
 	return ret;
+}
+
+bool BackupSystem::file_has_changed(const FileSystemObject &new_file, const FileSystemObject &old_file){
+	return true;
+}
+
+ChangeCriterium BackupSystem::get_change_criterium(const FileSystemObject &fso){
+	switch (this->change_criterium){
+		case ChangeCriterium::ArchiveFlag:
+		case ChangeCriterium::Size:
+		case ChangeCriterium::Date:
+		case ChangeCriterium::Hash:
+			return this->change_criterium;
+		case ChangeCriterium::HashAuto:
+			return fso.get_size() < 1024 * 1024 ? ChangeCriterium::Hash : ChangeCriterium::Date;
+	}
 }

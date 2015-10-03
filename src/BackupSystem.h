@@ -86,4 +86,5 @@ public:
 	}
 	void set_use_snapshots(bool);
 	void set_change_criterium(ChangeCriterium);
+	stream_id_t get_stream_id();
 };
