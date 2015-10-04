@@ -138,7 +138,7 @@ bool is_backupable(system_ops::DriveType type){
 void BackupSystem::perform_backup(){
 	auto start_time = OpaqueTimestamp::utc_now();
 	for (auto &vi : system_ops::enumerate_volumes()){
-		if (is_backupable(vi.drive_type))
+		if (!is_backupable(vi.drive_type))
 			continue;
 		this->current_volumes[vi.volume_path] = vi;
 	}

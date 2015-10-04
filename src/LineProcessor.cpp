@@ -49,39 +49,49 @@ void LineProcessor::process(){
 		if (strcmpci::equal(line[0], L"quit"))
 			break;
 		try{
-			this->process_line(&line[0], &line[line.size()]);
+			this->process_line(&line[0], &line[0] + line.size());
 		}catch (std::exception &e){
 			std::cerr << e.what() << std::endl;
 		}
 	}
 }
 
+template <typename T0, typename T1, typename T2>
+struct triple{
+	T0 first;
+	T1 second;
+	T2 third;
+};
+
 template <typename T>
 void iterate_pair_array(LineProcessor *This, const std::wstring *begin, const std::wstring *end, const T &array){
 	for (auto &p : array){
 		if (!strcmpci::equal(*begin, p.first))
 			continue;
-		if (++begin != end)
+		begin++;
+		if (!p.third || begin != end)
 			(This->*p.second)(begin, end);
 		break;
 	}
 }
 
+typedef triple<const wchar_t *, void (LineProcessor::*)(const std::wstring *begin, const std::wstring *end), int> process_array_t;
+
 void LineProcessor::process_line(const std::wstring *begin, const std::wstring *end){
 	if (begin == end)
 		return;
 
-	static const std::pair<const wchar_t *, void (LineProcessor::*)(const std::wstring *begin, const std::wstring *end)> array[] = {
-#define PROCESS_LINE_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_##x }
-		PROCESS_LINE_ARRAY_ELEMENT(open),
-		PROCESS_LINE_ARRAY_ELEMENT(add),
-		PROCESS_LINE_ARRAY_ELEMENT(exclude),
-		PROCESS_LINE_ARRAY_ELEMENT(backup),
-		PROCESS_LINE_ARRAY_ELEMENT(restore),
-		PROCESS_LINE_ARRAY_ELEMENT(select),
-		PROCESS_LINE_ARRAY_ELEMENT(show),
-		PROCESS_LINE_ARRAY_ELEMENT(if),
-		PROCESS_LINE_ARRAY_ELEMENT(set),
+	static const process_array_t array[] = {
+#define PROCESS_LINE_ARRAY_ELEMENT(x, y) { L###x , &LineProcessor::process_##x, y }
+		PROCESS_LINE_ARRAY_ELEMENT(open, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(add, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(exclude, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(backup, 0),
+		PROCESS_LINE_ARRAY_ELEMENT(restore, 0),
+		PROCESS_LINE_ARRAY_ELEMENT(select, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(show, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(if, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(set, 1),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -97,8 +107,8 @@ void LineProcessor::process_add(const std::wstring *begin, const std::wstring *e
 }
 
 void LineProcessor::process_exclude(const std::wstring *begin, const std::wstring *end){
-	static const std::pair<const wchar_t *, void (LineProcessor::*)(const std::wstring *begin, const std::wstring *end)> array[] = {
-#define PROCESS_EXCLUDE_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_exclude_##x }
+	static const process_array_t array[] = {
+#define PROCESS_EXCLUDE_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_exclude_##x, 1 }
 		PROCESS_EXCLUDE_ARRAY_ELEMENT(extension),
 		PROCESS_EXCLUDE_ARRAY_ELEMENT(path),
 		PROCESS_EXCLUDE_ARRAY_ELEMENT(name),
@@ -117,16 +127,16 @@ void LineProcessor::process_restore(const std::wstring *begin, const std::wstrin
 }
 
 void LineProcessor::process_select(const std::wstring *begin, const std::wstring *end){
-	static const std::pair<const wchar_t *, void (LineProcessor::*)(const std::wstring *begin, const std::wstring *end)> array[] = {
-#define PROCESS_SELECT_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_select_##x }
+	static const process_array_t array[] = {
+#define PROCESS_SELECT_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_select_##x, 1 }
 		PROCESS_SELECT_ARRAY_ELEMENT(version),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
 
 void LineProcessor::process_show(const std::wstring *begin, const std::wstring *end){
-	static const std::pair<const wchar_t *, void (LineProcessor::*)(const std::wstring *begin, const std::wstring *end)> array[] = {
-#define PROCESS_SHOW_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_show_##x }
+	static const process_array_t array[] = {
+#define PROCESS_SHOW_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_show_##x, 0 }
 		PROCESS_SHOW_ARRAY_ELEMENT(dependencies),
 		PROCESS_SHOW_ARRAY_ELEMENT(versions),
 		PROCESS_SHOW_ARRAY_ELEMENT(version_count),
@@ -151,8 +161,8 @@ void LineProcessor::process_if(const std::wstring *begin, const std::wstring *en
 }
 
 void LineProcessor::process_set(const std::wstring *begin, const std::wstring *end){
-	static const std::pair<const wchar_t *, void (LineProcessor::*)(const std::wstring *begin, const std::wstring *end)> array[] = {
-#define PROCESS_SET_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_set_##x }
+	static const process_array_t array[] = {
+#define PROCESS_SET_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_set_##x, 0 }
 		PROCESS_SET_ARRAY_ELEMENT(use_snapshots),
 		PROCESS_SET_ARRAY_ELEMENT(change_criterium),
 	};

@@ -13,6 +13,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <ctime>
 
 int main(int argc, char **argv){
+	CoInitialize(nullptr);
 	LineProcessor processor(argc, argv);
 	processor.process();
 	return 0;
