@@ -269,37 +269,76 @@ void LineProcessor::process_show_version_count(const std::wstring *begin, const 
 	}
 }
 
+std::wostream &operator<<(std::wostream &stream, FileSystemObjectType type){
+	switch (type){
+#define WOUTPUT_FileSystemObjectType_CASE(x) case FileSystemObjectType::x: return stream << L###x
+		WOUTPUT_FileSystemObjectType_CASE(Directory);
+		WOUTPUT_FileSystemObjectType_CASE(RegularFile);
+		WOUTPUT_FileSystemObjectType_CASE(DirectorySymlink);
+		WOUTPUT_FileSystemObjectType_CASE(Junction);
+		WOUTPUT_FileSystemObjectType_CASE(FileSymlink);
+		WOUTPUT_FileSystemObjectType_CASE(FileReparsePoint);
+		WOUTPUT_FileSystemObjectType_CASE(FileHardlink);
+	}
+}
+
+std::string format_size(double size){
+	static const char *units[] = {
+		" B",
+		" KiB",
+		" MiB",
+		" GiB",
+		" TiB",
+		" PiB",
+		" EiB",
+		" ZiB",
+		" YiB"
+	};
+	int unit = 0;
+	bool exact = true;
+	while (size >= 1024.0){
+		exact &= fmod(size, 1024.0) == 0;
+		size /= 1024.0;
+		unit++;
+	}
+	std::stringstream stream;
+	if (!exact)
+		stream << std::fixed << std::setprecision(1);
+	stream << size << units[unit];
+	return stream.str();
+}
+
 void LineProcessor::process_show_paths(const std::wstring *begin, const std::wstring *end){
-	//TODO
-	/*
-			EnsureExistingBackup();
-			var entries = _backupSystem.GetEntries(_selectedVersion);
-			int entryId = 0;
-			if (UserMode)
-			{
-				using (new DisplayColor())
-				{
-					foreach (var fileSystemObject in entries)
-					{
-						Console.WriteLine("Entry {0}, base: {1}", entryId++, fileSystemObject.MappedBasePath);
-						fileSystemObject.Iterate(fso =>
-						{
-							Console.WriteLine(fso.PathWithoutBase);
-							Console.WriteLine("    Type: " + fso.Type);
-							if (fso.Type == FileSystemObjectType.RegularFile || fso.Type == FileSystemObjectType.FileHardlink)
-								Console.WriteLine("    Size: " + BaseBackupEngine.FormatSize(fso.Size));
-							if (fso.StreamUniqueId > 0)
-							{
-								Console.WriteLine("    Stream ID: " + fso.StreamUniqueId);
-								Console.WriteLine("    Stored in version: " + fso.LatestVersion);
-							}
-							if (fso.IsLinkish && fso.Type != FileSystemObjectType.FileHardlink)
-								Console.WriteLine("    Link target: " + fso.Target);
-						});
-					}
-				}
-			}
-	*/
+	if (this->operation_mode != OperationMode::User)
+		return;
+	this->ensure_backup_initialized();
+	auto entries = this->backup_system->get_entries(this->selected_version);
+	size_t entry_id = 0;
+	for (auto &entry : entries){
+		std::wcout << L"Entry " << entry_id << L", base: ";
+		auto base_path = entry->get_mapped_base_path();
+		if (!base_path)
+			std::wcout << L"(null)";
+		else
+			std::wcout << *base_path;
+		std::wcout << std::endl;
+
+		for (auto &fso : entry->get_iterator()){
+			std::wcout <<
+				fso->get_path_without_base().wstring() << L"\n"
+				L"    Type: " << fso->get_type() << std::endl;
+			if (fso->is_pseudoregular_file())
+				std::cout << L"    Size: " << format_size((double)fso->get_size()) << std::endl;
+			auto stream_id = fso->get_stream_id();
+			if (stream_id != invalid_stream_id)
+				std::cout <<
+					"    Stream ID: " << stream_id << "\n"
+					"    Stored in version: " << fso->get_latest_version() << "\n";
+			
+			if (fso->is_linkish() && fso->get_type() != FileSystemObjectType::FileHardlink)
+				std::wcout << L"    Link target: " << *fso->get_link_target();
+		}
+	}
 }
 
 void LineProcessor::process_set_use_snapshots(const std::wstring *begin, const std::wstring *end){

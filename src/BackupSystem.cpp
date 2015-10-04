@@ -746,3 +746,8 @@ void BackupSystem::perform_restore(
 		}
 	}
 }
+
+std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
+	ArchiveReader archive(this->get_version_path(version));
+	return archive.get_base_objects();
+}

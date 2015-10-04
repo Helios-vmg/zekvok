@@ -92,6 +92,9 @@ public:
 			type == FileSystemObjectType::FileHardlink;
 	}
 	virtual FileSystemObjectType get_type() const = 0;
+	bool is_pseudoregular_file() const{
+		return this->get_type() == FileSystemObjectType::RegularFile || this->get_type() == FileSystemObjectType::FileHardlink;
+	}
 	const FileSystemObject *find(const path_t &path) const;
 	FileSystemObject *find(const path_t &path){
 		return (FileSystemObject *)(((const FileSystemObject *)this)->find(path));

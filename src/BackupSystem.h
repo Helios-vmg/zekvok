@@ -91,4 +91,5 @@ public:
 	stream_id_t get_stream_id();
 	void enqueue_file_for_guid_get(FilishFso *);
 	path_t get_version_path(version_number_t) const;
+	std::vector<std::shared_ptr<FileSystemObject>> get_entries(version_number_t);
 };
