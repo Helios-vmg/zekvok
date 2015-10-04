@@ -245,5 +245,8 @@
     <ClInclude Include="..\src\VersionForRestore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\serialization\ImplementedDS.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

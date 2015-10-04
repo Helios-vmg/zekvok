@@ -262,6 +262,7 @@
     <ClInclude Include="..\src\ProgressFilter.h" />
     <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
     <ClInclude Include="..\src\serialization\BackupStream.h" />
+    <ClInclude Include="..\src\serialization\ImplementedDS.h" />
     <ClInclude Include="..\src\serialization\DirectoryFso.h" />
     <ClInclude Include="..\src\serialization\DirectoryishFso.h" />
     <ClInclude Include="..\src\serialization\DirectorySymlinkFso.h" />

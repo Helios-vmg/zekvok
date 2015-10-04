@@ -7,6 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "Exception.h"
+#include <DeserializerStream.h>
 
 Win32Exception::Win32Exception(DWORD error): error(error){
 	std::stringstream stream;
@@ -41,4 +42,15 @@ CantOpenOutputFileException::CantOpenOutputFileException(const path_t &path): pa
 UnableToObtainGuidException::UnableToObtainGuidException(const path_t &path): path(path){
 	this->message = "Unable to obtain file system GUID: ";
 	this->message += this->path.string();
+}
+
+DeserializationException::DeserializationException(int type){
+	this->message = "DeserializationError: ";
+	switch ((DeserializerStream::ErrorType)type){
+		case DeserializerStream::ErrorType::UnexpectedEndOfFile:
+			this->message += "Unexpected end of file.";
+			break;
+		default:
+			throw InvalidSwitchVariableException();
+	}
 }

@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "stdafx.h"
 #include "LineProcessor.h"
 #include "BackupSystem.h"
+#include "Exception.h"
 
 LineProcessor::LineProcessor(int argc, char **argv):
 		selected_version(-1){
@@ -50,7 +51,7 @@ void LineProcessor::process(){
 			break;
 		try{
 			this->process_line(&line[0], &line[0] + line.size());
-		}catch (std::exception &e){
+		}catch (NonFatalException &e){
 			std::cerr << e.what() << std::endl;
 		}
 	}

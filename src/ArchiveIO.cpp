@@ -12,8 +12,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "LzmaFilter.h"
 #include "BoundedStreamFilter.h"
 #include "HashFilter.h"
+#include "serialization/ImplementedDS.h"
 
-ArchiveReader::ArchiveReader(const path_t &path){
+ArchiveReader::ArchiveReader(const path_t &path):
+		manifest_offset(-1){
 	this->stream.reset(new boost::filesystem::ifstream(path, std::ios::binary));
 	if (!*this->stream)
 		throw std::exception("File not found.");
@@ -42,7 +44,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		boost::iostreams::stream<BoundedInputFilter> bounded(*this->stream, this->manifest_size);
 		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 
-		DeserializerStream ds(lzma);
+		ImplementedDeserializerStream ds(lzma);
 		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw std::exception("Error during deserialization");
@@ -67,7 +69,7 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
 			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
-			DeserializerStream ds(bounded2);
+			ImplementedDeserializerStream ds(bounded2);
 			std::shared_ptr<FileSystemObject> fso(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
 			if (!fso)
 				throw std::exception("Error during deserialization");
@@ -173,7 +175,7 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 			boost::iostreams::stream<ByteCounterOutputFilter> bytes(lzma);
 			{
 				SerializerStream ss(bytes);
-				ss.begin_serialization(manifest);
+				ss.begin_serialization(manifest, config::include_typehashes);
 			}
 			bytes.flush();
 			manifest_length = bytes->bytes_processed;

@@ -57,6 +57,11 @@ public:
 	HresultException(const char *context, HRESULT hres);
 };
 
+class DeserializationException : public StdStringException{
+public:
+	DeserializationException(int);
+};
+
 class FatalException : public std::exception{
 public:
 };
