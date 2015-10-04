@@ -160,7 +160,6 @@ void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_pt
 
 void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
-	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
 
 	auto co = (*(begin++))->third();
 	for (auto i : *co){
@@ -172,9 +171,10 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 		manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
 		std::uint64_t manifest_length;
 		{
-			boost::iostreams::stream<ByteCounterOutputFilter> bytes(lzma);
+			boost::iostreams::stream<ByteCounterOutputFilter> bytes(overall_hash);
 			{
-				SerializerStream ss(bytes);
+				boost::iostreams::stream<LzmaOutputFilter> lzma(bytes, &mt, 8);
+				SerializerStream ss(lzma);
 				ss.begin_serialization(manifest, config::include_typehashes);
 			}
 			bytes.flush();
@@ -184,5 +184,4 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 		overall_hash.write((const char *)s_manifest_length.data(), s_manifest_length.size());
 		break;
 	}
-	lzma.flush();
 }
