@@ -87,8 +87,12 @@ public:
 	virtual bool is_directoryish() const{
 		return false;
 	}
-	virtual bool is_linkish() const{
-		return false;
+	bool is_linkish() const{
+		auto type = this->get_type();
+		return type == FileSystemObjectType::DirectorySymlink ||
+			type == FileSystemObjectType::Junction ||
+			type == FileSystemObjectType::FileSymlink ||
+			type == FileSystemObjectType::FileHardlink;
 	}
 	virtual FileSystemObjectType get_type() const = 0;
 	const FileSystemObject *find(const path_t &path) const;

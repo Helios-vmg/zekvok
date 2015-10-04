@@ -284,6 +284,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 		make_unique(new ArchiveWriter_helper_first(
 			make_shared(new ArchiveWriter_helper::first_co_t::pull_type(
 				[&](ArchiveWriter_helper::first_co_t::push_type &sink){
+					sink({nullptr, 0, nullptr, 0});
 					for (auto &kv : stream_dict){
 						{
 							auto base_object = this->base_objects[kv.first];
@@ -297,7 +298,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 
 						for (auto &backup_stream : kv.second){
 							auto fso = backup_stream->get_file_system_objects()[0];
-							std::wcout << *fso->get_unmapped_base_path() << std::endl;
+							std::wcout << fso->get_unmapped_path() << std::endl;
 							bool compute = !fso->get_hash().valid;
 							sha256_digest digest;
 							std::uint64_t size;
@@ -318,6 +319,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 		make_unique(new ArchiveWriter_helper_second(
 			make_shared(new ArchiveWriter_helper::second_co_t::pull_type(
 				[&](ArchiveWriter_helper::second_co_t::push_type &sink){
+					sink(nullptr);
 					for (auto &kv : stream_dict)
 						sink(this->base_objects[kv.first].get());
 				}
@@ -326,6 +328,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 		make_unique(new ArchiveWriter_helper_third(
 			make_shared(new ArchiveWriter_helper::third_co_t::pull_type(
 				[&](ArchiveWriter_helper::third_co_t::push_type &sink){
+					sink(nullptr);
 					VersionManifest manifest;
 					manifest.creation_time = start_time;
 					manifest.version_number = version;

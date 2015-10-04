@@ -376,7 +376,10 @@ FileSystemObject *FileSystemObject::create(const path_t &path, const path_t &unm
 std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
 	auto path = this->get_mapped_path();
 	size = system_ops::get_file_size(path.wstring());
-	return make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
+	auto ret = make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
+	if (!*ret)
+		throw FileNotFoundException(path);
+	return ret;
 }
 
 void FilishFso::set_file_system_guid(const path_t &path, bool retry){

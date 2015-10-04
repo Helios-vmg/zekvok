@@ -29,11 +29,22 @@ bool OpaqueTimestamp::operator!=(const OpaqueTimestamp &b) const{
 }
 
 void OpaqueTimestamp::set_to_file_modification_time(const std::wstring &path){
-	AutoHandle handle(CreateFileW(path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr));
-	if (handle.handle == INVALID_HANDLE_VALUE)
-		throw Win32Exception(GetLastError());
-	FILETIME mod;
-	if (!GetFileTime(handle.handle, nullptr, nullptr, &mod))
-		throw Win32Exception(GetLastError());
-	this->set_to_FILETIME(mod);
+	static const DWORD attributes[] = {
+		FILE_ATTRIBUTE_NORMAL,
+		FILE_FLAG_BACKUP_SEMANTICS,
+	};
+	DWORD error;
+	for (auto attr : attributes){
+		AutoHandle handle(CreateFileW(path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, attr, nullptr));
+		if (handle.handle == INVALID_HANDLE_VALUE){
+			error = GetLastError();
+			continue;
+		}
+		FILETIME mod;
+		if (!GetFileTime(handle.handle, nullptr, nullptr, &mod))
+			throw Win32Exception(GetLastError());
+		this->set_to_FILETIME(mod);
+		return;
+	}
+	throw Win32Exception(error);
 }

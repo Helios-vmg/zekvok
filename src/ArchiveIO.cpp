@@ -124,6 +124,8 @@ void ArchiveWriter::add_files(hash_stream_t &overall_hash, std::unique_ptr<Archi
 
 	auto co = (*(begin++))->first();
 	for (auto i : *co){
+		if (!i.dst)
+			continue;
 		this->stream_ids.push_back(i.id);
 		this->stream_sizes.push_back(i.stream_size);
 
@@ -144,6 +146,8 @@ void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_pt
 
 	auto co = (*(begin++))->second();
 	for (auto i : *co){
+		if (!i)
+			continue;
 		auto x0 = lzma->get_bytes_written();
 		SerializerStream ss(lzma);
 		ss.begin_serialization(*i, config::include_typehashes);
@@ -159,6 +163,8 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 
 	auto co = (*(begin++))->third();
 	for (auto i : *co){
+		if (!i)
+			continue;
 		auto &manifest = *i;
 		manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
 		manifest.archive_metadata.stream_ids = this->stream_ids;

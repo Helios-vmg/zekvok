@@ -41,8 +41,11 @@ protected:
 		bool bad = false;
 		while (n){
 			this->stream->read(s, n);
-			ret += this->stream->gcount();
-			if (this->stream->bad()){
+			auto count = this->stream->gcount();
+			ret += count;
+			s += count;
+			n -= count;
+			if (this->stream->bad() || this->stream->eof()){
 				bad = true;
 				break;
 			}

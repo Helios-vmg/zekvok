@@ -39,13 +39,14 @@ void KernelTransaction::release(){
 }
 
 TransactedFileSink::TransactedFileSink(const KernelTransaction &tx, const wchar_t *path){
+	this->handle.reset(new HANDLE(nullptr), [](HANDLE *h){ CloseHandle(*h); delete h; });
 	static const DWORD open_modes[] = {
 		OPEN_EXISTING,
 		CREATE_ALWAYS,
 	};
 	static USHORT TXFS_MINIVERSION_DEFAULT_VIEW = 0xFFFE;
 	for (auto m : open_modes){
-		this->handle = CreateFileTransactedW(
+		*this->handle = CreateFileTransactedW(
 			path,
 			GENERIC_WRITE,
 			0,
@@ -57,18 +58,14 @@ TransactedFileSink::TransactedFileSink(const KernelTransaction &tx, const wchar_
 			&TXFS_MINIVERSION_DEFAULT_VIEW,
 			nullptr
 		);
-		if (this->handle != INVALID_HANDLE_VALUE)
+		if (*this->handle != INVALID_HANDLE_VALUE)
 			break;
 	}
-	if (this->handle == INVALID_HANDLE_VALUE){
+	if (*this->handle == INVALID_HANDLE_VALUE){
 		auto error = GetLastError();
 		throw Win32Exception(error);
 	}
-	SetFilePointer(this->handle, 0, 0, FILE_END);
-}
-
-TransactedFileSink::~TransactedFileSink(){
-	CloseHandle(this->handle);
+	SetFilePointer(*this->handle, 0, 0, FILE_END);
 }
 
 std::streamsize TransactedFileSink::write(const char *buffer, std::streamsize size){
@@ -76,7 +73,7 @@ std::streamsize TransactedFileSink::write(const char *buffer, std::streamsize si
 	while (size){
 		DWORD byte_count = size & all_bits_on<DWORD>::value;
 		DWORD bytes_written;
-		auto result = WriteFile(this->handle, buffer, byte_count, &bytes_written, nullptr);
+		auto result = WriteFile(*this->handle, buffer, byte_count, &bytes_written, nullptr);
 		if (!result)
 			break;
 		ret += bytes_written;

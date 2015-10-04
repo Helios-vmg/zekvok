@@ -22,9 +22,8 @@ public:
 };
 
 class TransactedFileSink : public boost::iostreams::sink{
-	HANDLE handle;
+	std::shared_ptr<HANDLE> handle;
 public:
 	TransactedFileSink(const KernelTransaction &tx, const wchar_t *path);
-	~TransactedFileSink();
 	std::streamsize write(const char* s, std::streamsize n);
 };
