@@ -1,8 +1,8 @@
 protected:
-	std::vector<FileSystemObject *> file_system_objects;
+	std::vector<FilishFso *> file_system_objects;
 public:
 	BackupStream(): unique_id(invalid_stream_id){}
-	void add_file_system_object(FileSystemObject *fso){
+	void add_file_system_object(FilishFso *fso){
 		this->file_system_objects.push_back(fso);
 	}
 	DEFINE_INLINE_GETTER(file_system_objects)

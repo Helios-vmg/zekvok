@@ -36,8 +36,6 @@
 		</shared_ptr>
 		<uint64_t name="size" />
 		<OpaqueTimestamp name="modification_time" />
-		<Sha256Digest name="hash" />
-		<Guid name="file_system_guid" />
 		<vector name="exceptions">
 			<string/>
 		</vector>
@@ -73,6 +71,8 @@
 	
 	<class name="FilishFso" is_abstract="1">
 		<base base="FileSystemObject" />
+		<Sha256Digest name="hash" />
+		<Guid name="file_system_guid" />
 		<include header="&quot;FilishFso.h&quot;" />
 	</class>
 	<class name="RegularFileFso">

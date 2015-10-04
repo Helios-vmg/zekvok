@@ -162,7 +162,7 @@ void LineProcessor::process_if(const std::wstring *begin, const std::wstring *en
 
 void LineProcessor::process_set(const std::wstring *begin, const std::wstring *end){
 	static const process_array_t array[] = {
-#define PROCESS_SET_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_set_##x, 0 }
+#define PROCESS_SET_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_set_##x, 1 }
 		PROCESS_SET_ARRAY_ELEMENT(use_snapshots),
 		PROCESS_SET_ARRAY_ELEMENT(change_criterium),
 	};

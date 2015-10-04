@@ -12,6 +12,13 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../SymbolicConstants.h"
 #include "../AutoHandle.h"
 
+std::wstring path_from_string(const std::wstring &path){
+	std::wstring ret = path;
+	if (ret.size() >= MAX_PATH - 5 && !(ret[0] == '\\' && ret[1] == '\\' && ret[2] == '?' && ret[3] == '\\'))
+		ret = system_path_prefix + ret;
+	return ret;
+}
+
 namespace system_ops{
 
 void enumerate_volumes_helper(const wchar_t *volume, enumerate_volumes_co_t::push_type &sink){
@@ -103,13 +110,6 @@ enumerate_mounted_paths_co_t::pull_type enumerate_mounted_paths(std::wstring vol
 			}
 		}
 	);
-}
-
-std::wstring path_from_string(const std::wstring &path){
-	std::wstring ret = path;
-	if (ret.size() >= MAX_PATH - 5 && !(ret[0] == '\\' && ret[1] == '\\' && ret[2] == '?' && ret[3] == '\\'))
-		ret = system_path_prefix + ret;
-	return ret;
 }
 
 bool internal_is_reparse_point(const wchar_t *path){

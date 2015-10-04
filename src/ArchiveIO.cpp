@@ -137,7 +137,6 @@ void ArchiveWriter::add_files(hash_stream_t &overall_hash, std::unique_ptr<Archi
 		}
 		this->any_file = true;
 	}
-	lzma.flush();
 }
 
 void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
@@ -148,13 +147,13 @@ void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_pt
 	for (auto i : *co){
 		if (!i)
 			continue;
-		auto x0 = lzma->get_bytes_written();
-		SerializerStream ss(lzma);
+		boost::iostreams::stream<ByteCounterOutputFilter> counter(lzma);
+		SerializerStream ss(counter);
 		ss.begin_serialization(*i, config::include_typehashes);
-		auto x1 = lzma->get_bytes_written();
-		this->base_object_entry_sizes.push_back(x1 - x0);
+		counter.flush();
+		auto b = counter->bytes_processed;
+		this->base_object_entry_sizes.push_back(b);
 	}
-	lzma.flush();
 }
 
 void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
@@ -169,14 +168,16 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 		manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
 		manifest.archive_metadata.stream_ids = this->stream_ids;
 		manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
-		auto x0 = overall_hash->get_bytes_processed();
+		std::uint64_t manifest_length;
 		{
-			SerializerStream ss(lzma);
-			ss.begin_serialization(manifest);
+			boost::iostreams::stream<ByteCounterOutputFilter> bytes(lzma);
+			{
+				SerializerStream ss(bytes);
+				ss.begin_serialization(manifest);
+			}
+			bytes.flush();
+			manifest_length = bytes->bytes_processed;
 		}
-		lzma.flush();
-		auto x1 = overall_hash->get_bytes_processed();
-		std::uint64_t manifest_length = x1 - x0;
 		auto s_manifest_length = serialize_fixed_le_int(manifest_length);
 		overall_hash.write((const char *)s_manifest_length.data(), s_manifest_length.size());
 		break;

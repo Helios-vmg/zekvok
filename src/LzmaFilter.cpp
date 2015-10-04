@@ -16,7 +16,7 @@ LzmaOutputFilter::LzmaOutputFilter(
 		size_t buffer_size,
 		bool extreme_mode
 		): OutputFilter(stream){
-	this->data.reset(new impl);
+	this->data.reset(new impl, lzma_freer);
 	auto d = this->data.get();
 	d->lstream = LZMA_STREAM_INIT;
 
@@ -29,10 +29,6 @@ LzmaOutputFilter::LzmaOutputFilter(
 	d->lstream.avail_out = d->output_buffer.size();
 	d->bytes_read = 0;
 	d->bytes_written = 0;
-}
-
-LzmaOutputFilter::~LzmaOutputFilter(){
-	lzma_end(&this->data->lstream);
 }
 
 bool LzmaOutputFilter::initialize_single_threaded(int compression_level, size_t buffer_size, bool extreme_mode){
@@ -140,7 +136,6 @@ bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret){
 
 std::streamsize LzmaOutputFilter::write(const char *buffer, std::streamsize length){
 	auto d = this->data.get();
-	auto x0 = d->bytes_written;
 	lzma_ret lret;
 	do{
 		if (d->lstream.avail_in == 0){
@@ -153,12 +148,12 @@ std::streamsize LzmaOutputFilter::write(const char *buffer, std::streamsize leng
 		}
 		lret = lzma_code(&d->lstream, d->action);
 	}while (this->pass_data_to_stream(lret));
-	return d->bytes_written - x0;
+	return length;
 }
 
 bool LzmaOutputFilter::flush(){
 	if (this->data->action != LZMA_RUN)
-		return false;
+		return true;
 	this->data->action = LZMA_FINISH;
 	while (this->pass_data_to_stream(lzma_code(&this->data->lstream, this->data->action)));
 	this->stream->flush();
@@ -166,7 +161,7 @@ bool LzmaOutputFilter::flush(){
 }
 
 LzmaInputFilter::LzmaInputFilter(std::istream &stream, size_t buffer_size): InputFilter(stream){
-	this->data.reset(new impl);
+	this->data.reset(new impl, lzma_freer);
 	auto d = this->data.get();
 	d->lstream = LZMA_STREAM_INIT;
 	lzma_ret ret = lzma_stream_decoder(&d->lstream, UINT64_MAX, LZMA_IGNORE_CHECK);

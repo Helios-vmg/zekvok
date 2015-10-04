@@ -360,13 +360,14 @@ std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemOb
 		this->fix_up_stream_reference(fso, known_guids);
 		return std::shared_ptr<BackupStream>();
 	}
+	auto &filish = static_cast<FilishFso &>(fso);
 	auto ret = make_shared(new FullStream);
-	ret->set_unique_id(fso.get_stream_id());
-	ret->set_physical_size(fso.get_size());
-	ret->set_virtual_size(fso.get_size());
-	if (fso.get_file_system_guid().valid)
-		known_guids[fso.get_file_system_guid().data] = ret;
-	ret->add_file_system_object(&fso);
+	ret->set_unique_id(filish.get_stream_id());
+	ret->set_physical_size(filish.get_size());
+	ret->set_virtual_size(filish.get_size());
+	if (filish.get_file_system_guid().valid)
+		known_guids[filish.get_file_system_guid().data] = ret;
+	ret->add_file_system_object(&filish);
 	return ret;
 }
 
@@ -374,11 +375,12 @@ bool BackupSystem::should_be_added(FileSystemObject &fso, known_guids_t &known_g
 	fso.set_latest_version(-1);
 	if (fso.is_directoryish())
 		return false;
-	if (fso.get_backup_mode() == BackupMode::NoBackup)
+	auto &filish = static_cast<FilishFso &>(fso);
+	if (filish.get_backup_mode() == BackupMode::NoBackup)
 		return false;
-	if (fso.is_linkish() && fso.get_type() == FileSystemObjectType::FileHardlink)
+	if (filish.is_linkish() && filish.get_type() == FileSystemObjectType::FileHardlink)
 		return false;
-	auto &guid = fso.get_file_system_guid();
+	auto &guid = filish.get_file_system_guid();
 	if (guid.valid && known_guids.find(guid.data) != known_guids.end())
 		return false;
 	return true;
@@ -477,21 +479,22 @@ void BackupSystem::get_dependencies(std::set<version_number_t> &dst, FileSystemO
 }
 
 void BackupSystem::fix_up_stream_reference(FileSystemObject &fso, known_guids_t &known_guids){
-	if (fso.get_type() == FileSystemObjectType::FileHardlink)
+	if (fso.get_type() == FileSystemObjectType::FileHardlink || fso.is_directoryish())
 		return;
-	auto &guid = fso.get_file_system_guid();
+	auto &filish = static_cast<FilishFso &>(fso);
+	auto &guid = filish.get_file_system_guid();
 	if (guid.valid)
 		return;
 	auto it = known_guids.find(guid.data);
 	if (it == known_guids.end())
 		return;
 	auto stream = it->second;
-	fso.set_stream_id(stream->get_unique_id());
-	fso.set_backup_stream(stream.get());
+	filish.set_stream_id(stream->get_unique_id());
+	filish.set_backup_stream(stream.get());
 	auto &fsos = stream->get_file_system_objects();
 	if (fsos.size())
-		fso.set_latest_version(fsos.front()->get_latest_version());
-	stream->add_file_system_object(&fso);
+		filish.set_latest_version(fsos.front()->get_latest_version());
+	stream->add_file_system_object(&filish);
 }
 
 std::wstring normalize_path(const std::wstring &path){
@@ -543,30 +546,31 @@ std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject
 		this->fix_up_stream_reference(fso, known_guids);
 		return ret;
 	}
+	auto &filish = static_cast<FilishFso &>(fso);
 	auto existing_version = invalid_version_number;
-	if (fso.get_backup_mode() == BackupMode::Full && !this->file_has_changed(existing_version, fso))
-		fso.set_backup_mode(BackupMode::Unmodified);
-	switch (fso.get_backup_mode()){
+	if (filish.get_backup_mode() == BackupMode::Full && !this->file_has_changed(existing_version, filish))
+		filish.set_backup_mode(BackupMode::Unmodified);
+	switch (filish.get_backup_mode()){
 		case BackupMode::Unmodified:
 			{
 				auto temp = make_unique(new UnmodifiedStream);
-				temp->set_unique_id(fso.get_stream_id());
+				temp->set_unique_id(filish.get_stream_id());
 				temp->set_containing_version(existing_version);
-				temp->set_virtual_size(fso.get_size());
+				temp->set_virtual_size(filish.get_size());
 				ret = std::move(temp);
 			}
-			ret->add_file_system_object(&fso);
+			ret->add_file_system_object(&filish);
 			break;
 		case BackupMode::ForceFull:
 		case BackupMode::Full:
 			{
 				auto temp = make_unique(new FullStream);
-				temp->set_unique_id(fso.get_stream_id());
-				temp->set_physical_size(fso.get_size());
-				temp->set_virtual_size(fso.get_size());
+				temp->set_unique_id(filish.get_stream_id());
+				temp->set_physical_size(filish.get_size());
+				temp->set_virtual_size(filish.get_size());
 				ret = std::move(temp);
 			}
-			ret->add_file_system_object(&fso);
+			ret->add_file_system_object(&filish);
 			break;
 		case BackupMode::Rsync:
 			throw NotImplementedException();
@@ -574,13 +578,13 @@ std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject
 			throw InvalidSwitchVariableException();
 	}
 	assert(!!ret);
-	auto &guid = fso.get_file_system_guid();
+	auto &guid = filish.get_file_system_guid();
 	if (guid.valid)
 		known_guids[guid.data] = ret;
 	return ret;
 }
 
-bool compare_hashes(FileSystemObject &new_file, FileSystemObject &old_file){
+bool compare_hashes(FilishFso &new_file, FilishFso &old_file){
 	auto &old_hash = old_file.get_hash();
 	if (!old_hash.valid)
 		return true;
@@ -589,22 +593,23 @@ bool compare_hashes(FileSystemObject &new_file, FileSystemObject &old_file){
 	return new_file.get_hash().digest == old_hash.digest;
 }
 
-bool BackupSystem::file_has_changed(version_number_t &dst, FileSystemObject &new_file){
+bool BackupSystem::file_has_changed(version_number_t &dst, FilishFso &new_file){
 	dst = invalid_version_number;
 	path_t path = *new_file.get_mapped_base_path();
-	FileSystemObject *old_file = nullptr;
+	FileSystemObject *old_fso = nullptr;
 	for (auto &fso : this->old_objects){
 		auto found = fso->find(path);
-		if (!found)
+		if (!found || found->is_directoryish())
 			continue;
-		old_file = found;
+		old_fso = found;
 		break;
 	}
-	if (!old_file){
+	if (!old_fso){
 		new_file.compute_hash();
 		return true;
 	}
-	assert(old_file);
+	assert(old_fso);
+	auto old_file = static_cast<FilishFso *>(old_fso);
 	auto criterium = this->get_change_criterium(new_file);
 	bool ret;
 	switch (criterium){

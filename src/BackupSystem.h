@@ -67,7 +67,7 @@ class BackupSystem{
 	}
 	void set_old_objects_map();
 	std::shared_ptr<BackupStream> check_and_maybe_add(FileSystemObject &, known_guids_t &);
-	bool file_has_changed(version_number_t &, FileSystemObject &);
+	bool file_has_changed(version_number_t &, FilishFso &);
 	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
 	std::shared_ptr<VersionForRestore> compute_latest_version();

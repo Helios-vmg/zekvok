@@ -351,7 +351,7 @@ void FileSystemObject::set_unique_ids(BackupSystem &bs){
 	this->stream_id = bs.get_stream_id();
 }
 
-void FileSystemObject::set_hash(const sha256_digest &digest){
+void FilishFso::set_hash(const sha256_digest &digest){
 	this->hash.digest = digest;
 	this->hash.valid = true;
 }
@@ -374,7 +374,7 @@ FileSystemObject *FileSystemObject::create(const path_t &path, const path_t &unm
 }
 
 std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
-	auto path = this->get_mapped_path();
+	path_t path = path_from_string(this->get_mapped_path().wstring());
 	size = system_ops::get_file_size(path.wstring());
 	auto ret = make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
 	if (!*ret)
@@ -436,7 +436,7 @@ bool less_than(const std::shared_ptr<FileSystemObject> &a, const std::shared_ptr
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> DirectoryishFso::construct_children_list(const path_t &path){
-	boost::filesystem::directory_iterator it(path),
+	boost::filesystem::directory_iterator it(path_from_string(path.wstring())),
 		e;
 	std::vector<std::shared_ptr<FileSystemObject>> ret;
 	for (; it != e; ++it){

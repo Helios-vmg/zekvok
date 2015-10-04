@@ -61,11 +61,8 @@ public:
 	DEFINE_INLINE_SETTER_GETTER(unmapped_base_path)
 	DEFINE_INLINE_SETTER_GETTER(entry_number)
 	DEFINE_INLINE_SETTER_GETTER(backup_stream)
-	DEFINE_INLINE_GETTER(hash)
-	void set_hash(const sha256_digest &);
 	DEFINE_INLINE_SETTER_GETTER(stream_id)
 	DEFINE_INLINE_GETTER(size)
-	DEFINE_INLINE_GETTER(file_system_guid)
 	DEFINE_INLINE_SETTER_GETTER(latest_version)
 	DEFINE_INLINE_SETTER_GETTER(backup_mode)
 	DEFINE_INLINE_GETTER(name)

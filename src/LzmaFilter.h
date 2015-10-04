@@ -36,6 +36,14 @@ class LzmaOutputFilter : public OutputFilter{
 		uint64_t bytes_read,
 			bytes_written;
 	};
+	
+	static void lzma_freer(impl *i){
+		if (i){
+			lzma_end(&i->lstream);
+			delete i;
+		}
+	}
+
 	std::shared_ptr<impl> data;
 
 	bool initialize_single_threaded(int, size_t, bool);
@@ -43,7 +51,6 @@ class LzmaOutputFilter : public OutputFilter{
 	bool pass_data_to_stream(lzma_ret ret);
 public:
 	LzmaOutputFilter(std::ostream &stream, bool *multithreaded, int compression_level = 7, size_t buffer_size = default_buffer_size, bool extreme_mode = false);
-	~LzmaOutputFilter();
 	std::streamsize write(const char *s, std::streamsize n) override;
 	bool flush() override;
 	std::uint64_t get_bytes_written() const{
@@ -62,6 +69,12 @@ class LzmaInputFilter : public InputFilter{
 			bytes_written;
 		bool at_eof;
 	};
+	static void lzma_freer(impl *i){
+		if (i){
+			lzma_end(&i->lstream);
+			delete i;
+		}
+	}
 	std::shared_ptr<impl> data;
 
 public:

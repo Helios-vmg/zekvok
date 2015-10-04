@@ -109,7 +109,7 @@ template <typename DstT, typename SrcT>
 void serialize_fixed_le_int(DstT *dst, const SrcT &src){
 	static_assert(CHAR_BIT == 8, "Only 8-bit byte platforms supported!");
 
-	std::uint8_t *p = (std::uint8_t *)src;
+	std::uint8_t *p = (std::uint8_t *)dst;
 	std::make_unsigned<SrcT>::type copy = src;
 	const auto n = sizeof(src);
 	for (auto i = 0; i != n; i++){
