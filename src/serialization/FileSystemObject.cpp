@@ -13,12 +13,37 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../System/SystemOperations.h"
 #include "../NullStream.h"
 #include "../HashFilter.h"
+#include "../SymbolicConstants.h"
+
+//------------------------------------------------------------------------------
+// default_values()
+//------------------------------------------------------------------------------
+
+void FileSystemObject::default_values(){
+	this->stream_id = 0;
+	this->differential_chain_id = 0;
+	this->size = 0;
+	this->is_main = false;
+	this->parent = nullptr;
+	this->latest_version = invalid_version_number;
+	this->entry_number = -1;
+	this->backup_stream = nullptr;
+	this->backup_mode = BackupMode::NoBackup;
+	this->archive_flag = false;
+	this->backup_system = nullptr;
+}
+
+void FileHardlinkFso::default_values(){
+	this->treat_as_file = false;
+}
 
 //------------------------------------------------------------------------------
 // CONSTRUCTORS (A)
 //------------------------------------------------------------------------------
 
 FileSystemObject::FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings){
+	this->default_values();
+
 	this->backup_system = settings.backup_system;
 	this->reporter = settings.reporter;
 	this->backup_mode_map.reset(new std::function<BackupMode(const FileSystemObject &)>(settings.backup_mode_map));
@@ -60,15 +85,12 @@ FileSymlinkFso::FileSymlinkFso(const path_t &path, const path_t &unmapped_path, 
 	this->set_backup_mode();
 }
 
-FileReparsePointFso::FileReparsePointFso(){
-	throw NotImplementedException();
-}
-
 FileReparsePointFso::FileReparsePointFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings): FileSymlinkFso(path, unmapped_path, settings){
 	throw NotImplementedException();
 }
 
 FileHardlinkFso::FileHardlinkFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings): RegularFileFso(path, unmapped_path, settings){
+	this->default_values();
 	this->peers = system_ops::list_all_hardlinks(path.wstring());
 	this->set_backup_mode();
 }
@@ -78,6 +100,7 @@ FileHardlinkFso::FileHardlinkFso(const path_t &path, const path_t &unmapped_path
 //------------------------------------------------------------------------------
 
 FileSystemObject::FileSystemObject(FileSystemObject *parent, const std::wstring &name, const path_t *path){
+	this->default_values();
 	this->parent = parent;
 	this->name = name;
 	this->set_file_attributes(path ? *path : this->get_mapped_path());

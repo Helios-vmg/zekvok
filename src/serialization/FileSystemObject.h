@@ -19,6 +19,7 @@ private:
 	void add_exception(const std::exception &e);
 	ErrorReporter *get_reporter();
 	void set_file_attributes(const path_t &);
+	void default_values();
 
 protected:
 	int entry_number;
@@ -52,7 +53,6 @@ protected:
 	}
 
 public:
-	FileSystemObject(){}
 	FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);
 	FileSystemObject(FileSystemObject *parent, const std::wstring &name, const path_t *path = nullptr);
 	DEFINE_INLINE_SETTER_GETTER(link_target)

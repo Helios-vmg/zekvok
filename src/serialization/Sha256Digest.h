@@ -1,2 +1,2 @@
 public:
-	Sha256Digest(){}
+	Sha256Digest(): valid(false){}

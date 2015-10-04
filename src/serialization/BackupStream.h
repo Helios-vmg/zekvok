@@ -1,7 +1,7 @@
 protected:
 	std::vector<FileSystemObject *> file_system_objects;
 public:
-	BackupStream(){}
+	BackupStream(): unique_id(invalid_stream_id){}
 	void add_file_system_object(FileSystemObject *fso){
 		this->file_system_objects.push_back(fso);
 	}

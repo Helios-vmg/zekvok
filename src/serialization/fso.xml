@@ -115,7 +115,7 @@
 		<vector name="version_dependencies">
 			<int32_t/>
 		</vector>
-		<int32_t name="entry_count" />
+		<uint32_t name="entry_count" />
 		<uint32_t name="first_stream_id" />
 		<uint32_t name="next_stream_id" />
 		<uint32_t name="first_differential_chain_id" />

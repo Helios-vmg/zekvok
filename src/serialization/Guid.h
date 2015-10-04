@@ -1,2 +1,2 @@
 public:
-	Guid(){}
+	Guid(): valid(false){}

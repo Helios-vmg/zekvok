@@ -1,2 +1,9 @@
 public:
-	VersionManifest(){}
+	VersionManifest():
+		version_number(invalid_version_number),
+		entry_count(0),
+		first_stream_id(invalid_stream_id),
+		next_stream_id(invalid_stream_id),
+		first_differential_chain_id(invalid_differential_chain_id),
+		next_differential_chain_id(invalid_differential_chain_id)
+	{}
