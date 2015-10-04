@@ -188,10 +188,6 @@ LzmaInputFilter::LzmaInputFilter(std::istream &stream, size_t buffer_size): Inpu
 	d->queued_bytes = 0;
 }
 
-LzmaInputFilter::~LzmaInputFilter(){
-	lzma_end(&this->data->lstream);
-}
-
 std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
 	auto d = this->data.get();
 	if (d->at_eof)

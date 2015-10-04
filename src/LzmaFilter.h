@@ -7,6 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 #include "Filters.h"
+#include "Utility.h"
 
 const size_t default_buffer_size = 1 << 12;
 
@@ -35,6 +36,13 @@ class LzmaOutputFilter : public OutputFilter{
 		std::vector<uint8_t> output_buffer;
 		uint64_t bytes_read,
 			bytes_written;
+		impl()
+				: action(LZMA_RUN)
+				, bytes_read(0)
+				, bytes_written(0)
+		{
+			zero_struct(this->lstream);
+		}
 	};
 	
 	static void lzma_freer(impl *i){
@@ -68,6 +76,16 @@ class LzmaInputFilter : public InputFilter{
 		uint64_t bytes_read,
 			bytes_written;
 		bool at_eof;
+		impl()
+			: action(LZMA_RUN)
+			, queued_buffer(nullptr)
+			, queued_bytes(0)
+			, bytes_read(0)
+			, bytes_written(0)
+			, at_eof(false)
+		{
+			zero_struct(this->lstream);
+		}
 	};
 	static void lzma_freer(impl *i){
 		if (i){
@@ -79,6 +97,5 @@ class LzmaInputFilter : public InputFilter{
 
 public:
 	LzmaInputFilter(std::istream &, size_t buffer_size = default_buffer_size);
-	~LzmaInputFilter();
 	std::streamsize read(char *s, std::streamsize n) override;
 };
