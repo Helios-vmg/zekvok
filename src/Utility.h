@@ -202,3 +202,24 @@ std::basic_string<T> to_lower(const std::basic_string<T> &s){
 		ret.push_back(tolower(c));
 	return ret;
 }
+
+// Given a range [first, last) and a predicate f such that !f(x) for all
+// first <= x < y and f(z) for all y <= z < last, find_all() returns y,
+// or last if it does not exist.
+template<class It, class F>
+It find_all(It begin, It end, F &f){
+	if (begin >= end)
+		return end;
+	if (f(*begin))
+		return begin;
+	auto diff = end - begin;
+	while (diff > 1){
+		auto pivot = begin + diff / 2;
+		if (!f(*pivot))
+			begin = pivot;
+		else
+			end = pivot;
+		diff = end - begin;
+	}
+	return end;
+}

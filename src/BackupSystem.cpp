@@ -13,6 +13,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "SymbolicConstants.h"
 #include "serialization_utils.h"
 #include "Utility.h"
+#include "VersionForRestore.h"
 
 const wchar_t * const system_path_prefix = L"\\\\?\\";
 
@@ -655,4 +656,84 @@ stream_id_t BackupSystem::get_stream_id(){
 
 void BackupSystem::enqueue_file_for_guid_get(FilishFso *fso){
 	this->recalculate_file_guids_queue.push_back(fso);
+}
+
+void BackupSystem::restore_backup(){
+	std::cout << "Initializing structures...\n";
+	auto latest_version = this->compute_latest_version();
+	std::vector<std::shared_ptr<FileSystemObject>> restore_later;
+	for (auto &old_object : this->old_objects)
+		for (auto &fso : old_object->get_iterator())
+			this->restore(*fso, *latest_version, restore_later);
+	std::sort(
+		restore_later.begin(),
+		restore_later.end(),
+		[](const std::shared_ptr<FileSystemObject> &a, const std::shared_ptr<FileSystemObject> &b){
+			return a->get_stream_id() < b->get_stream_id();
+		}
+	);
+	this->perform_restore(latest_version, restore_later);
+}
+
+std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(){
+	std::shared_ptr<VersionForRestore> latest_version;
+	std::map<version_number_t, std::shared_ptr<VersionForRestore>> versions;
+	std::vector<version_number_t> stack;
+	auto latest_version_number = this->versions.back();
+	stack.push_back(latest_version_number);
+	while (stack.size()){
+		auto version_number = stack.back();
+		stack.pop_back();
+		if (versions.find(version_number) != versions.end())
+			continue;
+		auto version = make_shared(new VersionForRestore(version_number, this));
+		versions[version_number] = version;
+		if (version_number == latest_version_number)
+			for (auto &object : version->get_base_objects())
+				this->old_objects.push_back(object);
+		for (auto &dep : version->get_manifest()->version_dependencies)
+			stack.push_back(dep);
+	}
+	latest_version = versions[latest_version_number];
+	latest_version->fill_dependencies(versions);
+	return latest_version;
+}
+
+void BackupSystem::perform_restore(
+		const std::shared_ptr<VersionForRestore> &latest_version,
+		const std::vector<std::shared_ptr<FileSystemObject>> &restore_later){
+	std::vector<version_number_t> enumerable;
+	enumerable.reserve(latest_version->get_manifest()->version_dependencies.size());
+	enumerable.push_back(latest_version->get_version_number());
+	for (auto &version_number : latest_version->get_manifest()->version_dependencies)
+		enumerable.push_back(version_number);
+	for (auto &version_number : enumerable){
+		ArchiveReader archive(this->get_version_path(version_number));
+		for (auto &pair : archive.read_everything()){
+			auto stream_id = pair.first;
+			auto it = find_all(
+				restore_later.begin(),
+				restore_later.end(),
+				[stream_id](const std::shared_ptr<FileSystemObject> &fso) -> int{
+					typedef decltype(stream_id) u;
+					typedef std::make_signed<u>::type s;
+					return (int)((s)fso->get_stream_id() - (s)stream_id);
+				}
+			);
+			if (it == restore_later.end())
+				continue;
+			std::wcout << L"Restoring path \"" << (*it)->get_unmapped_path().wstring() << L"\"\n";
+			if ((*it)->get_type() == FileSystemObjectType::FileHardlink){
+				auto hardlink = std::dynamic_pointer_cast<FileHardlinkFso>(*it);
+				hardlink->set_treat_as_file(true);
+			}
+			(*it)->restore(*pair.second);
+			for (auto i = it + 1; i != restore_later.end() && (*i)->get_stream_id() == stream_id; ++i){
+				std::wcout << L"Hardlink requested. Existing path: \"" << (*it)->get_mapped_path() << L"\", new path: \"" << (*i)->get_mapped_path() << "\"\n";
+				auto hardlink = std::dynamic_pointer_cast<FileHardlinkFso>(*i);
+				hardlink->set_link_target((*it)->get_mapped_path());
+				hardlink->restore();
+			}
+		}
+	}
 }

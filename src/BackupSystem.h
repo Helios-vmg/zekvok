@@ -11,6 +11,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Utility.h"
 #include "System/SystemOperations.h"
 #include "serialization/fso.generated.h"
+#include "VersionForRestore.h"
 
 class VssSnapshot;
 
@@ -70,6 +71,9 @@ class BackupSystem{
 	bool file_has_changed(version_number_t &, FileSystemObject &);
 	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
+	std::shared_ptr<VersionForRestore> compute_latest_version();
+	void restore(FileSystemObject &, VersionForRestore &, std::vector<std::shared_ptr<FileSystemObject>> &);
+	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<std::shared_ptr<FileSystemObject>> &);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();

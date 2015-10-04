@@ -60,6 +60,9 @@ public:
 	DEFINE_INLINE_SETTER_GETTER(archive_flag)
 	DEFINE_INLINE_SETTER_GETTER(modification_time)
 	DEFINE_INLINE_SETTER_GETTER(parent)
+	void set_link_target(const path_t &path){
+		this->set_link_target(make_shared(new std::wstring(path.wstring())));
+	}
 	path_t get_mapped_path() const;
 	path_t get_unmapped_path() const;
 	path_t get_path_without_base() const;
@@ -87,3 +90,5 @@ public:
 	std::shared_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
 	bool report_error(const std::exception &, const std::string &context);
 	virtual void iterate(iterate_co_t::push_type &sink) = 0;
+	virtual void restore(std::istream &, const path_t *base_path = nullptr);
+	virtual bool restore(const path_t *base_path = nullptr);

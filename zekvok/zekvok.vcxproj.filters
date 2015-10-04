@@ -108,6 +108,9 @@
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\VersionForRestore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -237,6 +240,9 @@
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
     <ClInclude Include="..\src\NullStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\VersionForRestore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
