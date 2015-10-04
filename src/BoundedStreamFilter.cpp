@@ -9,6 +9,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "BoundedStreamFilter.h"
 
 std::streamsize BoundedInputFilter::read(char *output, std::streamsize length){
+	if (this->bytes_read == this->simulated_length)
+		return -1;
 	length = std::min(length, this->simulated_length - this->bytes_read);
 	auto head = output;
 	std::streamsize ret = 0;
