@@ -362,4 +362,70 @@ bool get_archive_bit(const std::wstring &_path){
 	return (GetFileAttributesW(path.c_str()) & FILE_ATTRIBUTE_ARCHIVE) == FILE_ATTRIBUTE_ARCHIVE;
 }
 
+void create_symlink(const wchar_t *_link_location, const wchar_t *_target_location, bool directory){
+	auto link_location = path_from_string(_link_location);
+	auto target_location = path_from_string(_target_location);
+	if (CreateSymbolicLinkW(link_location.c_str(), target_location.c_str(), directory ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0))
+		return;
+	throw Win32Exception(GetLastError());
+}
+
+void create_symlink(const std::wstring &link_location, const std::wstring &target_location){
+	create_symlink(link_location.c_str(), target_location.c_str(), false);
+}
+
+void create_directory_symlink(const std::wstring &link_location, const std::wstring &target_location){
+	create_symlink(link_location.c_str(), target_location.c_str(), true);
+}
+
+void create_file_reparse_point(const std::wstring &link_location, const std::wstring &target_location){
+	throw NotImplementedException();
+}
+
+typedef struct {
+	DWORD ReparseTag;
+	WORD ReparseDataLength;
+	WORD Reserved2;
+	WORD Reserved;
+	WORD ReparseTargetLength;
+	WORD ReparseTargetMaximumLength;
+	WORD Reserved1;
+	WCHAR ReparseTarget[1];
+} REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
+
+void create_junction(const std::wstring &link_location, const std::wstring &target_location){
+	auto path = path_from_string(link_location.c_str());
+	AutoHandle h = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_DIRECTORY | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+	if (h.handle == INVALID_HANDLE_VALUE)
+		throw Win32Exception(GetLastError());
+
+	std::wstring target = L"\\??\\";
+	target.append(target_location);
+
+	const auto byte_length = target.size() * sizeof(wchar_t);
+	const auto byte_length_z = byte_length + sizeof(wchar_t);
+
+	std::vector<char> buffer(offsetof(REPARSE_MOUNTPOINT_DATA_BUFFER, ReparseTarget) + byte_length_z + 2);
+	REPARSE_MOUNTPOINT_DATA_BUFFER *rdb = (REPARSE_MOUNTPOINT_DATA_BUFFER *)&buffer[0];
+	rdb->ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+	rdb->ReparseDataLength = (WORD)(byte_length_z + 10);
+	rdb->Reserved = 0;
+	rdb->Reserved1 = 0;
+	rdb->ReparseTargetLength = (WORD)byte_length;
+	rdb->ReparseTargetMaximumLength = rdb->ReparseTargetLength + sizeof(wchar_t);
+	memcpy(rdb->ReparseTarget, &target[0], byte_length);
+	auto status = DeviceIoControl(h.handle, FSCTL_SET_REPARSE_POINT, &buffer[0], (DWORD)buffer.size(), nullptr, 0, nullptr, nullptr);
+	DWORD error = ERROR_SUCCESS;
+	if (!status)
+		throw Win32Exception(GetLastError());
+}
+
+void create_hardlink(const std::wstring &_link_location, const std::wstring &_existing_file){
+	auto link_location = path_from_string(_link_location);
+	auto existing_file = path_from_string(_existing_file);
+	if (CreateHardLinkW(link_location.c_str(), existing_file.c_str(), nullptr))
+		return;
+	throw Win32Exception(GetLastError());
+}
+
 }

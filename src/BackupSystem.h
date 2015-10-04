@@ -39,7 +39,6 @@ class BackupSystem{
 	std::vector<std::shared_ptr<BackupStream>> streams;
 
 	void set_versions();
-	path_t get_version_path(version_number_t) const;
 	void perform_backup_inner(const OpaqueTimestamp &start_time);
 	void set_path_mapper(const VssSnapshot &);
 	void create_initial_version(const OpaqueTimestamp &start_time);
@@ -72,8 +71,7 @@ class BackupSystem{
 	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
 	std::shared_ptr<VersionForRestore> compute_latest_version();
-	void restore(FileSystemObject &, VersionForRestore &, std::vector<std::shared_ptr<FileSystemObject>> &);
-	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<std::shared_ptr<FileSystemObject>> &);
+	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<FileSystemObject *> &);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();
@@ -92,4 +90,5 @@ public:
 	void set_change_criterium(ChangeCriterium);
 	stream_id_t get_stream_id();
 	void enqueue_file_for_guid_get(FilishFso *);
+	path_t get_version_path(version_number_t) const;
 };

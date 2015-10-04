@@ -38,6 +38,18 @@ protected:
 	void set_backup_mode();
 	std::shared_ptr<std::function<BackupMode(const FileSystemObject &)>> get_backup_mode_map();
 	FileSystemObject *get_root();
+	virtual bool get_stream_required() const{
+		return false;
+	}
+	virtual void restore_internal(const path_t *base_path);
+	path_t path_override_unmapped_base_weak(const path_t *base_path = nullptr){
+		if (!base_path)
+			return this->path_override_unmapped_base_weak((const std::wstring *)nullptr);
+		return this->path_override_unmapped_base_weak(&base_path->wstring());
+	}
+	path_t path_override_unmapped_base_weak(const std::wstring *base_path = nullptr){
+		return this->path_override_base(base_path, base_path ? BasePathType::Override : BasePathType::Unmapped);
+	}
 
 public:
 	FileSystemObject(){}
@@ -92,3 +104,4 @@ public:
 	virtual void iterate(iterate_co_t::push_type &sink) = 0;
 	virtual void restore(std::istream &, const path_t *base_path = nullptr);
 	virtual bool restore(const path_t *base_path = nullptr);
+	virtual void delete_existing(const std::wstring &base_path = nullptr) = 0;

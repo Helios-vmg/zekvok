@@ -11,3 +11,4 @@ public:
 		return false;
 	}
 	FileSystemObject *create_child(const std::wstring &name, const path_t *path = nullptr);
+	void delete_existing(const std::wstring &base_path = nullptr) override;

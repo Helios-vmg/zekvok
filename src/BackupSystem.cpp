@@ -589,7 +589,7 @@ bool compare_hashes(FileSystemObject &new_file, FileSystemObject &old_file){
 bool BackupSystem::file_has_changed(version_number_t &dst, FileSystemObject &new_file){
 	dst = invalid_version_number;
 	path_t path = *new_file.get_mapped_base_path();
-	FileSystemObject *old_file;
+	FileSystemObject *old_file = nullptr;
 	for (auto &fso : this->old_objects){
 		auto found = fso->find(path);
 		if (!found)
@@ -648,6 +648,7 @@ ChangeCriterium BackupSystem::get_change_criterium(const FileSystemObject &fso){
 		case ChangeCriterium::HashAuto:
 			return fso.get_size() < 1024 * 1024 ? ChangeCriterium::Hash : ChangeCriterium::Date;
 	}
+	throw InvalidSwitchVariableException();
 }
 
 stream_id_t BackupSystem::get_stream_id(){
@@ -661,14 +662,14 @@ void BackupSystem::enqueue_file_for_guid_get(FilishFso *fso){
 void BackupSystem::restore_backup(){
 	std::cout << "Initializing structures...\n";
 	auto latest_version = this->compute_latest_version();
-	std::vector<std::shared_ptr<FileSystemObject>> restore_later;
+	std::vector<FileSystemObject *> restore_later;
 	for (auto &old_object : this->old_objects)
 		for (auto &fso : old_object->get_iterator())
-			this->restore(*fso, *latest_version, restore_later);
+			latest_version->restore(fso, restore_later);
 	std::sort(
 		restore_later.begin(),
 		restore_later.end(),
-		[](const std::shared_ptr<FileSystemObject> &a, const std::shared_ptr<FileSystemObject> &b){
+		[](FileSystemObject *a, FileSystemObject *b){
 			return a->get_stream_id() < b->get_stream_id();
 		}
 	);
@@ -701,7 +702,7 @@ std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(){
 
 void BackupSystem::perform_restore(
 		const std::shared_ptr<VersionForRestore> &latest_version,
-		const std::vector<std::shared_ptr<FileSystemObject>> &restore_later){
+		const std::vector<FileSystemObject *> &restore_later){
 	std::vector<version_number_t> enumerable;
 	enumerable.reserve(latest_version->get_manifest()->version_dependencies.size());
 	enumerable.push_back(latest_version->get_version_number());
@@ -714,7 +715,7 @@ void BackupSystem::perform_restore(
 			auto it = find_all(
 				restore_later.begin(),
 				restore_later.end(),
-				[stream_id](const std::shared_ptr<FileSystemObject> &fso) -> int{
+				[stream_id](FileSystemObject *fso) -> int{
 					typedef decltype(stream_id) u;
 					typedef std::make_signed<u>::type s;
 					return (int)((s)fso->get_stream_id() - (s)stream_id);
@@ -724,13 +725,13 @@ void BackupSystem::perform_restore(
 				continue;
 			std::wcout << L"Restoring path \"" << (*it)->get_unmapped_path().wstring() << L"\"\n";
 			if ((*it)->get_type() == FileSystemObjectType::FileHardlink){
-				auto hardlink = std::dynamic_pointer_cast<FileHardlinkFso>(*it);
+				auto hardlink = static_cast<FileHardlinkFso *>(*it);
 				hardlink->set_treat_as_file(true);
 			}
 			(*it)->restore(*pair.second);
 			for (auto i = it + 1; i != restore_later.end() && (*i)->get_stream_id() == stream_id; ++i){
 				std::wcout << L"Hardlink requested. Existing path: \"" << (*it)->get_mapped_path() << L"\", new path: \"" << (*i)->get_mapped_path() << "\"\n";
-				auto hardlink = std::dynamic_pointer_cast<FileHardlinkFso>(*i);
+				auto hardlink = static_cast<FileHardlinkFso *>(*i);
 				hardlink->set_link_target((*it)->get_mapped_path());
 				hardlink->restore();
 			}

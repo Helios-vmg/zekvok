@@ -1,5 +1,6 @@
 protected:
 	virtual void iterate(FileSystemObject::iterate_co_t::push_type &sink) override;
+	virtual void restore_internal(const path_t *base_path) override;
 public:
 	DirectoryFso(){}
 	DirectoryFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);

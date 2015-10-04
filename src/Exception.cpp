@@ -33,6 +33,11 @@ FileNotFoundException::FileNotFoundException(const path_t &path): path(path){
 	this->message += this->path.string();
 }
 
+CantOpenOutputFileException::CantOpenOutputFileException(const path_t &path): path(path){
+	this->message = "Can't open output file: ";
+	this->message += this->path.string();
+}
+
 UnableToObtainGuidException::UnableToObtainGuidException(const path_t &path): path(path){
 	this->message = "Unable to obtain file system GUID: ";
 	this->message += this->path.string();

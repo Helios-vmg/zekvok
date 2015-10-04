@@ -40,6 +40,12 @@ public:
 	FileNotFoundException(const path_t &path);
 };
 
+class CantOpenOutputFileException : public StdStringException{
+	path_t path;
+public:
+	CantOpenOutputFileException(const path_t &path);
+};
+
 class UnableToObtainGuidException : public StdStringException{
 	path_t path;
 public:
@@ -66,5 +72,12 @@ class NotImplementedException : public FatalException{
 public:
 	const char *what() const override{
 		return "This feature not yet implemented";
+	}
+};
+
+class IncorrectImplementationException : public FatalException{
+public:
+	const char *what() const override{
+		return "The implementation is incorrect";
 	}
 };

@@ -61,4 +61,10 @@ guid_t get_file_guid(const std::wstring &path);
 std::vector<std::wstring> list_all_hardlinks(const std::wstring &path);
 std::wstring get_reparse_point_target(const std::wstring &path);
 bool get_archive_bit(const std::wstring &path);
+void create_symlink(const std::wstring &link_location, const std::wstring &target_location);
+void create_directory_symlink(const std::wstring &link_location, const std::wstring &target_location);
+void create_file_reparse_point(const std::wstring &link_location, const std::wstring &target_location);
+void create_junction(const std::wstring &link_location, const std::wstring &target_location);
+void create_hardlink(const std::wstring &link_location, const std::wstring &existing_file);
+
 }

@@ -15,3 +15,4 @@ public:
 	FileSystemObject *find(path_t::iterator begin, path_t::iterator end){
 		return (FileSystemObject *)(((const FileSystemObject *)this)->find(begin, end));
 	}
+	void delete_existing(const std::wstring &base_path = nullptr) override;

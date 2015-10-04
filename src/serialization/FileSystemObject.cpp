@@ -515,3 +515,73 @@ bool FilishFso::compute_hash(){
 	this->hash.valid = true;
 	return true;
 }
+
+void FileSystemObject::restore(std::istream &, const path_t *base_path){
+	throw IncorrectImplementationException();
+}
+
+bool FileSystemObject::restore(const path_t *base_path){
+	if (this->get_stream_required())
+		return false;
+	this->restore_internal(base_path);
+	return true;
+}
+
+void FileSystemObject::restore_internal(const path_t *base_path){
+	throw IncorrectImplementationException();
+}
+
+void RegularFileFso::restore(std::istream &stream, const path_t *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	boost::filesystem::ofstream file(path, std::ios::binary);
+	if (!file)
+		throw CantOpenOutputFileException(path);
+	file << stream.rdbuf();
+}
+
+void DirectoryFso::restore_internal(const path_t *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	boost::filesystem::create_directory(path);
+}
+
+void DirectorySymlinkFso::restore_internal(const path_t *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	system_ops::create_directory_symlink(path.wstring(), *this->link_target);
+}
+
+void FileSymlinkFso::restore_internal(const path_t *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	system_ops::create_symlink(path.wstring(), *this->link_target);
+}
+
+void FileReparsePointFso::restore_internal(const path_t *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	system_ops::create_file_reparse_point(path.wstring(), *this->link_target);
+}
+
+void JunctionFso::restore_internal(const path_t *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	system_ops::create_junction(path.wstring(), *this->link_target);
+}
+
+void FilishFso::delete_existing(const std::wstring &base_path){
+	auto path = this->path_override_unmapped_base_weak(&base_path);
+	if (!boost::filesystem::exists(path))
+		return;
+	boost::filesystem::remove(path);
+}
+
+void DirectoryishFso::delete_existing(const std::wstring &base_path){
+	auto path = this->path_override_unmapped_base_weak(&base_path);
+	if (!boost::filesystem::exists(path))
+		return;
+	boost::filesystem::remove_all(path);
+}
+
+bool FileHardlinkFso::restore(const path_t *base_path){
+	if (!this->link_target)
+		return false;
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	system_ops::create_hardlink(path.wstring(), *this->link_target);
+	return true;
+}

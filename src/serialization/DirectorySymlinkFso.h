@@ -1,6 +1,7 @@
 private:
 	void set_target(const path_t &);
 	virtual void iterate(FileSystemObject::iterate_co_t::push_type &sink) override;
+	virtual void restore_internal(const path_t *base_path) override;
 	
 public:
 	DirectorySymlinkFso(){}
