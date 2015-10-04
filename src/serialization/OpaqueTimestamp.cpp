@@ -10,6 +10,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../Exception.h"
 #include "../Utility.h"
 #include "../AutoHandle.h"
+#include "../System/SystemOperations.h"
 
 OpaqueTimestamp OpaqueTimestamp::utc_now(){
 	FILETIME ft;
@@ -28,7 +29,8 @@ bool OpaqueTimestamp::operator!=(const OpaqueTimestamp &b) const{
 	return this->timestamp != b.timestamp;
 }
 
-void OpaqueTimestamp::set_to_file_modification_time(const std::wstring &path){
+void OpaqueTimestamp::set_to_file_modification_time(const std::wstring &_path){
+	auto path = path_from_string(_path);
 	static const DWORD attributes[] = {
 		FILE_ATTRIBUTE_NORMAL,
 		FILE_FLAG_BACKUP_SEMANTICS,
