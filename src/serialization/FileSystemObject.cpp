@@ -11,6 +11,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../Utility.h"
 #include "../BackupSystem.h"
 #include "../System/SystemOperations.h"
+#include "../NullStream.h"
+#include "../HashFilter.h"
 
 //------------------------------------------------------------------------------
 // CONSTRUCTORS (A)
@@ -490,4 +492,26 @@ FileSystemObject *DirectoryishFso::create_child(const std::wstring &name, const 
 		DirectoryishFso_create_child_SWITCH_CASE(FileHardlink);
 	}
 	throw InvalidSwitchVariableException();
+}
+
+bool FilishFso::compute_hash(sha256_digest &dst){
+	if (!this->compute_hash())
+		return false;
+	dst = this->hash.digest;
+	return true;
+}
+
+bool FilishFso::compute_hash(){
+	if (this->hash.valid)
+		return true;
+	boost::filesystem::ifstream file(this->get_mapped_path(), std::ios::binary);
+	if (!file)
+		return false;
+	boost::iostreams::stream<NullOutputStream> null_stream;
+	boost::iostreams::stream<HashOutputFilter> hash_filter(null_stream, new CryptoPP::SHA256);
+	hash_filter << file.rdbuf();
+	hash_filter.flush();
+	hash_filter->get_result(this->hash.digest.data(), this->hash.digest.size());
+	this->hash.valid = true;
+	return true;
 }

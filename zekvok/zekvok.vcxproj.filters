@@ -236,5 +236,8 @@
     <ClInclude Include="..\src\AutoHandle.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\NullStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

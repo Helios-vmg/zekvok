@@ -82,8 +82,8 @@ public:
 	}
 	virtual FileSystemObject *find(path_t::iterator begin, path_t::iterator end) = 0;
 	virtual const FileSystemObject *find(path_t::iterator begin, path_t::iterator end) const = 0;
-	virtual bool compute_hash(sha256_digest &dst) const = 0;
-	virtual bool compute_hash() const = 0;
+	virtual bool compute_hash(sha256_digest &dst) = 0;
+	virtual bool compute_hash() = 0;
 	std::shared_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
 	bool report_error(const std::exception &, const std::string &context);
 	virtual void iterate(iterate_co_t::push_type &sink) = 0;

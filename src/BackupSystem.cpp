@@ -576,7 +576,7 @@ std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject
 	return ret;
 }
 
-bool compare_hashes(const FileSystemObject &new_file, const FileSystemObject &old_file){
+bool compare_hashes(FileSystemObject &new_file, FileSystemObject &old_file){
 	auto &old_hash = old_file.get_hash();
 	if (!old_hash.valid)
 		return true;

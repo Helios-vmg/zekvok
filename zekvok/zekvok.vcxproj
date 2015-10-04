@@ -257,6 +257,7 @@
     <ClInclude Include="..\src\HashFilter.h" />
     <ClInclude Include="..\src\LineProcessor.h" />
     <ClInclude Include="..\src\LzmaFilter.h" />
+    <ClInclude Include="..\src\NullStream.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
     <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
     <ClInclude Include="..\src\serialization\BackupStream.h" />
