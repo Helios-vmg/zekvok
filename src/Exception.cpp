@@ -50,6 +50,18 @@ DeserializationException::DeserializationException(int type){
 		case DeserializerStream::ErrorType::UnexpectedEndOfFile:
 			this->message += "Unexpected end of file.";
 			break;
+		case DeserializerStream::ErrorType::InconsistentSmartPointers:
+			this->message += "Serialized stream uses smart pointers inconsistently.";
+			break;
+		case DeserializerStream::ErrorType::UnknownObjectId:
+			this->message += "Serialized stream contains a reference to an unknown object.";
+			break;
+		case DeserializerStream::ErrorType::InvalidProgramState:
+			this->message += "The program is in an unknown state.";
+			break;
+		case DeserializerStream::ErrorType::MainObjectNotSerializable:
+			this->message += "The root object is not an instance of a Serializable subclass.";
+			break;
 		default:
 			throw InvalidSwitchVariableException();
 	}
