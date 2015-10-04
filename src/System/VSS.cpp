@@ -53,9 +53,15 @@ VssSnapshot::VssSnapshot(const std::vector<std::wstring> &targets){
 	this->begin();
 	for (auto &s : targets){
 		auto hres = this->push_target(s);
-		if (FAILED(hres))
+		if (FAILED(hres)){
+			if (hres == VSS_E_UNEXPECTED_PROVIDER_ERROR || hres == VSS_E_NESTED_VOLUME_LIMIT){
+				this->failed_volumes.push_back(s);
+				continue;
+			}
 			throw HresultException("VssSnapshot::push_target()", hres);
+		}
 	}
+	auto hres = this->do_snapshot();
 }
 
 VssSnapshot::~VssSnapshot(){
@@ -108,6 +114,7 @@ HRESULT VssSnapshot::push_target(const std::wstring &target){
 
 	std::vector<wchar_t> vtemp(target.size());
 	std::copy(target.begin(), target.end(), vtemp.begin());
+	vtemp.push_back(0);
 	VSS_PWSZ temp = &vtemp[0];
 	VSS_ID shadow_id;
 	auto error = this->vbc->AddToSnapshotSet(temp, GUID_NULL, &shadow_id);
@@ -122,7 +129,7 @@ HRESULT VssSnapshot::push_target(const std::wstring &target){
 	return S_OK;
 }
 
-void VssSnapshot::do_snapshot(HRESULT &properties_result){
+HRESULT VssSnapshot::do_snapshot(){
 	this->state = VssState::Invalid;
 
 	CALL_HRESULT_FUNCTION(this->vbc->SetBackupState, (false, true, VSS_BT_COPY));
@@ -133,7 +140,7 @@ void VssSnapshot::do_snapshot(HRESULT &properties_result){
 
 	this->state = VssState::SnapshotPerformed;
 
-	properties_result = this->populate_properties();
+	return this->populate_properties();
 }
 
 class RaiiSnapshotProperties{

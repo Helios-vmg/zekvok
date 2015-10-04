@@ -65,11 +65,12 @@ class VssSnapshot{
 	std::vector<std::wstring> targets;
 	SnapshotProperties props;
 	IVssBackupComponents *vbc;
+	std::vector<std::wstring> failed_volumes;
 
 	HRESULT populate_properties();
 	void begin();
 	HRESULT push_target(const std::wstring &target);
-	void do_snapshot(HRESULT &properties_result);
+	HRESULT do_snapshot();
 public:
 	VssSnapshot(const std::vector<std::wstring> &targets);
 	~VssSnapshot();

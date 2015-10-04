@@ -167,7 +167,7 @@ void map_path(const std::wstring &A, const std::wstring &B, std::vector<std::pai
 	std::wstring pattern;
 	pattern += L"(";
 	pattern += A;
-	pattern += L")(\\.*|$)";
+	pattern += L")(\\\\.*$|$)";
 	boost::wregex re(pattern, default_regex_flags);
 	mapper.push_back(std::make_pair(re, B));
 }
