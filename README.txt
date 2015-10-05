@@ -97,23 +97,23 @@ The following backup functionality is supported:
                           LIMITATIONS AND KNOWN ISSUES
 
 * VSS does not work with nested file systems (e.g. an NTFS volume in a VHD
-stored in an NTFS volume, or an NTFS volume in a TrueCrypt volume in an NTFS
-volume). However, with block-level incremental backups, it will be possible to
-make space-efficient backups of virtual hard disks, although encrypted file
-systems are incompressible.
+  stored in an NTFS volume, or an NTFS volume in a TrueCrypt volume in an NTFS
+  volume). However, with block-level incremental backups, it will be possible to
+  make space-efficient backups of virtual hard disks, although encrypted file
+  systems are incompressible.
 
 * Backing up locked files in a network share is not supported.
 
 * Transacted writes to network shares are not supported. Writing the backup
-files to a network share will work, but the process will not be transacted. This
-means that the backup version that was being generated may be left incomplete,
-and thus corrupted, in case of a power failure on either machine. Once power is
-restored, it is possible to run a verification on the archive and clean up
-broken files.
+  files to a network share will work, but the process will not be transacted.
+  This means that the backup version that was being generated may be left
+  incomplete, and thus corrupted, in case of a power failure on either machine.
+  Once power is restored, it is possible to run a verification on the archive
+  and clean up broken files.
 
 * Hardlinks are detected by examining and generating file GUIDs. When using VSS,
-it is possible for the situation to arise that one of two files (both of which
-were hardlinks with each other at the time the VSS snapshot was taken) may be
-deleted after the VSS snapshot is taken but before the file GUIDs are generated.
-If this happens, the two files may be treated as two unrelated regular files and
-stored redundantly.
+  it is possible for the situation to arise that one of two files (both of which
+  were hardlinks with each other at the time the VSS snapshot was taken) may be
+  deleted after the VSS snapshot is taken but before the file GUIDs are
+  generated. If this happens, the two files may be treated as two unrelated
+  regular files and stored redundantly.
