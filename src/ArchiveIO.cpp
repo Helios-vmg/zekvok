@@ -111,11 +111,10 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 	sha256_digest complete_hash;
 	{
 		hash_stream_t overall_hash(*this->stream, new CryptoPP::SHA256);
+		this->initial_fso_offset = 0;
 		{
-			boost::iostreams::stream<ByteCounterOutputFilter> counter(overall_hash);
+			boost::iostreams::stream<ByteCounterOutputFilter> counter(overall_hash, &this->initial_fso_offset);
 			this->add_files(counter, begin);
-			counter.flush();
-			this->initial_fso_offset = counter->bytes_processed;
 		}
 		this->add_base_objects(overall_hash, begin);
 		this->add_version_manifest(overall_hash, begin);
@@ -153,12 +152,13 @@ void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_pt
 	for (auto i : *co){
 		if (!i)
 			continue;
-		boost::iostreams::stream<ByteCounterOutputFilter> counter(lzma);
-		SerializerStream ss(counter);
-		ss.begin_serialization(*i, config::include_typehashes);
-		counter.flush();
-		auto b = counter->bytes_processed;
-		this->base_object_entry_sizes.push_back(b);
+		std::uint64_t bytes_processed = 0;
+		{
+			boost::iostreams::stream<ByteCounterOutputFilter> counter(lzma, &bytes_processed);
+			SerializerStream ss(counter);
+			ss.begin_serialization(*i, config::include_typehashes);
+		}
+		this->base_object_entry_sizes.push_back(bytes_processed);
 	}
 }
 
@@ -173,16 +173,12 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 		manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
 		manifest.archive_metadata.stream_ids = this->stream_ids;
 		manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
-		std::uint64_t manifest_length;
+		std::uint64_t manifest_length = 0;
 		{
-			boost::iostreams::stream<ByteCounterOutputFilter> bytes(overall_hash);
-			{
-				boost::iostreams::stream<LzmaOutputFilter> lzma(bytes, &mt, 8);
-				SerializerStream ss(lzma);
-				ss.begin_serialization(manifest, config::include_typehashes);
-			}
-			bytes.flush();
-			manifest_length = bytes->bytes_processed;
+			boost::iostreams::stream<ByteCounterOutputFilter> bytes(overall_hash, &manifest_length);
+			boost::iostreams::stream<LzmaOutputFilter> lzma(bytes, &mt, 8);
+			SerializerStream ss(lzma);
+			ss.begin_serialization(manifest, config::include_typehashes);
 		}
 		auto s_manifest_length = serialize_fixed_le_int(manifest_length);
 		overall_hash.write((const char *)s_manifest_length.data(), s_manifest_length.size());

@@ -9,11 +9,13 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Filters.h"
 
 class ByteCounterOutputFilter : public OutputFilter{
+	std::uint64_t *bytes_processed;
 public:
-	std::uint64_t bytes_processed;
-	ByteCounterOutputFilter(std::ostream &stream): OutputFilter(stream), bytes_processed(0){}
+	ByteCounterOutputFilter(std::ostream &stream, std::uint64_t *dst):
+		OutputFilter(stream),
+		bytes_processed(dst){}
 	std::streamsize write(const char *s, std::streamsize n) override{
-		this->bytes_processed += n;
+		*this->bytes_processed += n;
 		return this->next_write(s, n);
 	}
 };
