@@ -493,6 +493,7 @@ void FilishFso::set_members(const path_t &path){
 		if (!this->report_error(e, "getting file size for \"" + path.string() + "\""))
 			throw;
 	}
+	this->set_file_system_guid(path);
 }
 
 void FileSystemObject::add_exception(const std::exception &e){
