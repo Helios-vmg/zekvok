@@ -382,6 +382,7 @@ bool BackupSystem::should_be_added(FileSystemObject &fso, known_guids_t &known_g
 		return false;
 	if (filish.is_linkish() && filish.get_type() == FileSystemObjectType::FileHardlink)
 		return false;
+	fso.set_latest_version(this->get_new_version_number());
 	auto &guid = filish.get_file_system_guid();
 	if (guid.valid && known_guids.find(guid.data) != known_guids.end())
 		return false;
