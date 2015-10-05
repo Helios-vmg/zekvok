@@ -388,9 +388,11 @@ void FilishFso::set_file_system_guid(const path_t &path, bool retry){
 		this->file_system_guid.data = system_ops::get_file_guid(path.wstring());
 		this->file_system_guid.valid = true;
 	}catch (UnableToObtainGuidException &e){
-		if (retry)
-			this->backup_system->enqueue_file_for_guid_get(this);
-		else if (!this->report_error(e, "getting unique ID for \"" + path.string() + "\""))
+		if (retry){
+			auto bss = this->get_backup_system();
+			if (bss)
+				bss->enqueue_file_for_guid_get(this);
+		}else if (!this->report_error(e, "getting unique ID for \"" + path.string() + "\""))
 			throw;
 	}catch (NonFatalException &e){
 		if (!this->report_error(e, "getting unique ID for \"" + path.string() + "\""))
@@ -406,6 +408,10 @@ void FileSystemObject::set_backup_mode(){
 
 std::shared_ptr<std::function<BackupMode(const FileSystemObject &)>> FileSystemObject::get_backup_mode_map(){
 	return this->get_root()->backup_mode_map;
+}
+
+BackupSystem *FileSystemObject::get_backup_system(){
+	return this->get_root()->backup_system;
 }
 
 FileSystemObject *FileSystemObject::get_root(){

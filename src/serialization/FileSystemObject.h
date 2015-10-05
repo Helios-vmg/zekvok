@@ -15,6 +15,7 @@ public:
 
 private:
 	std::shared_ptr<ErrorReporter> reporter;
+	BackupSystem *backup_system;
 
 	void add_exception(const std::exception &e);
 	ErrorReporter *get_reporter();
@@ -26,7 +27,6 @@ protected:
 	BackupStream *backup_stream;
 	BackupMode backup_mode;
 	bool archive_flag;
-	BackupSystem *backup_system;
 	std::shared_ptr<std::function<BackupMode(const FileSystemObject &)>> backup_mode_map;
 
 	enum class BasePathType{
@@ -51,6 +51,7 @@ protected:
 	path_t path_override_unmapped_base_weak(const std::wstring *base_path = nullptr){
 		return this->path_override_base(base_path, base_path ? BasePathType::Override : BasePathType::Unmapped);
 	}
+	BackupSystem *get_backup_system();
 
 public:
 	FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);

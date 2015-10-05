@@ -160,15 +160,29 @@ void BackupSystem::perform_backup(){
 
 template <typename T>
 std::basic_string<T> regex_escape(const std::basic_string<T> &s){
-	boost::basic_regex<T> esc(to_string<T>("[.^$|()\\[\\]{}*+?\\\\]"));
-	auto rep = to_string<T>("\\\\$&");
-	return regex_replace(url_to_escape, esc, rep, boost::match_default | boost::format_perl);
+	static const char escaped_characters[] = ".^$|()[]{}*+?\\";
+	std::basic_string<T> ret;
+	for (T c : s){
+		bool found = false;
+		for (char c2 : escaped_characters){
+			if (c == c2){
+				ret += '\\';
+				ret += c2;
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			continue;
+		ret += c;
+	}
+	return ret;
 }
 
 void map_path(const std::wstring &A, const std::wstring &B, std::vector<std::pair<boost::wregex, std::wstring>> &mapper){
 	std::wstring pattern;
 	pattern += L"(";
-	pattern += A;
+	pattern += regex_escape(A);
 	pattern += L")(\\\\.*$|$)";
 	boost::wregex re(pattern, default_regex_flags);
 	mapper.push_back(std::make_pair(re, B));
