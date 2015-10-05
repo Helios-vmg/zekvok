@@ -87,6 +87,7 @@ The following backup functionality is supported:
 
                                 PLANNED FEATURES
 
+* More user-friendliness
 * Public-key-based backup encryption
 * Block-level incremental backups (If a file is changed, only the portions that
   actually changed will be backed up.)
@@ -117,3 +118,93 @@ The following backup functionality is supported:
   deleted after the VSS snapshot is taken but before the file GUIDs are
   generated. If this happens, the two files may be treated as two unrelated
   regular files and stored redundantly.
+
+
+
+                                     USAGE
+
+Currently, the interface is an in-process command-line. Using the program
+involves typing in commands for it to perform. The program must be run as an
+administrator for much of its functionality to be available.
+
+Accepted commands:
+
+open <path>
+	Creates a backup object that will generate archive files at <path>.
+
+add <path>
+	Adds <path> to a list of sources in the backup object. Files and directory
+	structures will be read from here.
+	This command will fail if no "open" commands have been previously issued.
+
+exclude extension <extension>
+	When creating the backup, all files of the given extension will be ignored.
+	This command will fail if no "open" commands have been previously issued.
+
+exclude path <path>
+	When creating the backup: if <path> is a file, it will not be backed up; if
+	it's a directory, its contents will not be backed up.
+	This command will fail if no "open" commands have been previously issued.
+
+exclude name <name>
+	When creating the backup, all file system objects named <name> will not be
+	backed up.
+	This command will fail if no "open" commands have been previously issued.
+
+backup
+	Perform the backup.
+	This command will fail if no "open" commands have been previously issued.
+
+restore
+	WARNING: THIS COMMAND OVERWRITES FILES WITHOUT ASKING FOR CONFIRMATION.
+	Restore a backup. The destination is set to the source from which the backup
+	was generated.
+	This command will fail if no "open" commands have been previously issued.
+
+select version <number>
+	Selects a backup version. 0 is the first version, 1 is the second version,
+	-1 is the latest version, -2 is the second latest version.
+	When the "open" command is issued, the selected version is automatically set
+	to -1.
+	This command modifies the behavior of various other commands. E.g. "restore"
+	will restore the selected version.
+	This command will fail if no "open" commands have been previously issued.
+
+show dependencies
+	Shows a list of the versions which are required to restore the selected
+	version.
+	This command will fail if no "open" commands have been previously issued.
+
+show versions
+	Shows a list of all available versions.
+	This command will fail if no "open" commands have been previously issued.
+
+show version_count
+	Shows a count of all available versions.
+	This command will fail if no "open" commands have been previously issued.
+
+show paths
+	Shows a detailed list of the contents of a backup.
+	This command will fail if no "open" commands have been previously issued.
+
+if <variable> <command>
+	If <variable> was passed to the program as a command-line argument,
+	<command> will be executed.
+
+set use_snapshots {true|false}
+	Defaults to true. If false, snapshots will not be used when performing the
+	backup. This can speed up the backup if backup consistency is guaranteed by
+	other mechanisms, and it's also required when backup up certain kinds of
+	volumes.
+	This command will fail if no "open" commands have been previously issued.
+
+set change_criterium {archive_flag|size|date|hash|hash_auto}
+	Sets the criterium that is used to determine when a file has changed.
+	archive_flag: Only check if the archive flag is set.
+	size: Only check if the size is different.
+	date: Only check if the modification time is different.
+	hash: Check if the SHA-256 digest is different.
+	hash_auto: Check the digest for small files, and check the date for lerger
+	files.
+	The default is hash_auto.
+	This command will fail if no "open" commands have been previously issued.
