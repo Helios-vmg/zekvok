@@ -99,6 +99,8 @@ bool BackupSystem::version_exists(version_number_t v) const{
 }
 
 path_t BackupSystem::get_version_path(version_number_t version) const{
+	if (version <= invalid_version_number)
+		throw std::exception("Invalid version number.");
 	path_t ret = this->target_path;
 	std::wstringstream stream;
 	stream << L"version" << std::setw(8) << std::setfill(L'0') << version << L".arc";

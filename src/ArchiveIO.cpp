@@ -50,7 +50,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 			throw std::exception("Error during deserialization");
 	}
 
-	this->base_objects_offset = this->version_manifest->archive_metadata.entries_size_in_archive;
+	this->base_objects_offset = this->manifest_offset - this->version_manifest->archive_metadata.entries_size_in_archive;
 	this->stream_ids = this->version_manifest->archive_metadata.stream_ids;
 	this->stream_sizes = this->version_manifest->archive_metadata.stream_sizes;
 
@@ -111,8 +111,12 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 	sha256_digest complete_hash;
 	{
 		hash_stream_t overall_hash(*this->stream, new CryptoPP::SHA256);
-		this->add_files(overall_hash, begin);
-		this->initial_fso_offset = overall_hash->get_bytes_processed();
+		{
+			boost::iostreams::stream<ByteCounterOutputFilter> counter(overall_hash);
+			this->add_files(counter, begin);
+			counter.flush();
+			this->initial_fso_offset = counter->bytes_processed;
+		}
 		this->add_base_objects(overall_hash, begin);
 		this->add_version_manifest(overall_hash, begin);
 		overall_hash->get_result(complete_hash.data(), complete_hash.size());
@@ -120,9 +124,9 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 	this->stream->write((const char *)complete_hash.data(), complete_hash.size());
 }
 
-void ArchiveWriter::add_files(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
+void ArchiveWriter::add_files(std::ostream &stream, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
-	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 1);
+	boost::iostreams::stream<LzmaOutputFilter> lzma(stream, &mt, 1);
 
 	auto co = (*(begin++))->first();
 	for (auto i : *co){

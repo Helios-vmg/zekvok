@@ -280,6 +280,7 @@ std::wostream &operator<<(std::wostream &stream, FileSystemObjectType type){
 		WOUTPUT_FileSystemObjectType_CASE(FileReparsePoint);
 		WOUTPUT_FileSystemObjectType_CASE(FileHardlink);
 	}
+	return stream;
 }
 
 std::string format_size(double size){
@@ -328,7 +329,7 @@ void LineProcessor::process_show_paths(const std::wstring *begin, const std::wst
 				fso->get_path_without_base().wstring() << L"\n"
 				L"    Type: " << fso->get_type() << std::endl;
 			if (fso->is_pseudoregular_file())
-				std::cout << L"    Size: " << format_size((double)fso->get_size()) << std::endl;
+				std::cout << "    Size: " << format_size((double)fso->get_size()) << std::endl;
 			auto stream_id = fso->get_stream_id();
 			if (stream_id != invalid_stream_id)
 				std::cout <<

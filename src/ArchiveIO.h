@@ -93,7 +93,7 @@ class ArchiveWriter{
 
 	typedef boost::iostreams::stream<HashOutputFilter> hash_stream_t;
 
-	void add_files(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
+	void add_files(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 	void add_base_objects(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 	void add_version_manifest(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 public:

@@ -62,6 +62,9 @@ DeserializationException::DeserializationException(int type){
 		case DeserializerStream::ErrorType::MainObjectNotSerializable:
 			this->message += "The root object is not an instance of a Serializable subclass.";
 			break;
+		case DeserializerStream::ErrorType::AllocateAbstractObject:
+			this->message += "The stream contains a concrete object with an abstract class type ID.";
+			break;
 		default:
 			throw InvalidSwitchVariableException();
 	}
