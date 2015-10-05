@@ -120,11 +120,13 @@ void LineProcessor::process_exclude(const std::wstring *begin, const std::wstrin
 void LineProcessor::process_backup(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
 	this->backup_system->perform_backup();
+	this->backup_system.reset();
 }
 
 void LineProcessor::process_restore(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
 	this->backup_system->restore_backup();
+	this->backup_system.reset();
 }
 
 void LineProcessor::process_select(const std::wstring *begin, const std::wstring *end){
