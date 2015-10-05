@@ -137,6 +137,7 @@ bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret){
 std::streamsize LzmaOutputFilter::write(const char *buffer, std::streamsize length){
 	auto d = this->data.get();
 	lzma_ret lret;
+	auto initial_length = length;
 	do{
 		if (d->lstream.avail_in == 0){
 			if (!length)
@@ -148,7 +149,7 @@ std::streamsize LzmaOutputFilter::write(const char *buffer, std::streamsize leng
 		}
 		lret = lzma_code(&d->lstream, d->action);
 	}while (this->pass_data_to_stream(lret));
-	return length;
+	return initial_length;
 }
 
 bool LzmaOutputFilter::flush(){
