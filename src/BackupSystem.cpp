@@ -729,7 +729,7 @@ void BackupSystem::perform_restore(
 		const std::shared_ptr<VersionForRestore> &latest_version,
 		const std::vector<FileSystemObject *> &restore_later){
 	std::vector<version_number_t> enumerable;
-	enumerable.reserve(latest_version->get_manifest()->version_dependencies.size());
+	enumerable.reserve(latest_version->get_manifest()->version_dependencies.size() + 1);
 	enumerable.push_back(latest_version->get_version_number());
 	for (auto &version_number : latest_version->get_manifest()->version_dependencies)
 		enumerable.push_back(version_number);
@@ -737,13 +737,11 @@ void BackupSystem::perform_restore(
 		ArchiveReader archive(this->get_version_path(version_number));
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
-			auto it = find_all(
+			auto it = find_first_true(
 				restore_later.begin(),
 				restore_later.end(),
 				[stream_id](FileSystemObject *fso) -> int{
-					typedef decltype(stream_id) u;
-					typedef std::make_signed<u>::type s;
-					return (int)((s)fso->get_stream_id() - (s)stream_id);
+					return fso->get_stream_id() >= stream_id;
 				}
 			);
 			if (it == restore_later.end())
