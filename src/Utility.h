@@ -203,11 +203,18 @@ std::basic_string<T> to_lower(const std::basic_string<T> &s){
 	return ret;
 }
 
-// Given a range [first, last) and a predicate f such that !f(x) for all
-// first <= x < y and f(z) for all y <= z < last, find_all() returns y,
-// or last if it does not exist.
+// Given a range [begin, end) and a T->bool mapping f such that
+// map(begin, end, f) gives of any of the following forms:
+// * [true, ..., true]
+// * [false, ..., false, true, ..., true]
+// * [false, ..., false]
+// Then find_first_true(begin, end, f) returns the first iterator such that
+// f(*iterator), or end if it does not exist.
+// In other words, given a sorted range [begin, end),
+// the range [begin(begin, end, (>= x)), begin(begin, end, (> x)))
+// is equivalent to the subrange of [begin, end) that is equal to x.
 template<class It, class F>
-It find_all(It begin, It end, F &f){
+It find_first_true(It begin, It end, F &f){
 	if (begin >= end)
 		return end;
 	if (f(*begin))
