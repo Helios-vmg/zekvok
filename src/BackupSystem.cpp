@@ -790,7 +790,7 @@ bool BackupSystem::verify(version_number_t version) const{
 		boost::iostreams::stream<BoundedInputFilter> bounded(file, size - digest.size());
 		boost::iostreams::stream<HashInputFilter> hash(bounded, new CryptoPP::SHA256);
 		{
-			boost::iostreams::stream<NullOutputStream> output;
+			boost::iostreams::stream<NullOutputStream> output(0);
 			output << hash.rdbuf();
 		}
 		hash->get_result(new_digest.data(), new_digest.size());
@@ -800,19 +800,11 @@ bool BackupSystem::verify(version_number_t version) const{
 
 bool BackupSystem::full_verify(version_number_t version) const{
 	try{
-		std::set<version_number_t> checked;
-		std::vector<version_number_t> stack;
-		stack.push_back(version);
-		while (stack.size()){
-			auto v = stack.back();
-			stack.pop_back();
-			if (checked.find(v) != checked.end())
-				continue;
-			if (!this->verify(v))
+		if (!this->verify(version))
+			return false;
+		for (auto d : ArchiveReader(this->get_version_path(version)).read_manifest()->version_dependencies)
+			if (!this->verify(d))
 				return false;
-			for (auto &d : ArchiveReader(this->get_version_path(v)).read_manifest()->version_dependencies)
-				stack.push_back(d);
-		}
 		return true;
 	}catch (NonFatalException &){
 		return false;

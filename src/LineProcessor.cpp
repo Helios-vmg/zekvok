@@ -180,7 +180,6 @@ void LineProcessor::process_verify(const std::wstring *begin, const std::wstring
 		passed = this->backup_system->verify(this->selected_version);
 		
 	}else{
-		begin++;
 		if (!strcmpci::equal(*begin, L"full"))
 			return;
 		passed = this->backup_system->full_verify(this->selected_version);

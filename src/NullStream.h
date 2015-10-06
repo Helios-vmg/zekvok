@@ -9,6 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 class NullOutputStream{
 public:
+	NullOutputStream(int){}
 	typedef char char_type;
 	struct category :
 		boost::iostreams::sink_tag,

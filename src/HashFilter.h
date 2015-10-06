@@ -11,6 +11,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 class HashCalculator{
 	std::shared_ptr<CryptoPP::HashTransformation> hash;
 	std::uint64_t bytes_processed;
+	void *dst;
+	size_t dst_length;
+	void write_result();
 protected:
 	void update(const void *input, size_t length){
 		if (length){
@@ -19,10 +22,12 @@ protected:
 		}
 	}
 public:
-	HashCalculator(CryptoPP::HashTransformation *t): bytes_processed(0){
+	HashCalculator(CryptoPP::HashTransformation *t)
+			: bytes_processed(0)
+			, dst(nullptr){
 		this->hash.reset(t);
 	}
-	virtual ~HashCalculator(){}
+	virtual ~HashCalculator();
 	size_t get_hash_length() const;
 	void get_result(void *buffer, size_t max_length);
 	std::uint64_t get_bytes_processed() const{

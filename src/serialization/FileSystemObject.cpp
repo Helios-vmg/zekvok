@@ -547,10 +547,11 @@ bool FilishFso::compute_hash(){
 	if (!file)
 		return false;
 	boost::iostreams::stream<NullOutputStream> null_stream;
-	boost::iostreams::stream<HashOutputFilter> hash_filter(null_stream, new CryptoPP::SHA256);
-	hash_filter << file.rdbuf();
-	hash_filter.flush();
-	hash_filter->get_result(this->hash.digest.data(), this->hash.digest.size());
+	{
+		boost::iostreams::stream<HashOutputFilter> hash_filter(null_stream, new CryptoPP::SHA256);
+		hash_filter << file.rdbuf();
+		hash_filter->get_result(this->hash.digest.data(), this->hash.digest.size());
+	}
 	this->hash.valid = true;
 	return true;
 }
