@@ -802,7 +802,8 @@ bool BackupSystem::full_verify(version_number_t version) const{
 	try{
 		if (!this->verify(version))
 			return false;
-		for (auto d : ArchiveReader(this->get_version_path(version)).read_manifest()->version_dependencies)
+		auto deps = ArchiveReader(this->get_version_path(version)).read_manifest()->version_dependencies;
+		for (auto d : deps)
 			if (!this->verify(d))
 				return false;
 		return true;
