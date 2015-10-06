@@ -170,9 +170,9 @@ void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::uniqu
 		if (!i)
 			continue;
 		auto &manifest = *i;
-		manifest.archive_metadata.entry_sizes = this->base_object_entry_sizes;
-		manifest.archive_metadata.stream_ids = this->stream_ids;
-		manifest.archive_metadata.stream_sizes = this->stream_sizes;
+		manifest.archive_metadata.entry_sizes = std::move(this->base_object_entry_sizes);
+		manifest.archive_metadata.stream_ids = std::move(this->stream_ids);
+		manifest.archive_metadata.stream_sizes = std::move(this->stream_sizes);
 		manifest.archive_metadata.entries_size_in_archive = overall_hash->get_bytes_processed() - this->initial_fso_offset;
 		std::uint64_t manifest_length = 0;
 		{
