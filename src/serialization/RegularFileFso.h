@@ -3,3 +3,7 @@ public:
 	RegularFileFso(FileSystemObject *parent, const std::wstring &name, const path_t *path = nullptr);
 	virtual FileSystemObjectType get_type() const;
 	void restore(std::istream &, const path_t *base_path = nullptr) override;
+	bool get_stream_required() const override{
+		return true;
+	}
+	

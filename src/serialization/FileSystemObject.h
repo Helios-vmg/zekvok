@@ -109,4 +109,4 @@ public:
 	virtual void iterate(iterate_co_t::push_type &sink) = 0;
 	virtual void restore(std::istream &, const path_t *base_path = nullptr);
 	virtual bool restore(const path_t *base_path = nullptr);
-	virtual void delete_existing(const std::wstring &base_path = nullptr) = 0;
+	virtual void delete_existing(const std::wstring *base_path = nullptr) = 0;

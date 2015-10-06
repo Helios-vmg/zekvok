@@ -597,15 +597,15 @@ void JunctionFso::restore_internal(const path_t *base_path){
 	system_ops::create_junction(path.wstring(), *this->link_target);
 }
 
-void FilishFso::delete_existing(const std::wstring &base_path){
-	auto path = this->path_override_unmapped_base_weak(&base_path);
+void FilishFso::delete_existing(const std::wstring *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
 	if (!boost::filesystem::exists(path))
 		return;
 	boost::filesystem::remove(path);
 }
 
-void DirectoryishFso::delete_existing(const std::wstring &base_path){
-	auto path = this->path_override_unmapped_base_weak(&base_path);
+void DirectoryishFso::delete_existing(const std::wstring *base_path){
+	auto path = this->path_override_unmapped_base_weak(base_path);
 	if (!boost::filesystem::exists(path))
 		return;
 	boost::filesystem::remove_all(path);

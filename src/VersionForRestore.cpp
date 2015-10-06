@@ -32,3 +32,13 @@ void VersionForRestore::restore(FileSystemObject *fso, std::vector<FileSystemObj
 	if (!fso->restore() && fso->get_latest_version() >= 0)
 		restore_later.push_back(fso);
 }
+
+const std::vector<std::shared_ptr<FileSystemObject>> &VersionForRestore::get_base_objects(){
+	if (!this->base_objects.is_initialized())
+		this->base_objects = this->get_base_objects_without_storage();
+	return *this->base_objects;
+}
+
+std::vector<std::shared_ptr<FileSystemObject>> VersionForRestore::get_base_objects_without_storage(){
+	return this->archive_reader->get_base_objects();
+}

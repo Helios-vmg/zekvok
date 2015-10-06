@@ -34,6 +34,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <boost/coroutine/coroutine.hpp>
 #include <boost/any.hpp>
 #include <boost/regex.hpp>
+#include <boost/optional.hpp>
 #define LZMA_API_STATIC
 #include <lzma.h>
 #include <cryptlib/sha.h>
