@@ -572,7 +572,8 @@ void FileSystemObject::restore_internal(const path_t *base_path){
 
 void RegularFileFso::restore(std::istream &stream, const path_t *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
-	boost::filesystem::ofstream file(path, std::ios::binary);
+	auto long_path = path_from_string(path.wstring());
+	boost::filesystem::ofstream file(long_path, std::ios::binary);
 	if (!file)
 		throw CantOpenOutputFileException(path);
 	file << stream.rdbuf();
@@ -580,7 +581,8 @@ void RegularFileFso::restore(std::istream &stream, const path_t *base_path){
 
 void DirectoryFso::restore_internal(const path_t *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
-	boost::filesystem::create_directory(path);
+	auto long_path = path_from_string(path.wstring());
+	boost::filesystem::create_directory(long_path);
 }
 
 void DirectorySymlinkFso::restore_internal(const path_t *base_path){
@@ -604,22 +606,25 @@ void JunctionFso::restore_internal(const path_t *base_path){
 }
 
 void FileSystemObject::delete_existing(const std::wstring *base_path){
-	for (auto &fso : this->get_reverse_iterator())
-		fso->delete_existing_internal(base_path);
+	auto path = this->path_override_unmapped_base_weak(base_path);
+	auto long_path = path_from_string(path.wstring());
+	boost::filesystem::remove_all(long_path);
 }
 
 void FilishFso::delete_existing_internal(const std::wstring *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
-	if (!boost::filesystem::exists(path))
+	auto long_path = path_from_string(path.wstring());
+	if (!boost::filesystem::exists(long_path))
 		return;
-	boost::filesystem::remove(path);
+	boost::filesystem::remove(long_path);
 }
 
 void DirectoryishFso::delete_existing_internal(const std::wstring *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
-	if (!boost::filesystem::exists(path))
+	auto long_path = path_from_string(path.wstring());
+	if (!boost::filesystem::exists(long_path))
 		return;
-	boost::filesystem::remove(path);
+	boost::filesystem::remove(long_path);
 }
 
 bool FileHardlinkFso::restore(const path_t *base_path){
