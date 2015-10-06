@@ -93,6 +93,7 @@ void LineProcessor::process_line(const std::wstring *begin, const std::wstring *
 		PROCESS_LINE_ARRAY_ELEMENT(show, 1),
 		PROCESS_LINE_ARRAY_ELEMENT(if, 1),
 		PROCESS_LINE_ARRAY_ELEMENT(set, 1),
+		PROCESS_LINE_ARRAY_ELEMENT(verify, 0),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -170,6 +171,24 @@ void LineProcessor::process_set(const std::wstring *begin, const std::wstring *e
 		PROCESS_SET_ARRAY_ELEMENT(change_criterium),
 	};
 	iterate_pair_array(this, begin, end, array);
+}
+
+void LineProcessor::process_verify(const std::wstring *begin, const std::wstring *end){
+	this->ensure_existing_version();
+	bool passed = false;
+	if (begin == end){
+		passed = this->backup_system->verify(this->selected_version);
+		
+	}else{
+		begin++;
+		if (!strcmpci::equal(*begin, L"full"))
+			return;
+		passed = this->backup_system->full_verify(this->selected_version);
+	}
+	if (passed)
+		std::cout << "Version " << this->selected_version << " passes the verification process.\n";
+	else
+		std::cout << "Version " << this->selected_version << " does not pass the verification process.\n";
 }
 
 void LineProcessor::process_exclude_extension(const std::wstring *begin, const std::wstring *end){

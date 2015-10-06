@@ -10,11 +10,11 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "BackupSystem.h"
 #include "ArchiveIO.h"
 
-VersionForRestore::VersionForRestore(version_number_t version, BackupSystem *bs):
-		backup_system(bs),
+VersionForRestore::VersionForRestore(version_number_t version, BackupSystem &bs):
+		backup_system(&bs),
 		version_number(version),
 		dependencies_full(false){
-	this->path = bs->get_version_path(version);
+	this->path = bs.get_version_path(version);
 	this->archive_reader.reset(new ArchiveReader(this->path));
 	this->manifest = this->archive_reader->read_manifest();
 }

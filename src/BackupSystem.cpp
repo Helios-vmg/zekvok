@@ -14,6 +14,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "serialization_utils.h"
 #include "Utility.h"
 #include "VersionForRestore.h"
+#include "BoundedStreamFilter.h"
+#include "NullStream.h"
 
 const wchar_t * const system_path_prefix = L"\\\\?\\";
 
@@ -714,7 +716,7 @@ std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(){
 		stack.pop_back();
 		if (versions.find(version_number) != versions.end())
 			continue;
-		auto version = make_shared(new VersionForRestore(version_number, this));
+		auto version = make_shared(new VersionForRestore(version_number, *this));
 		versions[version_number] = version;
 		if (version_number == latest_version_number)
 			for (auto &object : version->get_base_objects())
@@ -767,4 +769,52 @@ void BackupSystem::perform_restore(
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
 	ArchiveReader archive(this->get_version_path(version));
 	return archive.get_base_objects();
+}
+
+bool BackupSystem::verify(version_number_t version) const{
+	if (!this->version_exists(version))
+		return false;
+	fs::ifstream file(this->get_version_path(version), std::ios::binary);
+	if (!file)
+		return false;
+	file.seekg(0, std::ios::end);
+	std::uint64_t size = file.tellg();
+	sha256_digest digest;
+	file.seekg(-(int)digest.size(), std::ios::end);
+	file.read((char *)digest.data(), digest.size());
+	if (file.gcount() != digest.size())
+		return false;
+	file.seekg(0);
+	sha256_digest new_digest;
+	{
+		boost::iostreams::stream<BoundedInputFilter> bounded(file, size - digest.size());
+		boost::iostreams::stream<HashInputFilter> hash(bounded, new CryptoPP::SHA256);
+		{
+			boost::iostreams::stream<NullOutputStream> output;
+			output << hash.rdbuf();
+		}
+		hash->get_result(new_digest.data(), new_digest.size());
+	}
+	return new_digest == digest;
+}
+
+bool BackupSystem::full_verify(version_number_t version) const{
+	try{
+		std::set<version_number_t> checked;
+		std::vector<version_number_t> stack;
+		stack.push_back(version);
+		while (stack.size()){
+			auto v = stack.back();
+			stack.pop_back();
+			if (checked.find(v) != checked.end())
+				continue;
+			if (!this->verify(v))
+				return false;
+			for (auto &d : ArchiveReader(this->get_version_path(v)).read_manifest()->version_dependencies)
+				stack.push_back(d);
+		}
+		return true;
+	}catch (NonFatalException &){
+		return false;
+	}
 }
