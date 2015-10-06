@@ -164,19 +164,29 @@ void DirectoryFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
 		child->iterate(sink);
 }
 
-FileSystemObject::iterate_co_t::pull_type DirectoryFso::get_iterator(){
-	return FileSystemObject::iterate_co_t::pull_type(
-		[this](FileSystemObject::iterate_co_t::push_type &sink){
-			this->iterate(sink);
-		}
-	);
+void DirectoryFso::reverse_iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	for (auto i = this->children.rbegin(), e = this->children.rend(); i != e; ++i)
+		(*i)->reverse_iterate(sink);
+	sink(this);
 }
 
 void DirectorySymlinkFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
 	sink(this);
 }
 
-FileSystemObject::iterate_co_t::pull_type DirectorySymlinkFso::get_iterator(){
+void DirectorySymlinkFso::reverse_iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	this->iterate(sink);
+}
+
+void FilishFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	sink(this);
+}
+
+void FilishFso::reverse_iterate(FileSystemObject::iterate_co_t::push_type &sink){
+	this->iterate(sink);
+}
+
+FileSystemObject::iterate_co_t::pull_type FileSystemObject::get_iterator(){
 	return FileSystemObject::iterate_co_t::pull_type(
 		[this](FileSystemObject::iterate_co_t::push_type &sink){
 			this->iterate(sink);
@@ -184,14 +194,10 @@ FileSystemObject::iterate_co_t::pull_type DirectorySymlinkFso::get_iterator(){
 	);
 }
 
-void FilishFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
-	sink(this);
-}
-
-FileSystemObject::iterate_co_t::pull_type FilishFso::get_iterator(){
+FileSystemObject::iterate_co_t::pull_type FileSystemObject::get_reverse_iterator(){
 	return FileSystemObject::iterate_co_t::pull_type(
 		[this](FileSystemObject::iterate_co_t::push_type &sink){
-			this->iterate(sink);
+			this->reverse_iterate(sink);
 		}
 	);
 }
@@ -597,18 +603,23 @@ void JunctionFso::restore_internal(const path_t *base_path){
 	system_ops::create_junction(path.wstring(), *this->link_target);
 }
 
-void FilishFso::delete_existing(const std::wstring *base_path){
+void FileSystemObject::delete_existing(const std::wstring *base_path){
+	for (auto &fso : this->get_reverse_iterator())
+		fso->delete_existing_internal(base_path);
+}
+
+void FilishFso::delete_existing_internal(const std::wstring *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
 	if (!boost::filesystem::exists(path))
 		return;
 	boost::filesystem::remove(path);
 }
 
-void DirectoryishFso::delete_existing(const std::wstring *base_path){
+void DirectoryishFso::delete_existing_internal(const std::wstring *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
 	if (!boost::filesystem::exists(path))
 		return;
-	boost::filesystem::remove_all(path);
+	boost::filesystem::remove(path);
 }
 
 bool FileHardlinkFso::restore(const path_t *base_path){

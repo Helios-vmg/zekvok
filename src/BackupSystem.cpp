@@ -688,9 +688,11 @@ void BackupSystem::restore_backup(){
 	std::cout << "Initializing structures...\n";
 	auto latest_version = this->compute_latest_version();
 	std::vector<FileSystemObject *> restore_later;
-	for (auto &old_object : this->old_objects)
+	for (auto &old_object : this->old_objects){
+		old_object->delete_existing();
 		for (auto &fso : old_object->get_iterator())
 			latest_version->restore(fso, restore_later);
+	}
 	std::sort(
 		restore_later.begin(),
 		restore_later.end(),

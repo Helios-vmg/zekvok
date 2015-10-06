@@ -52,6 +52,7 @@ protected:
 		return this->path_override_base(base_path, base_path ? BasePathType::Override : BasePathType::Unmapped);
 	}
 	BackupSystem *get_backup_system();
+	virtual void delete_existing_internal(const std::wstring *base_path = nullptr) = 0;
 
 public:
 	FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);
@@ -81,7 +82,8 @@ public:
 
 	static FileSystemObject *create(const path_t &path, const path_t &unmapped_path, CreationSettings &);
 
-	virtual iterate_co_t::pull_type get_iterator() = 0;
+	virtual iterate_co_t::pull_type get_iterator();
+	virtual iterate_co_t::pull_type get_reverse_iterator();
 	virtual bool is_directoryish() const{
 		return false;
 	}
@@ -106,7 +108,8 @@ public:
 	virtual bool compute_hash() = 0;
 	std::shared_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
 	bool report_error(const std::exception &, const std::string &context);
-	virtual void iterate(iterate_co_t::push_type &sink) = 0;
 	virtual void restore(std::istream &, const path_t *base_path = nullptr);
 	virtual bool restore(const path_t *base_path = nullptr);
-	virtual void delete_existing(const std::wstring *base_path = nullptr) = 0;
+	void delete_existing(const std::wstring *base_path = nullptr);
+	virtual void iterate(FileSystemObject::iterate_co_t::push_type &sink) = 0;
+	virtual void reverse_iterate(FileSystemObject::iterate_co_t::push_type &sink) = 0;

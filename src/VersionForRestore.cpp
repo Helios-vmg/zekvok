@@ -28,7 +28,6 @@ void VersionForRestore::fill_dependencies(std::map<version_number_t, std::shared
 }
 
 void VersionForRestore::restore(FileSystemObject *fso, std::vector<FileSystemObject *> &restore_later){
-	fso->delete_existing();
 	if (!fso->restore() && fso->get_latest_version() >= 0)
 		restore_later.push_back(fso);
 }
