@@ -91,7 +91,7 @@ FileReparsePointFso::FileReparsePointFso(const path_t &path, const path_t &unmap
 
 FileHardlinkFso::FileHardlinkFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings): RegularFileFso(path, unmapped_path, settings){
 	this->default_values();
-	this->peers = system_ops::list_all_hardlinks(path.wstring());
+	this->set_peers(path.wstring());
 	this->set_backup_mode();
 }
 
@@ -139,7 +139,8 @@ RegularFileFso::RegularFileFso(FileSystemObject *parent, const std::wstring &nam
 
 FileHardlinkFso::FileHardlinkFso(FileSystemObject *parent, const std::wstring &name, const path_t *path):
 		RegularFileFso(parent, name, path){
-	this->peers = system_ops::list_all_hardlinks((path ? *path : this->get_mapped_path()).wstring());
+	this->default_values();
+	this->set_peers((path ? *path : this->get_mapped_path()).wstring());
 	this->set_backup_mode();
 }
 
@@ -157,6 +158,13 @@ FileReparsePointFso::FileReparsePointFso(FileSystemObject *parent, const std::ws
 //------------------------------------------------------------------------------
 // get_iterator()
 //------------------------------------------------------------------------------
+
+void FileHardlinkFso::set_peers(const std::wstring &path){
+	auto result = system_ops::list_all_hardlinks(path);
+	if (!result.success)
+		throw Win32Exception(result.error);
+	this->peers = result.result;
+}
 
 void DirectoryFso::iterate(FileSystemObject::iterate_co_t::push_type &sink){
 	sink(this);
@@ -381,7 +389,10 @@ FileSystemObject *FileSystemObject::create(const path_t &path, const path_t &unm
 
 std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
 	path_t path = path_from_string(this->get_mapped_path().wstring());
-	size = system_ops::get_file_size(path.wstring());
+	auto result = system_ops::get_file_size(path.wstring());
+	if (!result.success)
+		throw Win32Exception(result.error);
+	size = result.result;
 	auto ret = make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
 	if (!*ret)
 		throw FileNotFoundException(path);
@@ -389,20 +400,17 @@ std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uin
 }
 
 void FilishFso::set_file_system_guid(const path_t &path, bool retry){
-	this->file_system_guid.valid = false;
-	try{
-		this->file_system_guid.data = system_ops::get_file_guid(path.wstring());
-		this->file_system_guid.valid = true;
-	}catch (UnableToObtainGuidException &e){
+	auto result = system_ops::get_file_guid(path.wstring());
+	this->file_system_guid.valid = result.success;
+	if (result.success)
+		this->file_system_guid.data = result.result;
+	else{
 		if (retry){
 			auto bss = this->get_backup_system();
 			if (bss)
 				bss->enqueue_file_for_guid_get(this);
-		}else if (!this->report_error(e, "getting unique ID for \"" + path.string() + "\""))
-			throw;
-	}catch (NonFatalException &e){
-		if (!this->report_error(e, "getting unique ID for \"" + path.string() + "\""))
-			throw;
+		}else if (!this->report_win32_error(result.error, "getting unique ID for \"" + path.string() + "\""))
+			throw Win32Exception(result.error);
 	}
 }
 
@@ -433,6 +441,14 @@ bool FileSystemObject::report_error(const std::exception &ex, const std::string 
 	return !r || r->report_error(ex, context.c_str());
 }
 
+bool FileSystemObject::report_win32_error(std::uint32_t error, const std::string &context){
+	std::stringstream stream;
+	stream << "Win32 Error: " << error;
+	this->exceptions.push_back(stream.str());
+	auto r = this->get_reporter();
+	return !r || r->report_win32_error(error, context.c_str());
+}
+
 FileSystemObject::ErrorReporter *FileSystemObject::get_reporter(){
 	return this->get_root()->reporter.get();
 }
@@ -460,51 +476,41 @@ std::vector<std::shared_ptr<FileSystemObject>> DirectoryishFso::construct_childr
 }
 
 void DirectorySymlinkFso::set_target(const path_t &path){
-	std::wstring s;
-	try{
-		s = system_ops::get_reparse_point_target(path.wstring());
-	}catch (NonFatalException &e){
-		if (!this->report_error(e, "getting link target for \"" + path.string() + "\""))
-			throw;
+	auto result = system_ops::get_reparse_point_target(path.wstring());
+	if (!result.success){
+		if (!this->report_win32_error(result.error, "getting link target for \"" + path.string() + "\""))
+			throw Win32Exception(result.error);
+		return;
 	}
+	auto s = result.result;
 	this->link_target.reset(new decltype(s)(s));
 }
 
 void FileSymlinkFso::set_members(const path_t &path){
-	std::wstring s;
-	try{
-		s = system_ops::get_reparse_point_target(path.wstring());
-	}catch (NonFatalException &e){
-		if (!this->report_error(e, "getting link target for \"" + path.string() + "\""))
-			throw;
+	auto result = system_ops::get_reparse_point_target(path.wstring());
+	if (!result.success){
+		if (!this->report_win32_error(result.error, "getting link target for \"" + path.string() + "\""))
+			throw Win32Exception(result.error);
+		return;
 	}
+	auto s = result.result;
 	this->link_target.reset(new decltype(s)(s));
 }
 
 void FileSystemObject::set_file_attributes(const path_t &path){
-	try{
-		this->archive_flag = system_ops::get_archive_bit(path.wstring());
-	}catch (NonFatalException &e){
-		if (!this->report_error(e, "getting file system object attributes for \"" + path.string() + "\""))
-			throw;
-		this->archive_flag = true;
-	}
-	try{
-		this->modification_time.set_to_file_modification_time(path.wstring());
-	}catch (NonFatalException &e){
-		if (!this->report_error(e, "getting file system object attributes for \"" + path.string() + "\""))
-			throw;
-	}
+	this->archive_flag = system_ops::get_archive_bit(path.wstring());
+	auto error = this->modification_time.set_to_file_modification_time(path.wstring());
+	if (!this->report_win32_error(error, "getting file system object attributes for \"" + path.string() + "\""))
+		throw Win32Exception(error);
 }
 
 void FilishFso::set_members(const path_t &path){
 	this->size = 0;
-	try{
-		this->size = system_ops::get_file_size(path.wstring());
-	}catch (NonFatalException &e){
-		if (!this->report_error(e, "getting file size for \"" + path.string() + "\""))
-			throw;
-	}
+	auto result = system_ops::get_file_size(path.wstring());
+	if (result.success)
+		this->size = result.result;
+	else if (!this->report_win32_error(result.error, "getting file size for \"" + path.string() + "\""))
+		throw Win32Exception(result.error);
 	this->set_file_system_guid(path);
 }
 

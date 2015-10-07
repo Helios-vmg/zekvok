@@ -29,7 +29,7 @@ bool OpaqueTimestamp::operator!=(const OpaqueTimestamp &b) const{
 	return this->timestamp != b.timestamp;
 }
 
-void OpaqueTimestamp::set_to_file_modification_time(const std::wstring &_path){
+std::uint32_t OpaqueTimestamp::set_to_file_modification_time(const std::wstring &_path){
 	auto path = path_from_string(_path);
 	static const DWORD attributes[] = {
 		FILE_ATTRIBUTE_NORMAL,
@@ -44,9 +44,9 @@ void OpaqueTimestamp::set_to_file_modification_time(const std::wstring &_path){
 		}
 		FILETIME mod;
 		if (!GetFileTime(handle.handle, nullptr, nullptr, &mod))
-			throw Win32Exception(GetLastError());
+			return GetLastError();
 		this->set_to_FILETIME(mod);
-		return;
+		return ERROR_SUCCESS;
 	}
-	throw Win32Exception(error);
+	return error;
 }

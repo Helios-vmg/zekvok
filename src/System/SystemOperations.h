@@ -13,6 +13,22 @@ std::wstring path_from_string(const std::wstring &path);
 
 namespace system_ops{
 
+template <typename ResultT, typename ErrorT>
+class complex_result{
+public:
+	bool success;
+	ErrorT error;
+	ResultT result;
+	complex_result(const ResultT &result):
+		success(true),
+		error(),
+		result(result){}
+	complex_result(const ErrorT &error):
+		success(false),
+		error(error),
+		result(){}
+};
+
 enum class DriveType{
 	// Summary:
     //     The type of drive is unknown.
@@ -58,15 +74,15 @@ enumerate_volumes_co_t::pull_type enumerate_volumes();
 typedef boost::coroutines::asymmetric_coroutine<const std::wstring &> enumerate_mounted_paths_co_t;
 enumerate_mounted_paths_co_t::pull_type enumerate_mounted_paths(std::wstring volume_path);
 FileSystemObjectType get_file_system_object_type(const std::wstring &);
-std::uint64_t get_file_size(const std::wstring &path);
-guid_t get_file_guid(const std::wstring &path);
-std::vector<std::wstring> list_all_hardlinks(const std::wstring &path);
-std::wstring get_reparse_point_target(const std::wstring &path);
+complex_result<std::uint64_t, DWORD> get_file_size(const std::wstring &path);
+complex_result<guid_t, DWORD> get_file_guid(const std::wstring &path);
+complex_result<std::vector<std::wstring>, DWORD> list_all_hardlinks(const std::wstring &path);
+complex_result<std::wstring, DWORD> get_reparse_point_target(const std::wstring &path);
 bool get_archive_bit(const std::wstring &path);
-void create_symlink(const std::wstring &link_location, const std::wstring &target_location);
-void create_directory_symlink(const std::wstring &link_location, const std::wstring &target_location);
-void create_file_reparse_point(const std::wstring &link_location, const std::wstring &target_location);
-void create_junction(const std::wstring &link_location, const std::wstring &target_location);
-void create_hardlink(const std::wstring &link_location, const std::wstring &existing_file);
+DWORD create_symlink(const std::wstring &link_location, const std::wstring &target_location);
+DWORD create_directory_symlink(const std::wstring &link_location, const std::wstring &target_location);
+DWORD create_file_reparse_point(const std::wstring &link_location, const std::wstring &target_location);
+DWORD create_junction(const std::wstring &link_location, const std::wstring &target_location);
+DWORD create_hardlink(const std::wstring &link_location, const std::wstring &existing_file);
 
 }

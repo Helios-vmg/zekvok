@@ -12,6 +12,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "serialization/fso.generated.h"
 #include "System/Transactions.h"
 #include "HashFilter.h"
+#include "Exception.h"
 
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
 
@@ -57,13 +58,13 @@ public:
 	virtual ~ArchiveWriter_helper(){}
 
 	virtual std::shared_ptr<first_co_t::pull_type> first(){
-		throw std::exception("Incorrect use");
+		throw IncorrectImplementationException();
 	}
 	virtual std::shared_ptr<second_co_t::pull_type> second(){
-		throw std::exception("Incorrect use");
+		throw IncorrectImplementationException();
 	}
 	virtual std::shared_ptr<third_co_t::pull_type> third(){
-		throw std::exception("Incorrect use");
+		throw IncorrectImplementationException();
 	}
 };
 

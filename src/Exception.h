@@ -5,11 +5,13 @@ All rights reserved.
 Distributed under a permissive license. See COPYING.txt for details.
 */
 
+#pragma once
+
 #include "SimpleTypes.h"
 
 class NonFatalException : public std::exception{
 public:
-	virtual ~NonFatalException(){}
+	virtual ~NonFatalException() = 0 {}
 };
 
 class StdStringException : public NonFatalException{
@@ -64,9 +66,15 @@ public:
 
 class FatalException : public std::exception{
 public:
+	virtual ~FatalException() = 0 {}
 };
 
-class InvalidSwitchVariableException : public FatalException{
+class IncorrectProgramException : public FatalException{
+public:
+	virtual ~IncorrectProgramException() = 0 {}
+};
+
+class InvalidSwitchVariableException : public IncorrectProgramException{
 public:
 	const char *what() const override{
 		return "switch variable outside permissible range";
@@ -76,11 +84,11 @@ public:
 class NotImplementedException : public FatalException{
 public:
 	const char *what() const override{
-		return "This feature not yet implemented";
+		return "This feature is not yet implemented";
 	}
 };
 
-class IncorrectImplementationException : public FatalException{
+class IncorrectImplementationException : public IncorrectProgramException{
 public:
 	const char *what() const override{
 		return "The implementation is incorrect";

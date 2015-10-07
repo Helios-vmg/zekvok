@@ -8,7 +8,7 @@ public:
 	void operator=(std::uint64_t);
 	bool operator==(const OpaqueTimestamp &) const;
 	bool operator!=(const OpaqueTimestamp &) const;
-	void set_to_file_modification_time(const std::wstring &path);
+	std::uint32_t set_to_file_modification_time(const std::wstring &path);
 	template <typename FILETIME>
 	void set_to_FILETIME(const FILETIME &ft){
 		this->timestamp = ft.dwHighDateTime;

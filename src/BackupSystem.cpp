@@ -28,6 +28,13 @@ public:
 		std::cerr << ": " << e.what() << std::endl;
 		return true;
 	}
+	bool report_win32_error(std::uint32_t error, const char *context) override{
+		std::cerr << "Win32 error was triggered ";
+		if (context)
+			std::cerr << "while " << context;
+		std::cerr << ": " << error << std::endl;
+		return true;
+	}
 };
 
 namespace fs = boost::filesystem;

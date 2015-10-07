@@ -158,12 +158,12 @@ typedef struct _REPARSE_DATA_BUFFER {
 	} DUMMYUNIONNAME;
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
-void internal_get_reparse_point_target(const wchar_t *path, unsigned long *unrecognized, std::wstring *target_path, bool *is_symlink){
+DWORD internal_get_reparse_point_target(const wchar_t *path, unsigned long *unrecognized, std::wstring *target_path, bool *is_symlink){
 	const auto share_mode = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
 	const auto flags = FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS;
 	AutoHandle h = CreateFileW(path, 0, share_mode, nullptr, OPEN_EXISTING, flags, nullptr);
 	if (h.handle == INVALID_HANDLE_VALUE)
-		throw Win32Exception(GetLastError());
+		return GetLastError();
 
 	USHORT size = 1 << 14;
 	std::vector<char> tempbuf(size);
@@ -206,7 +206,7 @@ void internal_get_reparse_point_target(const wchar_t *path, unsigned long *unrec
 				default:
 					if (unrecognized)
 						*unrecognized = buf->ReparseTag;
-					throw Win32Exception(ERROR_UNIDENTIFIED_ERROR);
+					return ERROR_UNIDENTIFIED_ERROR;
 			}
 		}else{
 			if (error == ERROR_MORE_DATA){
@@ -214,10 +214,11 @@ void internal_get_reparse_point_target(const wchar_t *path, unsigned long *unrec
 				tempbuf.resize(size);
 				continue;
 			}
-			throw Win32Exception(error);
+			return error;
 		}
 		break;
 	}
+	return ERROR_UNIDENTIFIED_ERROR;
 }
 
 FileSystemObjectType get_file_system_object_type(const std::wstring &_path){
@@ -228,44 +229,38 @@ FileSystemObjectType get_file_system_object_type(const std::wstring &_path){
 	if (!is_directory(path.c_str())){
 		if (!is_rp)
 			return hardlink_count(path.c_str()) < 2 ? FileSystemObjectType::RegularFile : FileSystemObjectType::FileHardlink;
-		try{
-			internal_get_reparse_point_target(path.c_str(), nullptr, nullptr, &is_symlink);
-		}catch (Win32Exception &){
-		}
+		internal_get_reparse_point_target(path.c_str(), nullptr, nullptr, &is_symlink);
 		return is_symlink ? FileSystemObjectType::FileSymlink : FileSystemObjectType::FileReparsePoint;
 	}
 
 	if (!is_rp)
 		return FileSystemObjectType::Directory;
 	std::wstring target;
-	try{
-		internal_get_reparse_point_target(path.c_str(), nullptr, &target, &is_symlink);
-	}catch (Win32Exception &){
-	}
+	internal_get_reparse_point_target(path.c_str(), nullptr, &target, &is_symlink);
 	return is_symlink ? FileSystemObjectType::DirectorySymlink : FileSystemObjectType::Junction;
 }
 
-std::uint64_t get_file_size(const std::wstring &_path){
+complex_result<std::uint64_t, DWORD> get_file_size(const std::wstring &_path){
 	auto path = path_from_string(_path);
 	WIN32_FILE_ATTRIBUTE_DATA fad;
 	if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fad))
-		throw Win32Exception(GetLastError());
+		return GetLastError();
 	return (((std::uint64_t)fad.nFileSizeHigh) << 32) | ((std::uint64_t)fad.nFileSizeLow);
 }
 
-guid_t get_file_guid(const std::wstring &_path){
+complex_result<guid_t, DWORD> get_file_guid(const std::wstring &_path){
 	auto path = path_from_string(_path);
 #define CREATE_FILE(x) CreateFileW(path.c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, (x), nullptr)
 	AutoHandle h = CREATE_FILE(0);
 	if (h.handle == INVALID_HANDLE_VALUE)
 		h.handle = CREATE_FILE(FILE_FLAG_OPEN_REPARSE_POINT);
 	if (h.handle == INVALID_HANDLE_VALUE)
-		throw FileNotFoundException(_path);
+		return ERROR_FILE_NOT_FOUND;
 
 	guid_t ret;
 	FILE_OBJECTID_BUFFER buf;
 	DWORD cbOut;
-	bool errored = true;
+	DWORD error = ERROR_UNIDENTIFIED_ERROR;
 	static const DWORD rounds[] = {
 		FSCTL_CREATE_OR_GET_OBJECT_ID,
 		FSCTL_GET_OBJECT_ID,
@@ -273,10 +268,10 @@ guid_t get_file_guid(const std::wstring &_path){
 	for (auto ctl : rounds){
 		if (DeviceIoControl(h.handle, ctl, nullptr, 0, &buf, sizeof(buf), &cbOut, nullptr)){
 			CopyMemory(ret.data(), &buf.ObjectId, sizeof(GUID));
-			errored = false;
+			error = ERROR_SUCCESS;
 			break;
 		}else{
-			auto error = GetLastError();
+			error = GetLastError();
 			if (error == ERROR_WRITE_PROTECT)
 				continue;
 #ifdef _DEBUG
@@ -286,27 +281,20 @@ guid_t get_file_guid(const std::wstring &_path){
 			break;
 		}
 	}
-	if (errored)
-		throw UnableToObtainGuidException(_path);
-	return ret;
+	return error;
 }
 
-std::wstring get_reparse_point_target(const std::wstring &_path){
+complex_result<std::wstring, DWORD> get_reparse_point_target(const std::wstring &_path){
 	unsigned long unrecognized = 0;
 	auto path = path_from_string(_path);
 	std::wstring ret;
-	try{
-		internal_get_reparse_point_target(path.c_str(), &unrecognized, &ret, nullptr);
-	}catch (Win32Exception &e){
-		if (e.get_error() == ERROR_FILE_NOT_FOUND)
-			throw FileNotFoundException(_path);
-		else
-			throw;
-	}
+	auto error = internal_get_reparse_point_target(path.c_str(), &unrecognized, &ret, nullptr);
+	if (error)
+		return error;
 	return ret;
 }
 
-std::vector<std::wstring> list_all_hardlinks(const std::wstring &_path){
+complex_result<std::vector<std::wstring>, DWORD> list_all_hardlinks(const std::wstring &_path){
 	auto path = path_from_string(_path);
 	HANDLE handle;
 	const DWORD default_size = 1 << 10;
@@ -322,7 +310,7 @@ std::vector<std::wstring> list_all_hardlinks(const std::wstring &_path){
 					buffer.resize(size);
 					continue;
 				}
-				throw Win32Exception(error);
+				return error;
 			}
 			break;
 		}
@@ -344,7 +332,7 @@ std::vector<std::wstring> list_all_hardlinks(const std::wstring &_path){
 				}
 				if (error == ERROR_HANDLE_EOF)
 					break;
-				throw Win32Exception(error);
+				return error;
 			}
 		}
 		if (!Continue)
@@ -362,23 +350,23 @@ bool get_archive_bit(const std::wstring &_path){
 	return (GetFileAttributesW(path.c_str()) & FILE_ATTRIBUTE_ARCHIVE) == FILE_ATTRIBUTE_ARCHIVE;
 }
 
-void create_symlink(const wchar_t *_link_location, const wchar_t *_target_location, bool directory){
+DWORD create_symlink(const wchar_t *_link_location, const wchar_t *_target_location, bool directory){
 	auto link_location = path_from_string(_link_location);
 	auto target_location = path_from_string(_target_location);
-	if (CreateSymbolicLinkW(link_location.c_str(), target_location.c_str(), directory ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0))
-		return;
-	throw Win32Exception(GetLastError());
+	if (!CreateSymbolicLinkW(link_location.c_str(), target_location.c_str(), directory ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0))
+		return GetLastError();
+	return ERROR_SUCCESS;
 }
 
-void create_symlink(const std::wstring &link_location, const std::wstring &target_location){
-	create_symlink(link_location.c_str(), target_location.c_str(), false);
+DWORD create_symlink(const std::wstring &link_location, const std::wstring &target_location){
+	return create_symlink(link_location.c_str(), target_location.c_str(), false);
 }
 
-void create_directory_symlink(const std::wstring &link_location, const std::wstring &target_location){
-	create_symlink(link_location.c_str(), target_location.c_str(), true);
+DWORD create_directory_symlink(const std::wstring &link_location, const std::wstring &target_location){
+	return create_symlink(link_location.c_str(), target_location.c_str(), true);
 }
 
-void create_file_reparse_point(const std::wstring &link_location, const std::wstring &target_location){
+DWORD create_file_reparse_point(const std::wstring &link_location, const std::wstring &target_location){
 	throw NotImplementedException();
 }
 
@@ -393,11 +381,11 @@ typedef struct {
 	WCHAR ReparseTarget[1];
 } REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
 
-void create_junction(const std::wstring &link_location, const std::wstring &target_location){
+DWORD create_junction(const std::wstring &link_location, const std::wstring &target_location){
 	auto path = path_from_string(link_location.c_str());
 	AutoHandle h = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_DIRECTORY | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 	if (h.handle == INVALID_HANDLE_VALUE)
-		throw Win32Exception(GetLastError());
+		return GetLastError();
 
 	std::wstring target = L"\\??\\";
 	target.append(target_location);
@@ -415,17 +403,17 @@ void create_junction(const std::wstring &link_location, const std::wstring &targ
 	rdb->ReparseTargetMaximumLength = rdb->ReparseTargetLength + sizeof(wchar_t);
 	memcpy(rdb->ReparseTarget, &target[0], byte_length);
 	auto status = DeviceIoControl(h.handle, FSCTL_SET_REPARSE_POINT, &buffer[0], (DWORD)buffer.size(), nullptr, 0, nullptr, nullptr);
-	DWORD error = ERROR_SUCCESS;
 	if (!status)
-		throw Win32Exception(GetLastError());
+		return GetLastError();
+	return ERROR_SUCCESS;
 }
 
-void create_hardlink(const std::wstring &_link_location, const std::wstring &_existing_file){
+DWORD create_hardlink(const std::wstring &_link_location, const std::wstring &_existing_file){
 	auto link_location = path_from_string(_link_location);
 	auto existing_file = path_from_string(_existing_file);
-	if (CreateHardLinkW(link_location.c_str(), existing_file.c_str(), nullptr))
-		return;
-	throw Win32Exception(GetLastError());
+	if (!CreateHardLinkW(link_location.c_str(), existing_file.c_str(), nullptr))
+		return GetLastError();
+	return ERROR_SUCCESS;
 }
 
 }

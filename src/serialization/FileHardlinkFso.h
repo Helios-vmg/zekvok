@@ -1,6 +1,7 @@
 private:
 	bool treat_as_file;
 	void default_values();
+	void set_peers(const std::wstring &);
 
 public:
 	FileHardlinkFso(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);
