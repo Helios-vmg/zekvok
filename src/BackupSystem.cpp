@@ -246,9 +246,9 @@ std::vector<path_t> BackupSystem::get_current_source_locations(){
 		return this->sources;
 	std::vector<path_t> ret;
 	for (auto &fso : this->old_objects){
-		if (!fso->get_is_main() || !fso->get_mapped_base_path())
+		if (!fso->get_is_main())
 			continue;
-		ret.push_back(path_t(*fso->get_mapped_base_path()));
+		ret.push_back(fso->get_mapped_path());
 	}
 	return ret;
 }
@@ -549,7 +549,7 @@ void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	this->set_base_objects();
 	for (auto &base_object : this->base_objects){
 		for (auto &fso : base_object->get_iterator()){
-			auto it = this->old_objects_map.find(simplify_path(*fso->get_mapped_base_path()));
+			auto it = this->old_objects_map.find(simplify_path(fso->get_mapped_path().wstring()));
 			if (it == this->old_objects_map.end())
 				continue;
 			fso->set_stream_id(it->second->get_stream_id());
@@ -563,7 +563,7 @@ void BackupSystem::set_old_objects_map(){
 	this->old_objects_map.clear();
 	for (auto &old_object : this->old_objects)
 		for (auto &fso : old_object->get_iterator())
-			this->old_objects_map[simplify_path(*fso->get_mapped_base_path())] = fso;
+			this->old_objects_map[simplify_path(fso->get_mapped_path().wstring())] = fso;
 }
 
 std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject &fso, known_guids_t &known_guids){
@@ -621,7 +621,7 @@ bool compare_hashes(FilishFso &new_file, FilishFso &old_file){
 
 bool BackupSystem::file_has_changed(version_number_t &dst, FilishFso &new_file){
 	dst = invalid_version_number;
-	path_t path = *new_file.get_mapped_base_path();
+	auto path = new_file.get_mapped_path();
 	FileSystemObject *old_fso = nullptr;
 	for (auto &fso : this->old_objects){
 		auto found = fso->find(path);
