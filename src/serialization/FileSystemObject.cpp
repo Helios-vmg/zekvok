@@ -500,7 +500,7 @@ void FileSymlinkFso::set_members(const path_t &path){
 void FileSystemObject::set_file_attributes(const path_t &path){
 	this->archive_flag = system_ops::get_archive_bit(path.wstring());
 	auto error = this->modification_time.set_to_file_modification_time(path.wstring());
-	if (!this->report_win32_error(error, "getting file system object attributes for \"" + path.string() + "\""))
+	if (error && !this->report_win32_error(error, "getting file system object attributes for \"" + path.string() + "\""))
 		throw Win32Exception(error);
 }
 

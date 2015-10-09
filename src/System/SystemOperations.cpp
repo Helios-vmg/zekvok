@@ -281,7 +281,9 @@ complex_result<guid_t, DWORD> get_file_guid(const std::wstring &_path){
 			break;
 		}
 	}
-	return error;
+	if (error)
+		return error;
+	return ret;
 }
 
 complex_result<std::wstring, DWORD> get_reparse_point_target(const std::wstring &_path){
