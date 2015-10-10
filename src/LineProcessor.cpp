@@ -10,6 +10,32 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "BackupSystem.h"
 #include "Exception.h"
 
+std::string format_size(double size){
+	static const char *units[] = {
+		" B",
+		" KiB",
+		" MiB",
+		" GiB",
+		" TiB",
+		" PiB",
+		" EiB",
+		" ZiB",
+		" YiB"
+	};
+	int unit = 0;
+	bool exact = true;
+	while (size >= 1024.0){
+		exact &= fmod(size, 1024.0) == 0;
+		size /= 1024.0;
+		unit++;
+	}
+	std::stringstream stream;
+	if (!exact)
+		stream << std::fixed << std::setprecision(1);
+	stream << size << units[unit];
+	return stream.str();
+}
+
 LineProcessor::LineProcessor(int argc, char **argv):
 		selected_version(-1){
 
@@ -145,6 +171,7 @@ void LineProcessor::process_show(const std::wstring *begin, const std::wstring *
 		PROCESS_SHOW_ARRAY_ELEMENT(versions),
 		PROCESS_SHOW_ARRAY_ELEMENT(version_count),
 		PROCESS_SHOW_ARRAY_ELEMENT(paths),
+		PROCESS_SHOW_ARRAY_ELEMENT(version_summary),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -289,6 +316,23 @@ void LineProcessor::process_show_version_count(const std::wstring *begin, const 
 	}
 }
 
+std::ostream &operator<<(std::ostream &stream, OpaqueTimestamp &ts){
+	ts.print(stream);
+	return stream;
+}
+
+void LineProcessor::process_show_version_summary(const std::wstring *begin, const std::wstring *end){
+	this->ensure_existing_version();
+	std::cout << "Version number: " << this->selected_version << std::endl;
+	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version));
+	auto manifest = archive.read_manifest();
+	std::cout <<
+		"Date created: " << manifest->creation_time << "\n"
+		"Size used by file data:    " << std::setw(15) << std::setfill(' ') << format_size((double)archive.get_file_data_size()) << "\n"
+		"Size used by base objects: " << std::setw(15) << std::setfill(' ') << format_size((double)archive.get_base_objects_size()) << "\n"
+		"Size used by manifest:     " << std::setw(15) << std::setfill(' ') << format_size((double)archive.get_manifest_size()) << "\n";
+}
+
 std::wostream &operator<<(std::wostream &stream, FileSystemObjectType type){
 	switch (type){
 #define WOUTPUT_FileSystemObjectType_CASE(x) case FileSystemObjectType::x: return stream << L###x
@@ -301,32 +345,6 @@ std::wostream &operator<<(std::wostream &stream, FileSystemObjectType type){
 		WOUTPUT_FileSystemObjectType_CASE(FileHardlink);
 	}
 	return stream;
-}
-
-std::string format_size(double size){
-	static const char *units[] = {
-		" B",
-		" KiB",
-		" MiB",
-		" GiB",
-		" TiB",
-		" PiB",
-		" EiB",
-		" ZiB",
-		" YiB"
-	};
-	int unit = 0;
-	bool exact = true;
-	while (size >= 1024.0){
-		exact &= fmod(size, 1024.0) == 0;
-		size /= 1024.0;
-		unit++;
-	}
-	std::stringstream stream;
-	if (!exact)
-		stream << std::fixed << std::setprecision(1);
-	stream << size << units[unit];
-	return stream.str();
 }
 
 void LineProcessor::process_show_paths(const std::wstring *begin, const std::wstring *end){

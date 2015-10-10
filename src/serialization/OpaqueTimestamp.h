@@ -15,3 +15,4 @@ public:
 		this->timestamp <<= 32;
 		this->timestamp |= ft.dwLowDateTime;
 	}
+	void print(std::ostream &) const;

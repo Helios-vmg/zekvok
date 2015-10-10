@@ -39,6 +39,15 @@ public:
 		return std::move(this->read_base_objects());
 	}
 	read_everything_co_t::pull_type read_everything();
+	std::uint64_t get_file_data_size() const{
+		return this->base_objects_offset;
+	}
+	std::uint64_t get_base_objects_size() const{
+		return this->manifest_offset - this->base_objects_offset;
+	}
+	std::uint64_t get_manifest_size() const{
+		return this->manifest_size;
+	}
 };
 
 class ArchiveWriter_helper{

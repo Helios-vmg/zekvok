@@ -50,3 +50,33 @@ std::uint32_t OpaqueTimestamp::set_to_file_modification_time(const std::wstring 
 	}
 	return error;
 }
+
+void OpaqueTimestamp::print(std::ostream &stream) const{
+	FILETIME utc, local;
+	utc.dwHighDateTime = this->timestamp >> 32;
+	utc.dwLowDateTime = this->timestamp & 0xFFFFFFFF;
+	while (1){
+		if (!FileTimeToLocalFileTime(&utc, &local))
+			break;
+		SYSTEMTIME st;
+		zero_struct(st);
+		if (!FileTimeToSystemTime(&local, &st))
+			break;
+		stream
+			<< std::setw(4) << std::setfill('0') << st.wYear
+			<< '-'
+			<< std::setw(2) << std::setfill('0') << st.wMonth
+			<< '-'
+			<< std::setw(2) << std::setfill('0') << st.wDay
+			<< ' '
+			<< std::setw(2) << std::setfill('0') << st.wHour
+			<< ':'
+			<< std::setw(2) << std::setfill('0') << st.wMinute
+			<< ':'
+			<< std::setw(2) << std::setfill('0') << st.wSecond
+			<< '.'
+			<< std::setw(3) << std::setfill('0') << st.wMilliseconds;
+		return;
+	}
+	stream << "<???>";
+}
