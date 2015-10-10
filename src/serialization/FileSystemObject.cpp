@@ -552,7 +552,7 @@ bool FilishFso::compute_hash(){
 	boost::filesystem::ifstream file(this->get_mapped_path(), std::ios::binary);
 	if (!file)
 		return false;
-	boost::iostreams::stream<NullOutputStream> null_stream;
+	boost::iostreams::stream<NullOutputStream> null_stream(0);
 	{
 		boost::iostreams::stream<HashOutputFilter> hash_filter(null_stream, new CryptoPP::SHA256);
 		hash_filter << file.rdbuf();
