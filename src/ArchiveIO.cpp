@@ -13,6 +13,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "BoundedStreamFilter.h"
 #include "HashFilter.h"
 #include "serialization/ImplementedDS.h"
+#include "NullStream.h"
 
 ArchiveReader::ArchiveReader(const path_t &path):
 		manifest_offset(-1),
@@ -97,6 +98,9 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
 		boost::iostreams::stream<BoundedInputFilter> bounded(lzma, this->stream_sizes[i]);
 		sink(std::make_pair(this->stream_ids[i], &bounded));
+		//Discard left over bytes.
+		boost::iostreams::stream<NullOutputStream> null(0);
+		null << bounded.rdbuf();
 	}
 }
 

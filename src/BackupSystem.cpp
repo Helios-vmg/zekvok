@@ -663,6 +663,7 @@ bool BackupSystem::file_has_changed(version_number_t &dst, FilishFso &new_file){
 			new_file.set_hash(hash.digest);
 		auto v = old_file->get_latest_version();
 		new_file.set_latest_version(v);
+		new_file.set_stream_id(old_file->get_stream_id());
 		dst = v;
 	}
 	return ret;
@@ -730,7 +731,7 @@ std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(version_
 		for (auto &object : version->get_base_objects())
 			this->old_objects.push_back(object);
 		for (auto &dep : version->get_manifest()->version_dependencies)
-			versions[latest_version_number] = make_shared(new VersionForRestore(dep, *this));
+			versions[dep] = make_shared(new VersionForRestore(dep, *this));
 	}
 	latest_version = versions[latest_version_number];
 	latest_version->fill_dependencies(versions);
@@ -742,9 +743,9 @@ void BackupSystem::perform_restore(
 		const std::vector<FileSystemObject *> &restore_later){
 	std::vector<version_number_t> enumerable;
 	enumerable.reserve(latest_version->get_manifest()->version_dependencies.size() + 1);
-	enumerable.push_back(latest_version->get_version_number());
 	for (auto &version_number : latest_version->get_manifest()->version_dependencies)
 		enumerable.push_back(version_number);
+	enumerable.push_back(latest_version->get_version_number());
 	for (auto &version_number : enumerable){
 		ArchiveReader archive(this->get_version_path(version_number));
 		for (auto &pair : archive.read_everything()){
