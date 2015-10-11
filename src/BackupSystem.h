@@ -71,7 +71,7 @@ class BackupSystem{
 	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
 	std::shared_ptr<VersionForRestore> compute_latest_version(version_number_t);
-	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<FileSystemObject *> &);
+	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<std::pair<version_number_t, FileSystemObject *>> &);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();

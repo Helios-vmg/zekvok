@@ -694,32 +694,6 @@ void BackupSystem::enqueue_file_for_guid_get(FilishFso *fso){
 	this->recalculate_file_guids_queue.push_back(fso);
 }
 
-void BackupSystem::restore_backup(version_number_t version_number){
-	if (!this->versions.size())
-		return;
-	if (version_number < 0)
-		version_number = this->versions.back() + version_number + 1;
-	if (!this->version_exists(version_number))
-		throw std::exception("No such version");
-
-	std::cout << "Initializing structures...\n";
-	auto latest_version = this->compute_latest_version(version_number);
-	std::vector<FileSystemObject *> restore_later;
-	for (auto &old_object : this->old_objects){
-		old_object->delete_existing();
-		for (auto &fso : old_object->get_iterator())
-			latest_version->restore(fso, restore_later);
-	}
-	std::sort(
-		restore_later.begin(),
-		restore_later.end(),
-		[](FileSystemObject *a, FileSystemObject *b){
-			return a->get_stream_id() < b->get_stream_id();
-		}
-	);
-	this->perform_restore(latest_version, restore_later);
-}
-
 std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(version_number_t version_number){
 	std::shared_ptr<VersionForRestore> latest_version;
 	std::map<version_number_t, std::shared_ptr<VersionForRestore>> versions;
@@ -738,41 +712,75 @@ std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(version_
 	return latest_version;
 }
 
+void BackupSystem::restore_backup(version_number_t version_number){
+	if (!this->versions.size())
+		return;
+	if (version_number < 0)
+		version_number = this->versions.back() + version_number + 1;
+	if (!this->version_exists(version_number))
+		throw std::exception("No such version");
+
+	std::cout << "Initializing structures...\n";
+	auto latest_version = this->compute_latest_version(version_number);
+	std::vector<FileSystemObject *> restore_later;
+	for (auto &old_object : this->old_objects){
+		old_object->delete_existing();
+		for (auto &fso : old_object->get_iterator())
+			latest_version->restore(fso, restore_later);
+	}
+	std::vector<std::pair<version_number_t, FileSystemObject *>> fsos_per_version;
+	for (auto &fso : restore_later)
+		fsos_per_version.push_back(std::make_pair(fso->get_latest_version(), fso));
+	std::sort(
+		fsos_per_version.begin(),
+		fsos_per_version.end(),
+		[](const std::pair<version_number_t, FileSystemObject *> &a, const std::pair<version_number_t, FileSystemObject *> &b){
+			if (a.first < b.first)
+				return true;
+			if (a.first > b.first)
+				return false;
+			return a.second->get_stream_id() < b.second->get_stream_id();
+		}
+	);
+	restore_later.clear();
+	this->perform_restore(latest_version, fsos_per_version);
+}
+
 void BackupSystem::perform_restore(
 		const std::shared_ptr<VersionForRestore> &latest_version,
-		const std::vector<FileSystemObject *> &restore_later){
-	std::vector<version_number_t> enumerable;
-	enumerable.reserve(latest_version->get_manifest()->version_dependencies.size() + 1);
-	for (auto &version_number : latest_version->get_manifest()->version_dependencies)
-		enumerable.push_back(version_number);
-	enumerable.push_back(latest_version->get_version_number());
-	for (auto &version_number : enumerable){
+		const std::vector<std::pair<version_number_t, FileSystemObject *>> &restore_later){
+	auto begin = restore_later.begin();
+	auto end = restore_later.end();
+	while (begin != end){
+		auto version_number = begin->first;
+		//Assume monotonicity of input stream IDs.
+		auto begin2 = begin;
 		ArchiveReader archive(this->get_version_path(version_number));
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
-			auto it = find_first_true(
-				restore_later.begin(),
-				restore_later.end(),
-				[stream_id](FileSystemObject *fso) -> int{
-					return fso->get_stream_id() >= stream_id;
-				}
-			);
-			auto fso = *it;
-			if (it == restore_later.end() || fso->get_stream_id() != stream_id)
+			auto it = begin2;
+			FileSystemObject *fso;
+			if (it->second->get_stream_id() != stream_id)
 				continue;
+			fso = it->second;
+			++begin2;
 			std::wcout << L"Restoring path \"" << fso->get_unmapped_path().wstring() << L"\"\n";
 			if (fso->get_type() == FileSystemObjectType::FileHardlink){
 				auto hardlink = static_cast<FileHardlinkFso *>(fso);
 				hardlink->set_treat_as_file(true);
 			}
 			fso->restore(*pair.second);
-			for (auto i = it + 1; i != restore_later.end() && (*i)->get_stream_id() == stream_id; ++i){
-				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << (*i)->get_mapped_path() << "\"\n";
-				auto hardlink = static_cast<FileHardlinkFso *>(*i);
+			for (; begin2 != end && begin2->second->get_stream_id() == stream_id; ++begin2){
+				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << begin2->second->get_mapped_path() << "\"\n";
+				auto hardlink = static_cast<FileHardlinkFso *>(begin2->second);
 				hardlink->set_link_target(fso->get_mapped_path());
 				hardlink->restore();
 			}
+			if (begin2 == end || begin2->second->get_latest_version() > it->second->get_latest_version())
+				break;
 		}
+		assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
+		begin = begin2;
 	}
 }
 
