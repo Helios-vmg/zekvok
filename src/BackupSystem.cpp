@@ -693,9 +693,16 @@ void BackupSystem::enqueue_file_for_guid_get(FilishFso *fso){
 	this->recalculate_file_guids_queue.push_back(fso);
 }
 
-void BackupSystem::restore_backup(){
+void BackupSystem::restore_backup(version_number_t version_number){
+	if (!this->versions.size())
+		return;
+	if (version_number < 0)
+		version_number = this->versions.back() + version_number + 1;
+	if (!this->version_exists(version_number))
+		throw std::exception("No such version");
+
 	std::cout << "Initializing structures...\n";
-	auto latest_version = this->compute_latest_version();
+	auto latest_version = this->compute_latest_version(version_number);
 	std::vector<FileSystemObject *> restore_later;
 	for (auto &old_object : this->old_objects){
 		old_object->delete_existing();
@@ -712,24 +719,18 @@ void BackupSystem::restore_backup(){
 	this->perform_restore(latest_version, restore_later);
 }
 
-std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(){
+std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(version_number_t version_number){
 	std::shared_ptr<VersionForRestore> latest_version;
 	std::map<version_number_t, std::shared_ptr<VersionForRestore>> versions;
 	std::vector<version_number_t> stack;
-	auto latest_version_number = this->versions.back();
-	stack.push_back(latest_version_number);
-	while (stack.size()){
-		auto version_number = stack.back();
-		stack.pop_back();
-		if (versions.find(version_number) != versions.end())
-			continue;
-		auto version = make_shared(new VersionForRestore(version_number, *this));
-		versions[version_number] = version;
-		if (version_number == latest_version_number)
-			for (auto &object : version->get_base_objects())
-				this->old_objects.push_back(object);
+	const auto &latest_version_number = version_number;
+	{
+		auto version = make_shared(new VersionForRestore(latest_version_number, *this));
+		versions[latest_version_number] = version;
+		for (auto &object : version->get_base_objects())
+			this->old_objects.push_back(object);
 		for (auto &dep : version->get_manifest()->version_dependencies)
-			stack.push_back(dep);
+			versions[latest_version_number] = make_shared(new VersionForRestore(dep, *this));
 	}
 	latest_version = versions[latest_version_number];
 	latest_version->fill_dependencies(versions);
@@ -755,18 +756,19 @@ void BackupSystem::perform_restore(
 					return fso->get_stream_id() >= stream_id;
 				}
 			);
-			if (it == restore_later.end())
+			auto fso = *it;
+			if (it == restore_later.end() || fso->get_stream_id() != stream_id)
 				continue;
-			std::wcout << L"Restoring path \"" << (*it)->get_unmapped_path().wstring() << L"\"\n";
-			if ((*it)->get_type() == FileSystemObjectType::FileHardlink){
-				auto hardlink = static_cast<FileHardlinkFso *>(*it);
+			std::wcout << L"Restoring path \"" << fso->get_unmapped_path().wstring() << L"\"\n";
+			if (fso->get_type() == FileSystemObjectType::FileHardlink){
+				auto hardlink = static_cast<FileHardlinkFso *>(fso);
 				hardlink->set_treat_as_file(true);
 			}
-			(*it)->restore(*pair.second);
+			fso->restore(*pair.second);
 			for (auto i = it + 1; i != restore_later.end() && (*i)->get_stream_id() == stream_id; ++i){
-				std::wcout << L"Hardlink requested. Existing path: \"" << (*it)->get_mapped_path() << L"\", new path: \"" << (*i)->get_mapped_path() << "\"\n";
+				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << (*i)->get_mapped_path() << "\"\n";
 				auto hardlink = static_cast<FileHardlinkFso *>(*i);
-				hardlink->set_link_target((*it)->get_mapped_path());
+				hardlink->set_link_target(fso->get_mapped_path());
 				hardlink->restore();
 			}
 		}

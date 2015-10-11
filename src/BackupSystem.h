@@ -70,14 +70,14 @@ class BackupSystem{
 	bool file_has_changed(version_number_t &, FilishFso &);
 	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
-	std::shared_ptr<VersionForRestore> compute_latest_version();
+	std::shared_ptr<VersionForRestore> compute_latest_version(version_number_t);
 	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<FileSystemObject *> &);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();
 	void add_source(const std::wstring &);
 	void perform_backup();
-	void restore_backup();
+	void restore_backup(version_number_t);
 	void add_ignored_extension(const std::wstring &);
 	void add_ignored_path(const std::wstring &);
 	void add_ignored_name(const std::wstring &, NameIgnoreType);

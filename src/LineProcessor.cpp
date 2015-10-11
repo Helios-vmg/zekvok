@@ -152,7 +152,7 @@ void LineProcessor::process_backup(const std::wstring *begin, const std::wstring
 
 void LineProcessor::process_restore(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
-	this->backup_system->restore_backup();
+	this->backup_system->restore_backup(this->selected_version);
 	this->backup_system.reset();
 }
 
