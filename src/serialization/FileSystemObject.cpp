@@ -362,6 +362,12 @@ void FileSystemObject::set_unique_ids(BackupSystem &bs){
 	this->stream_id = bs.get_stream_id();
 }
 
+void DirectoryFso::set_unique_ids(BackupSystem &bs){
+	FileSystemObject::set_unique_ids(bs);
+	for (auto &child : this->children)
+		child->set_unique_ids(bs);
+}
+
 void FilishFso::set_hash(const sha256_digest &digest){
 	this->hash.digest = digest;
 	this->hash.valid = true;

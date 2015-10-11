@@ -10,3 +10,4 @@ public:
 	FileSystemObject *find(path_t::iterator begin, path_t::iterator end) override{
 		return (FileSystemObject *)(((const FileSystemObject *)this)->find(begin, end));
 	}
+	virtual void set_unique_ids(BackupSystem &) override;
