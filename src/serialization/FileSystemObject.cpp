@@ -244,9 +244,6 @@ const FileSystemObject *FileSystemObject::find(const path_t &_path) const{
 		return nullptr;
 	if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
 		return nullptr;
-	b1++;
-	if (b1 == e1)
-		return nullptr;
 	return this->find(b1, e1);
 }
 
