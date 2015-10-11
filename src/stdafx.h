@@ -25,6 +25,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <cassert>
 #include <utility>
 #include <tuple>
+#include <thread>
+#include <mutex>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>

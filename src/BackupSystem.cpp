@@ -746,16 +746,30 @@ void BackupSystem::restore_backup(version_number_t version_number){
 	this->perform_restore(latest_version, fsos_per_version);
 }
 
-void BackupSystem::perform_restore(
-		const std::shared_ptr<VersionForRestore> &latest_version,
-		const std::vector<std::pair<version_number_t, FileSystemObject *>> &restore_later){
-	auto begin = restore_later.begin();
-	auto end = restore_later.end();
-	while (begin != end){
-		auto version_number = begin->first;
+typedef std::vector<std::pair<version_number_t, FileSystemObject *>> restore_vt;
+
+void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin, restore_vt::const_iterator *shared_end, std::mutex *mutex){
+	while (true){
+		restore_vt::const_iterator begin, end;
+		version_number_t version_number;
+		{
+			std::lock_guard<decltype(*mutex)> guard(*mutex);
+			if (*shared_begin == *shared_end)
+				break;
+			version_number = (*shared_begin)->first;
+			begin = *shared_begin;
+			end = find_first_true(
+				begin,
+				*shared_end,
+				[version_number](const std::pair<version_number_t, FileSystemObject *> &x){
+					return x.second->get_latest_version() > version_number;
+				}
+			);
+			*shared_begin = end;
+		}
 		//Assume monotonicity of input stream IDs.
 		auto begin2 = begin;
-		ArchiveReader archive(this->get_version_path(version_number));
+		ArchiveReader archive(This->get_version_path(version_number));
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
 			auto it = begin2;
@@ -780,7 +794,22 @@ void BackupSystem::perform_restore(
 				break;
 		}
 		assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
-		begin = begin2;
+	}
+}
+
+void BackupSystem::perform_restore(
+		const std::shared_ptr<VersionForRestore> &latest_version,
+		const restore_vt &restore_later){
+	std::vector<std::shared_ptr<std::thread>> threads;
+	threads.reserve(std::thread::hardware_concurrency());
+	std::mutex mutex;
+	auto begin = restore_later.begin();
+	auto end = restore_later.end();
+	while (threads.size() < threads.capacity())
+		threads.push_back(make_shared(new std::thread(restore_thread, this, &begin, &end, &mutex)));
+	while (threads.size()){
+		threads.back()->join();
+		threads.pop_back();
 	}
 }
 

@@ -42,3 +42,8 @@ ignore/*
 bin64/Ionic.Zip.dll
 *.arc
 *.generated.*
+test/001_test_backup_and_restore/backup_script.txt
+test/001_test_backup_and_restore/restore_script.txt
+test/001_test_backup_and_restore/revision_data.pickle
+test/001_test_backup_and_restore/test_repo/
+test/001_test_backup_and_restore/__pycache__/
