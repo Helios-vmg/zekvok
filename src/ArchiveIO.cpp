@@ -15,29 +15,37 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "serialization/ImplementedDS.h"
 
 ArchiveReader::ArchiveReader(const path_t &path):
-		manifest_offset(-1){
-	this->stream.reset(new boost::filesystem::ifstream(path, std::ios::binary));
-	if (!*this->stream)
+		manifest_offset(-1),
+		path(path){
+	if (!boost::filesystem::exists(path) || !boost::filesystem::is_regular_file(path))
 		throw FileNotFoundException(path);
 }
 
+std::unique_ptr<std::istream> ArchiveReader::get_stream(){
+	auto ret = make_unique((std::istream *)new boost::filesystem::ifstream(path, std::ios::binary));
+	if (!*ret)
+		throw FileNotFoundException(path);
+	return ret;
+}
+
 std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
+	auto stream = this->get_stream();
 	if (this->manifest_offset < 0){
 		const int uint64_length = sizeof(std::uint64_t);
 		std::int64_t start = -uint64_length - sha256_digest_length;
-		this->stream->seekg(start, std::ios::end);
+		stream->seekg(start, std::ios::end);
 		char temp[uint64_length];
-		this->stream->read(temp, uint64_length);
-		if (this->stream->gcount() != uint64_length)
+		stream->read(temp, uint64_length);
+		if (stream->gcount() != uint64_length)
 			throw std::exception("Invalid data");
 		deserialize_fixed_le_int(this->manifest_size, temp);
 		start -= this->manifest_size;
-		this->stream->seekg(start, std::ios::end);
-		this->manifest_offset = this->stream->tellg();
+		stream->seekg(start, std::ios::end);
+		this->manifest_offset = stream->tellg();
 	}else
-		this->stream->seekg(this->manifest_offset);
+		stream->seekg(this->manifest_offset);
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(*this->stream, this->manifest_size);
+		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_size);
 		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 
 		ImplementedDeserializerStream ds(lzma);
@@ -59,9 +67,10 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	assert(this->version_manifest);
 	decltype(this->base_objects) ret;
 	ret.reserve(this->version_manifest->archive_metadata.entry_sizes.size());
-	this->stream->seekg(this->base_objects_offset);
+	auto stream = this->get_stream();
+	stream->seekg(this->base_objects_offset);
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(*this->stream, this->manifest_offset - this->base_objects_offset);
+		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_offset - this->base_objects_offset);
 		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
 			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
@@ -79,9 +88,10 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	if (!this->version_manifest)
 		this->read_manifest();
-	this->stream->seekg(0);
+	auto stream = this->get_stream();
+	stream->seekg(0);
 
-	boost::iostreams::stream<LzmaInputFilter> lzma(*this->stream);
+	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
 
 	assert(this->stream_ids.size() == this->stream_sizes.size());
 	for (size_t i = 0; i < this->stream_ids.size(); i++){

@@ -21,7 +21,7 @@ public:
 	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, std::istream *>> read_everything_co_t;
 private:
 	//std::deque<input_filter_generator_t> filters;
-	std::unique_ptr<std::istream> stream;
+	path_t path;
 	std::shared_ptr<VersionManifest> version_manifest;
 	std::vector<std::shared_ptr<FileSystemObject>> base_objects;
 	std::int64_t manifest_offset;
@@ -31,6 +31,7 @@ private:
 	std::vector<std::uint64_t> stream_sizes;
 
 	void read_everything(read_everything_co_t::push_type &);
+	std::unique_ptr<std::istream> get_stream();
 public:
 	ArchiveReader(const path_t &);
 	std::shared_ptr<VersionManifest> read_manifest();
