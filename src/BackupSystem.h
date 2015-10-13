@@ -94,4 +94,5 @@ public:
 	std::vector<std::shared_ptr<FileSystemObject>> get_entries(version_number_t);
 	bool verify(version_number_t) const;
 	bool full_verify(version_number_t) const;
+	static void generate_keypair(const std::wstring &recipient, const std::wstring &file, const std::string &symmetric_key);
 };

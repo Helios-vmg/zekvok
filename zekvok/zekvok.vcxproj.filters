@@ -111,6 +111,9 @@
     <ClCompile Include="..\src\VersionForRestore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\serialization\RsaKeyPair.cpp">
+      <Filter>Source Files\Serialization</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -246,6 +249,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\serialization\ImplementedDS.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\RsaKeyPair.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
   </ItemGroup>

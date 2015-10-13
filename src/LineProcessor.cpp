@@ -120,6 +120,7 @@ void LineProcessor::process_line(const std::wstring *begin, const std::wstring *
 		PROCESS_LINE_ARRAY_ELEMENT(if, 1),
 		PROCESS_LINE_ARRAY_ELEMENT(set, 1),
 		PROCESS_LINE_ARRAY_ELEMENT(verify, 0),
+		PROCESS_LINE_ARRAY_ELEMENT(generate, 1),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -172,6 +173,14 @@ void LineProcessor::process_show(const std::wstring *begin, const std::wstring *
 		PROCESS_SHOW_ARRAY_ELEMENT(version_count),
 		PROCESS_SHOW_ARRAY_ELEMENT(paths),
 		PROCESS_SHOW_ARRAY_ELEMENT(version_summary),
+	};
+	iterate_pair_array(this, begin, end, array);
+}
+
+void LineProcessor::process_generate(const std::wstring *begin, const std::wstring *end){
+	static const process_array_t array[] = {
+#define PROCESS_GENERATE_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_generate_##x, 1 }
+		PROCESS_GENERATE_ARRAY_ELEMENT(keypair),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -403,4 +412,16 @@ void LineProcessor::process_set_change_criterium(const std::wstring *begin, cons
 		this->backup_system->set_change_criterium((ChangeCriterium)i);
 		break;
 	}
+}
+
+void LineProcessor::process_generate_keypair(const std::wstring *begin, const std::wstring *end){
+	auto recipient = *begin;
+	if (++begin == end)
+		return;
+	auto file = *begin;
+	if (++begin == end)
+		return;
+	auto symmetric_key = to_string(*begin);
+
+	BackupSystem::generate_keypair(recipient, file, symmetric_key);
 }

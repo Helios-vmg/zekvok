@@ -858,3 +858,50 @@ bool BackupSystem::full_verify(version_number_t version) const{
 		return false;
 	}
 }
+
+namespace {
+using namespace CryptoPP;
+typedef RSAES<OAEP<SHA> >::Encryptor Encryptor;
+typedef RSAES<OAEP<SHA> >::Decryptor Decryptor;
+typedef RSASSA_PKCS1v15_SHA_Signer Signer;
+typedef RSASSA_PKCS1v15_SHA_Verifier Verifier;
+}
+
+template <typename T>
+std::vector<byte> to_vector(const T &key){
+	std::string temp;
+	{
+		CryptoPP::ByteQueue queue;
+		key.Save(queue);
+		StringSink ss(temp);
+		queue.CopyTo(ss);
+		ss.MessageEnd();
+	}
+	std::vector<byte> ret;
+	ret.resize(temp.size());
+	std::copy(temp.begin(), temp.end(), ret.begin());
+	return ret;
+}
+
+void BackupSystem::generate_keypair(const std::wstring &recipient, const std::wstring &filename, const std::string &symmetric_key){
+	using namespace CryptoPP;
+	AutoSeededRandomPool rnd;
+	while (1){
+		RSA::PrivateKey rsaPrivate;
+		rsaPrivate.GenerateRandomWithKeySize(rnd, 1 << 10);
+		if (!rsaPrivate.Validate(rnd, 3))
+			continue;
+		RSA::PublicKey rsaPublic(rsaPrivate);
+		if (!rsaPublic.Validate(rnd, 3))
+			continue;
+
+		auto pri = to_vector(rsaPrivate);
+		auto pub = to_vector(rsaPublic);
+
+		RsaKeyPair pair(pri, pub, symmetric_key);
+		boost::filesystem::ofstream file(filename, std::ios::binary);
+		SerializerStream ss(file);
+		ss.begin_serialization(pair, false);
+		break;
+	}
+}
