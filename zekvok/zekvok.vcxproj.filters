@@ -114,6 +114,9 @@
     <ClCompile Include="..\src\serialization\RsaKeyPair.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\RsaFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -253,6 +256,9 @@
     </ClInclude>
     <ClInclude Include="..\src\serialization\RsaKeyPair.h">
       <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\RsaFilter.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

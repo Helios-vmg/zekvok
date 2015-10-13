@@ -183,6 +183,7 @@
     <ClCompile Include="..\src\LineProcessor.cpp" />
     <ClCompile Include="..\src\LzmaFilter.cpp" />
     <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\src\RsaFilter.cpp" />
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
@@ -268,6 +269,7 @@
     <ClInclude Include="..\src\LzmaFilter.h" />
     <ClInclude Include="..\src\NullStream.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
+    <ClInclude Include="..\src\RsaFilter.h" />
     <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
     <ClInclude Include="..\src\serialization\BackupStream.h" />
     <ClInclude Include="..\src\serialization\ImplementedDS.h" />
