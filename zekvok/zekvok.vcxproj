@@ -233,6 +233,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\src\StreamAdaper.cpp" />
     <ClCompile Include="..\src\System\SystemOperations.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
@@ -296,6 +297,7 @@
     <ClInclude Include="..\src\serialization\VersionManifest.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />
     <ClInclude Include="..\src\stdafx.h" />
+    <ClInclude Include="..\src\StreamAdapter.h" />
     <ClInclude Include="..\src\SymbolicConstants.h" />
     <ClInclude Include="..\src\System\SystemOperations.h" />
     <ClInclude Include="..\src\System\Transactions.h" />

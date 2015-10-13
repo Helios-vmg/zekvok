@@ -106,7 +106,7 @@ def generate_next_version(base, directories, files):
 			generate_new_file(base + '/' + path)
 		os.mkdir('%s/binary.files'%base)
 		addenda.append('binary.files')
-		generate_new_binaries_batch(base, addenda)
+		#generate_new_binaries_batch(base, addenda)
 	else:
 		for i in range(min(random.randint(1, 100), len(files))):
 			path = random.sample(files, 1)[0]
@@ -219,7 +219,6 @@ def restore_backup(version):
 def perform_test(data, version_count):
 	for i in range(version_count):
 		print_percent(i, 80, version_count)
-		os.system('rd /q /s test_repo')
 		restore_backup(i)
 		if not compare_dirs.compare_tree_and_dir(data[i], 'test_repo'):
 			return False
@@ -227,7 +226,7 @@ def perform_test(data, version_count):
 
 def test():
 	os.system('copy /y ..\\..\\bin64\\zekvok.exe .')
-	version_count = 100
+	version_count = 10
 	data = generate_data(version_count)
 	result = perform_test(data, version_count)
 	print('')

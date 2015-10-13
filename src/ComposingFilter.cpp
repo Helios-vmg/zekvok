@@ -16,11 +16,11 @@ std::streamsize ComposingInputFilter::read(char *s, std::streamsize n){
 	while (n){
 
 		if (!this->current_stream){
+			this->current_stream = this->co->get();
 			if (!this->current_stream){
 				bad = true;
 				break;
 			}
-			this->current_stream = this->co->get();
 			(*this->co)();
 		}
 		this->current_stream->read(s, n);

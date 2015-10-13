@@ -14,7 +14,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "HashFilter.h"
 #include "serialization/ImplementedDS.h"
 #include "NullStream.h"
-#include "ComposingFilter.h"
+#include "StreamAdapter.h"
 #include "RsaFilter.h"
 
 ArchiveReader::ArchiveReader(const path_t &path):
@@ -138,32 +138,28 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 void ArchiveWriter::add_files(std::ostream &stream, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
 	boost::iostreams::stream<LzmaOutputFilter> lzma(stream, &mt, 1);
+	CryptoPP::AutoSeededRandomPool prng;
+	AdaptedStreamOutputFilter adapter(lzma, new FourWayStreamAdapter(
+		[&](std::istream &in, std::ostream &out){
+			encrypt_stream(prng, out, in, /*TODO*/);
+		}
+	));
 
 	auto co = (*(begin++))->first();
+	for (auto i : *co){
+		if (!i.dst)
+			continue;
+		this->stream_ids.push_back(i.id);
+		this->stream_sizes.push_back(i.stream_size);
 
-	ComposingInputFilter::co_t::pull_type co2(
-		[this, &co, &lzma](ComposingInputFilter::co_t::push_type &sink){
-			for (auto i : *co){
-				if (!i.dst)
-					continue;
-				this->stream_ids.push_back(i.id);
-				this->stream_sizes.push_back(i.stream_size);
-
-				sha256_digest &ret = *i.dst;
-				{
-					boost::iostreams::stream<HashInputFilter> hash(*i.stream, new CryptoPP::SHA256);
-					sink(&hash);
-					hash->get_result(ret.data(), ret.size());
-				}
-				this->any_file = true;
-			}
-			sink(nullptr);
+		sha256_digest &ret = *i.dst;
+		{
+			boost::iostreams::stream<HashInputFilter> hash(*i.stream, new CryptoPP::SHA256);
+			lzma << hash.rdbuf();
+			hash->get_result(ret.data(), ret.size());
 		}
-	);
-
-	boost::iostreams::stream<ComposingInputFilter> composed(co2);
-
-	lzma << composed.rdbuf();
+		this->any_file = true;
+	}
 }
 
 void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
@@ -171,32 +167,17 @@ void ArchiveWriter::add_base_objects(hash_stream_t &overall_hash, std::unique_pt
 	boost::iostreams::stream<LzmaOutputFilter> lzma(overall_hash, &mt, 8);
 
 	auto co = (*(begin++))->second();
-
-	ComposingInputFilter::co_t::pull_type co2(
-		[this, &co, &lzma](ComposingInputFilter::co_t::push_type &sink){
-			for (auto i : *co){
-				if (!i)
-					continue;
-				std::uint64_t bytes_processed = 0;
-				{
-					std::stringstream temp;
-					{
-						boost::iostreams::stream<ByteCounterOutputFilter> counter(temp, &bytes_processed);
-						SerializerStream ss(counter);
-						ss.begin_serialization(*i, config::include_typehashes);
-					}
-					temp.clear();
-					sink(&temp);
-				}
-				this->base_object_entry_sizes.push_back(bytes_processed);
-			}
-			sink(nullptr);
+	for (auto i : *co){
+		if (!i)
+			continue;
+		std::uint64_t bytes_processed = 0;
+		{
+			boost::iostreams::stream<ByteCounterOutputFilter> counter(lzma, &bytes_processed);
+			SerializerStream ss(counter);
+			ss.begin_serialization(*i, config::include_typehashes);
 		}
-	);
-
-	boost::iostreams::stream<ComposingInputFilter> composed(co2);
-
-	lzma << composed.rdbuf();
+		this->base_object_entry_sizes.push_back(bytes_processed);
+	}
 }
 
 void ArchiveWriter::add_version_manifest(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin){
