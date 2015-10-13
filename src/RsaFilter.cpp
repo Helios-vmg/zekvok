@@ -22,10 +22,11 @@ void encrypt_stream(CryptoPP::RandomNumberGenerator &prng, std::ostream &output,
 		CryptoPP::SecByteBlock buffer(key.size() + sizeof(init_vector));
 		memcpy(buffer.data(), key.data(), key.size());
 		memcpy(buffer.data() + key.size(), init_vector, sizeof(init_vector));
-		std::stringstream temp;
-		CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(prng, enc, new CryptoPP::FileSink(temp)));
-		auto array = serialize_fixed_le_int((std::uint32_t)temp.str().size());
+		std::string temp;
+		CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(prng, enc, new CryptoPP::StringSink(temp)));
+		auto array = serialize_fixed_le_int((std::uint32_t)temp.size());
 		output.write((const char *)array.data(), array.size());
+		output.write(temp.c_str(), temp.size());
 	}
 
 	CryptoPP::CBC_Mode<CryptoPP::Twofish>::Encryption e;
