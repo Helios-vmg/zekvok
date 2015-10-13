@@ -178,6 +178,7 @@
     <ClCompile Include="..\src\ArchiveIO.cpp" />
     <ClCompile Include="..\src\BackupSystem.cpp" />
     <ClCompile Include="..\src\BoundedStreamFilter.cpp" />
+    <ClCompile Include="..\src\ComposingFilter.cpp" />
     <ClCompile Include="..\src\Exception.cpp" />
     <ClCompile Include="..\src\HashFilter.cpp" />
     <ClCompile Include="..\src\LineProcessor.cpp" />
@@ -262,6 +263,7 @@
     <ClInclude Include="..\src\AutoHandle.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\BoundedStreamFilter.h" />
+    <ClInclude Include="..\src\ComposingFilter.h" />
     <ClInclude Include="..\src\Exception.h" />
     <ClInclude Include="..\src\Filters.h" />
     <ClInclude Include="..\src\HashFilter.h" />
