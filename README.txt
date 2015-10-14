@@ -204,7 +204,7 @@ set change_criterium {archive_flag|size|date|hash|hash_auto}
     size: Only check if the size is different.
     date: Only check if the modification time is different.
     hash: Check if the SHA-256 digest is different.
-    hash_auto: Check the digest for small files, and check the date for lerger
+    hash_auto: Check the digest for small files, and check the date for larger
     files.
     The default is hash_auto.
     This command will fail if no "open" commands have been previously issued.
