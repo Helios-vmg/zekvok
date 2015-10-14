@@ -14,8 +14,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "HashFilter.h"
 #include "serialization/ImplementedDS.h"
 #include "NullStream.h"
-#include "StreamAdapter.h"
-#include "RsaFilter.h"
+#include "CryptoFilter.h"
 
 ArchiveReader::ArchiveReader(const path_t &path):
 		manifest_offset(-1),
@@ -139,11 +138,6 @@ void ArchiveWriter::add_files(std::ostream &stream, std::unique_ptr<ArchiveWrite
 	bool mt = true;
 	boost::iostreams::stream<LzmaOutputFilter> lzma(stream, &mt, 1);
 	CryptoPP::AutoSeededRandomPool prng;
-	AdaptedStreamOutputFilter adapter(lzma, new FourWayStreamAdapter(
-		[&](std::istream &in, std::ostream &out){
-			encrypt_stream(prng, out, in, /*TODO*/);
-		}
-	));
 
 	auto co = (*(begin++))->first();
 	for (auto i : *co){

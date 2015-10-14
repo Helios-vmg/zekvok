@@ -862,13 +862,7 @@ bool BackupSystem::full_verify(version_number_t version) const{
 template <typename T>
 std::vector<byte> to_vector(const T &key){
 	std::string temp;
-	{
-		CryptoPP::ByteQueue queue;
-		key.Save(queue);
-		CryptoPP::StringSink ss(temp);
-		queue.CopyTo(ss);
-		ss.MessageEnd();
-	}
+	key.Save(CryptoPP::StringSink(temp));
 	std::vector<byte> ret;
 	ret.resize(temp.size());
 	std::copy(temp.begin(), temp.end(), ret.begin());

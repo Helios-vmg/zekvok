@@ -114,13 +114,10 @@
     <ClCompile Include="..\src\serialization\RsaKeyPair.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\RsaFilter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\ComposingFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\StreamAdaper.cpp">
+    <ClCompile Include="..\src\CryptoFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -263,13 +260,10 @@
     <ClInclude Include="..\src\serialization\RsaKeyPair.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\RsaFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\ComposingFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\StreamAdapter.h">
+    <ClInclude Include="..\src\CryptoFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
