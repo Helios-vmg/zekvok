@@ -208,3 +208,13 @@ set change_criterium {archive_flag|size|date|hash|hash_auto}
 	files.
 	The default is hash_auto.
 	This command will fail if no "open" commands have been previously issued.
+
+verify
+    Checks the integrity of the selected version. This check is only intended to
+    protect against accidental storage/transmission errors, NOT against
+    malicious modifications.
+
+verify full
+    Does the same as verify, but also checks all dependencies of the selected
+    version. Again, this check offers NO protection against malicious
+    modifications.
