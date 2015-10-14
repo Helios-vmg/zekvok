@@ -25,7 +25,7 @@ class VersionForRestore{
 	std::map<stream_id_t, std::shared_ptr<BackupStream>> streams_dict;
 	bool dependencies_full;
 public:
-	VersionForRestore(version_number_t, BackupSystem &);
+	VersionForRestore(version_number_t, BackupSystem &, RsaKeyPair *keypair);
 	DEFINE_INLINE_GETTER(version_number)
 	DEFINE_INLINE_GETTER(manifest)
 	const std::vector<std::shared_ptr<FileSystemObject>> &get_base_objects();

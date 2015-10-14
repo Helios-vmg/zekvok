@@ -9,6 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "LineProcessor.h"
 #include "BackupSystem.h"
 #include "Exception.h"
+#include "serialization/ImplementedDS.h"
 
 std::string format_size(double size){
 	static const char *units[] = {
@@ -161,6 +162,7 @@ void LineProcessor::process_select(const std::wstring *begin, const std::wstring
 	static const process_array_t array[] = {
 #define PROCESS_SELECT_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_select_##x, 1 }
 		PROCESS_SELECT_ARRAY_ELEMENT(version),
+		PROCESS_SELECT_ARRAY_ELEMENT(keypair),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -277,6 +279,16 @@ void LineProcessor::process_select_version(const std::wstring *begin, const std:
 	this->selected_version = version;
 }
 
+void LineProcessor::process_select_keypair(const std::wstring *begin, const std::wstring *end){
+	this->ensure_backup_initialized();
+	boost::filesystem::ifstream file(*begin, std::ios::binary);
+	ImplementedDeserializerStream ds(file);
+	auto keypair = make_shared(ds.begin_deserialization<RsaKeyPair>(false));
+	if (++begin != end)
+		keypair->get_private_key(to_string(*begin));
+	this->backup_system->set_keypair(keypair);
+}
+
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const std::vector<T> &v){
 	bool first = true;
@@ -333,7 +345,7 @@ std::ostream &operator<<(std::ostream &stream, OpaqueTimestamp &ts){
 void LineProcessor::process_show_version_summary(const std::wstring *begin, const std::wstring *end){
 	this->ensure_existing_version();
 	std::cout << "Version number: " << this->selected_version << std::endl;
-	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version));
+	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version), this->backup_system->get_keypair().get());
 	auto manifest = archive.read_manifest();
 	std::cout <<
 		"Date created: " << manifest->creation_time << "\n"
