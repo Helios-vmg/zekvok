@@ -25,12 +25,6 @@
     <Filter Include="Source Files\Stream filters">
       <UniqueIdentifier>{054e4e3c-9a2e-44f5-b661-82f7c8cc44d6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Serialization\External">
-      <UniqueIdentifier>{111ca70a-fd03-4224-8dbf-5dc36cf37084}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Serialization\Generated">
-      <UniqueIdentifier>{a295dfcd-90ed-49f3-9396-7eb99f19f050}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Serialization\External">
       <UniqueIdentifier>{cc8d68bf-b607-423b-8867-bd10160cc77c}</UniqueIdentifier>
     </Filter>
@@ -56,21 +50,6 @@
     </ClCompile>
     <ClCompile Include="..\src\LineProcessor.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\serialization\fso.aux.generated.cpp">
-      <Filter>Source Files\Serialization\Generated</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\serialization\fso.generated.cpp">
-      <Filter>Source Files\Serialization\Generated</Filter>
-    </ClCompile>
-    <ClCompile Include="..\serialization\postsrc\DeserializerStream.cpp">
-      <Filter>Source Files\Serialization\External</Filter>
-    </ClCompile>
-    <ClCompile Include="..\serialization\postsrc\Serializable.cpp">
-      <Filter>Source Files\Serialization\External</Filter>
-    </ClCompile>
-    <ClCompile Include="..\serialization\postsrc\SerializerStream.cpp">
-      <Filter>Source Files\Serialization\External</Filter>
     </ClCompile>
     <ClCompile Include="..\src\serialization\Implementations.cpp">
       <Filter>Source Files\Serialization</Filter>
@@ -119,6 +98,9 @@
     </ClCompile>
     <ClCompile Include="..\src\CryptoFilter.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\serialization\Inlining.cpp">
+      <Filter>Source Files\Serialization</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
