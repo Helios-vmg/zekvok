@@ -150,4 +150,15 @@
 		<uint64_t name="physical_size" />
 	</<class>
 	-->
+	
+	<class name="RsaKeyPair">
+		<uint32_t name="priv_size" />
+		<vector name="encrypted_private_key">
+			<uint8_t/>
+		</vector>
+		<vector name="public_key">
+			<uint8_t/>
+		</vector>
+		<include header="&quot;RsaKeyPair.h&quot;" />
+	</class>
 </cpp>

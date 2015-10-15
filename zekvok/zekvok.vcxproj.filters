@@ -111,6 +111,15 @@
     <ClCompile Include="..\src\VersionForRestore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\serialization\RsaKeyPair.cpp">
+      <Filter>Source Files\Serialization</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ComposingFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\CryptoFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -247,6 +256,15 @@
     </ClInclude>
     <ClInclude Include="..\src\serialization\ImplementedDS.h">
       <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\serialization\RsaKeyPair.h">
+      <Filter>Header Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ComposingFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\CryptoFilter.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

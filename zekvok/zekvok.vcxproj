@@ -178,11 +178,13 @@
     <ClCompile Include="..\src\ArchiveIO.cpp" />
     <ClCompile Include="..\src\BackupSystem.cpp" />
     <ClCompile Include="..\src\BoundedStreamFilter.cpp" />
+    <ClCompile Include="..\src\ComposingFilter.cpp" />
     <ClCompile Include="..\src\Exception.cpp" />
     <ClCompile Include="..\src\HashFilter.cpp" />
     <ClCompile Include="..\src\LineProcessor.cpp" />
     <ClCompile Include="..\src\LzmaFilter.cpp" />
     <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\src\CryptoFilter.cpp" />
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
@@ -214,6 +216,12 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="..\src\serialization\OpaqueTimestamp.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\stdafx.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\stdafx.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="..\src\serialization\RsaKeyPair.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\stdafx.h</PrecompiledHeaderFile>
@@ -255,6 +263,7 @@
     <ClInclude Include="..\src\AutoHandle.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\BoundedStreamFilter.h" />
+    <ClInclude Include="..\src\ComposingFilter.h" />
     <ClInclude Include="..\src\Exception.h" />
     <ClInclude Include="..\src\Filters.h" />
     <ClInclude Include="..\src\HashFilter.h" />
@@ -262,6 +271,7 @@
     <ClInclude Include="..\src\LzmaFilter.h" />
     <ClInclude Include="..\src\NullStream.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
+    <ClInclude Include="..\src\CryptoFilter.h" />
     <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
     <ClInclude Include="..\src\serialization\BackupStream.h" />
     <ClInclude Include="..\src\serialization\ImplementedDS.h" />
@@ -280,6 +290,7 @@
     <ClInclude Include="..\src\serialization\JunctionFso.h" />
     <ClInclude Include="..\src\serialization\OpaqueTimestamp.h" />
     <ClInclude Include="..\src\serialization\RegularFileFso.h" />
+    <ClInclude Include="..\src\serialization\RsaKeyPair.h" />
     <ClInclude Include="..\src\serialization\Sha256Digest.h" />
     <ClInclude Include="..\src\serialization\UnmodifiedStream.h" />
     <ClInclude Include="..\src\serialization\VersionManifest.h" />

@@ -29,11 +29,12 @@ private:
 		base_objects_offset;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
+	RsaKeyPair *keypair;
 
 	void read_everything(read_everything_co_t::push_type &);
 	std::unique_ptr<std::istream> get_stream();
 public:
-	ArchiveReader(const path_t &);
+	ArchiveReader(const path_t &, RsaKeyPair *keypair);
 	std::shared_ptr<VersionManifest> read_manifest();
 	std::vector<std::shared_ptr<FileSystemObject>> read_base_objects();
 	std::vector<std::shared_ptr<FileSystemObject>> get_base_objects(){
@@ -100,14 +101,16 @@ class ArchiveWriter{
 	std::vector<std::uint64_t> stream_sizes;
 	bool any_file;
 	std::uint64_t initial_fso_offset;
+	std::uint64_t entries_size_in_archive;
 	std::vector<std::uint64_t> base_object_entry_sizes;
+	RsaKeyPair *keypair;
 
 	typedef boost::iostreams::stream<HashOutputFilter> hash_stream_t;
 
 	void add_files(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
-	void add_base_objects(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
-	void add_version_manifest(hash_stream_t &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
+	void add_base_objects(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
+	void add_version_manifest(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 public:
-	ArchiveWriter(const path_t &);
+	ArchiveWriter(const path_t &, RsaKeyPair *keypair);
 	void process(std::unique_ptr<ArchiveWriter_helper> *begin, std::unique_ptr<ArchiveWriter_helper> *end);
 };
