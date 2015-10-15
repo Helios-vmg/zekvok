@@ -107,8 +107,11 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	if (!this->version_manifest)
 		this->read_manifest();
 	auto ptr = this->get_stream();
-	std::istream *stream = ptr.get();
-	stream->seekg(0);
+	ptr->seekg(0);
+
+	boost::iostreams::stream<BoundedInputFilter> bounded(*ptr, this->base_objects_offset);
+	std::istream *stream = &bounded;
+
 	std::shared_ptr<std::istream> crypto;
 	if (this->keypair){
 		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
@@ -118,11 +121,11 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 
 	assert(this->stream_ids.size() == this->stream_sizes.size());
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
-		boost::iostreams::stream<BoundedInputFilter> bounded(lzma, this->stream_sizes[i]);
-		sink(std::make_pair(this->stream_ids[i], &bounded));
+		boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, this->stream_sizes[i]);
+		sink(std::make_pair(this->stream_ids[i], &bounded2));
 		//Discard left over bytes.
 		boost::iostreams::stream<NullOutputStream> null(0);
-		null << bounded.rdbuf();
+		null << bounded2.rdbuf();
 	}
 }
 
