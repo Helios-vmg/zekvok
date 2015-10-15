@@ -51,15 +51,15 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		stream->seekg(this->manifest_offset);
 	{
 		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_size);
-		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
-		std::istream *stream = &lzma;
+		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
 			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
 			stream = crypto.get();
 		}
+		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
 
-		ImplementedDeserializerStream ds(*stream);
+		ImplementedDeserializerStream ds(lzma);
 		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw std::exception("Error during deserialization");
@@ -82,16 +82,16 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	stream->seekg(this->base_objects_offset);
 	{
 		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_offset - this->base_objects_offset);
-		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
-		std::istream *stream = &lzma;
+		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
 			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
 			stream = crypto.get();
 		}
+		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
 
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
-			boost::iostreams::stream<BoundedInputFilter> bounded2(*stream, s);
+			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
 			ImplementedDeserializerStream ds(bounded2);
 			std::shared_ptr<FileSystemObject> fso(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
 			if (!fso)
@@ -109,18 +109,16 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	auto ptr = this->get_stream();
 	std::istream *stream = ptr.get();
 	stream->seekg(0);
-
-	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
-	stream = &lzma;
 	std::shared_ptr<std::istream> crypto;
 	if (this->keypair){
 		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
 		stream = crypto.get();
 	}
+	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
 
 	assert(this->stream_ids.size() == this->stream_sizes.size());
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
-		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->stream_sizes[i]);
+		boost::iostreams::stream<BoundedInputFilter> bounded(lzma, this->stream_sizes[i]);
 		sink(std::make_pair(this->stream_ids[i], &bounded));
 		//Discard left over bytes.
 		boost::iostreams::stream<NullOutputStream> null(0);
