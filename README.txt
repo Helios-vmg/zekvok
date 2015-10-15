@@ -78,6 +78,7 @@ The following backup functionality is supported:
 * Incremental backups (At file level. If a file is detected to have changed, a
   complete copy of the new version is backed up.)
 * Whole-version compression (LZMA)
+* Public-key-based backup encryption
 * Backing up files in use by other programs (Volume Shadow Service required)
 * Transacted backup creation (The backup storage will never be left in an
   inconsistent state, even if the backup process is interrupted by a power
@@ -88,7 +89,6 @@ The following backup functionality is supported:
                                 PLANNED FEATURES
 
 * More user-friendliness
-* Public-key-based backup encryption
 * Block-level incremental backups (If a file is changed, only the portions that
   actually changed will be backed up.)
 * Block- or file-level deduplication and move/rename detection
@@ -213,8 +213,24 @@ verify
     Checks the integrity of the selected version. This check is only intended to
     protect against accidental storage/transmission errors, NOT against
     malicious modifications.
+    This command will fail if no "open" commands have been previously issued or
+    no backups have ever been performed.
 
 verify full
     Does the same as verify, but also checks all dependencies of the selected
     version. Again, this check offers NO protection against malicious
     modifications.
+    This command will fail if no "open" commands have been previously issued or
+    no backups have ever been performed.
+
+generate keypair <recipient> <file> <password>
+    Generates a 4096-bit RSA key pair for <recipient>, encrypts the private key 
+    with <password>, and stores the result in <file>. Currently, the recipient
+    option is ignored.
+
+select keypair <file> [<password>]
+    Loads a keypair to be used to de/encrypt backups. Currently, a password
+    must be supplied both en performing as well as when restoring a backup. In
+    the future, it will be possible to perform backups without providing the
+    password for the private key.
+    This command will fail if no "open" commands have been previously issued.
