@@ -46,6 +46,11 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <cryptlib/oaep.h>
 #include <cryptlib/osrng.h>
 #include <cryptlib/cryptlib.h>
+#include <cryptlib/twofish.h>
+#include <cryptlib/serpent.h>
+#include <cryptlib/aes.h>
+#include <cryptlib/ccm.h>
+#include <cryptlib/pwdbased.h>
 #include <Windows.h>
 #include <ktmw32.h>
 #include <vss.h>

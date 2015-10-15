@@ -161,6 +161,7 @@ def generate_backup_script(base):
 	script += 'exclude name dirs .svn\n'
 	script += 'set change_criterium date\n'
 	script += 'set use_snapshots false\n'
+	script += 'select keypair key.dat 123456\n'
 	script += 'backup\n'
 	script += 'quit\n'
 	open(script_path, 'w').write(script)
@@ -208,6 +209,7 @@ def generate_data(version_count):
 def restore_backup(version):
 	script  = 'open %s\\backup\n'
 	script += 'select version %d\n'
+	script += 'select keypair key.dat 123456\n'
 	script += 'restore\n'
 	script += 'quit\n'
 
@@ -226,6 +228,12 @@ def perform_test(data, version_count):
 
 def test():
 	os.system('copy /y ..\\..\\bin64\\zekvok.exe .')
+	if not os.path.isfile('key.dat'):
+		open('generate_key.txt', 'w').write(
+			'generate keypair test key.dat 123456\n' +
+			'quit\n'
+		)
+		os.system('zekvok < %s\\generate_key.txt > nul' % os.getcwd())
 	version_count = 100
 	data = generate_data(version_count)
 	result = perform_test(data, version_count)

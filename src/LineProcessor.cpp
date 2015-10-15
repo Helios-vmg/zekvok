@@ -9,6 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "LineProcessor.h"
 #include "BackupSystem.h"
 #include "Exception.h"
+#include "serialization/ImplementedDS.h"
 
 std::string format_size(double size){
 	static const char *units[] = {
@@ -120,6 +121,7 @@ void LineProcessor::process_line(const std::wstring *begin, const std::wstring *
 		PROCESS_LINE_ARRAY_ELEMENT(if, 1),
 		PROCESS_LINE_ARRAY_ELEMENT(set, 1),
 		PROCESS_LINE_ARRAY_ELEMENT(verify, 0),
+		PROCESS_LINE_ARRAY_ELEMENT(generate, 1),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -160,6 +162,7 @@ void LineProcessor::process_select(const std::wstring *begin, const std::wstring
 	static const process_array_t array[] = {
 #define PROCESS_SELECT_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_select_##x, 1 }
 		PROCESS_SELECT_ARRAY_ELEMENT(version),
+		PROCESS_SELECT_ARRAY_ELEMENT(keypair),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -172,6 +175,14 @@ void LineProcessor::process_show(const std::wstring *begin, const std::wstring *
 		PROCESS_SHOW_ARRAY_ELEMENT(version_count),
 		PROCESS_SHOW_ARRAY_ELEMENT(paths),
 		PROCESS_SHOW_ARRAY_ELEMENT(version_summary),
+	};
+	iterate_pair_array(this, begin, end, array);
+}
+
+void LineProcessor::process_generate(const std::wstring *begin, const std::wstring *end){
+	static const process_array_t array[] = {
+#define PROCESS_GENERATE_ARRAY_ELEMENT(x) { L###x , &LineProcessor::process_generate_##x, 1 }
+		PROCESS_GENERATE_ARRAY_ELEMENT(keypair),
 	};
 	iterate_pair_array(this, begin, end, array);
 }
@@ -268,6 +279,16 @@ void LineProcessor::process_select_version(const std::wstring *begin, const std:
 	this->selected_version = version;
 }
 
+void LineProcessor::process_select_keypair(const std::wstring *begin, const std::wstring *end){
+	this->ensure_backup_initialized();
+	boost::filesystem::ifstream file(*begin, std::ios::binary);
+	ImplementedDeserializerStream ds(file);
+	auto keypair = make_shared(ds.begin_deserialization<RsaKeyPair>(false));
+	if (++begin != end)
+		keypair->get_private_key(to_string(*begin));
+	this->backup_system->set_keypair(keypair);
+}
+
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const std::vector<T> &v){
 	bool first = true;
@@ -324,7 +345,7 @@ std::ostream &operator<<(std::ostream &stream, OpaqueTimestamp &ts){
 void LineProcessor::process_show_version_summary(const std::wstring *begin, const std::wstring *end){
 	this->ensure_existing_version();
 	std::cout << "Version number: " << this->selected_version << std::endl;
-	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version));
+	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version), this->backup_system->get_keypair().get());
 	auto manifest = archive.read_manifest();
 	std::cout <<
 		"Date created: " << manifest->creation_time << "\n"
@@ -403,4 +424,16 @@ void LineProcessor::process_set_change_criterium(const std::wstring *begin, cons
 		this->backup_system->set_change_criterium((ChangeCriterium)i);
 		break;
 	}
+}
+
+void LineProcessor::process_generate_keypair(const std::wstring *begin, const std::wstring *end){
+	auto recipient = *begin;
+	if (++begin == end)
+		return;
+	auto file = *begin;
+	if (++begin == end)
+		return;
+	auto symmetric_key = to_string(*begin);
+
+	BackupSystem::generate_keypair(recipient, file, symmetric_key);
 }

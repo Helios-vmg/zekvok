@@ -37,6 +37,7 @@ class BackupSystem{
 	stream_id_t next_differential_chain_id;
 	std::deque<FilishFso *> recalculate_file_guids_queue;
 	std::vector<std::shared_ptr<BackupStream>> streams;
+	std::shared_ptr<RsaKeyPair> keypair;
 
 	void set_versions();
 	void perform_backup_inner(const OpaqueTimestamp &start_time);
@@ -94,4 +95,11 @@ public:
 	std::vector<std::shared_ptr<FileSystemObject>> get_entries(version_number_t);
 	bool verify(version_number_t) const;
 	bool full_verify(version_number_t) const;
+	static void generate_keypair(const std::wstring &recipient, const std::wstring &file, const std::string &symmetric_key);
+	void set_keypair(const std::shared_ptr<RsaKeyPair> &keypair){
+		this->keypair = keypair;
+	}
+	const std::shared_ptr<RsaKeyPair> &get_keypair() const{
+		return this->keypair;
+	}
 };

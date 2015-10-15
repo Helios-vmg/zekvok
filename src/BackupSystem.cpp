@@ -118,7 +118,7 @@ path_t BackupSystem::get_version_path(version_number_t version) const{
 }
 
 std::vector<version_number_t> BackupSystem::get_version_dependencies(version_number_t version) const{
-	ArchiveReader reader(this->get_version_path(version));
+	ArchiveReader reader(this->get_version_path(version), this->keypair.get());
 	return reader.read_manifest()->version_dependencies;
 }
 
@@ -301,7 +301,7 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 	auto first_diff_id = this->next_differential_chain_id;
 	auto version_path = this->get_version_path(version);
 
-	ArchiveWriter archive(version_path);
+	ArchiveWriter archive(version_path, this->keypair.get());
 	auto stream_dict = this->generate_streams(generator);
 	std::set<version_number_t> version_dependencies;
 
@@ -539,7 +539,7 @@ std::wstring simplify_path(const std::wstring &path){
 
 void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	{
-		ArchiveReader archive(this->get_version_path(this->versions.back()));
+		ArchiveReader archive(this->get_version_path(this->versions.back()), this->keypair.get());
 		auto manifest = archive.read_manifest();
 		this->old_objects = archive.get_base_objects();
 		this->next_stream_id = manifest->next_stream_id;
@@ -700,12 +700,12 @@ std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(version_
 	std::vector<version_number_t> stack;
 	const auto &latest_version_number = version_number;
 	{
-		auto version = make_shared(new VersionForRestore(latest_version_number, *this));
+		auto version = make_shared(new VersionForRestore(latest_version_number, *this, this->keypair.get()));
 		versions[latest_version_number] = version;
 		for (auto &object : version->get_base_objects())
 			this->old_objects.push_back(object);
 		for (auto &dep : version->get_manifest()->version_dependencies)
-			versions[dep] = make_shared(new VersionForRestore(dep, *this));
+			versions[dep] = make_shared(new VersionForRestore(dep, *this, this->keypair.get()));
 	}
 	latest_version = versions[latest_version_number];
 	latest_version->fill_dependencies(versions);
@@ -769,7 +769,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 		}
 		//Assume monotonicity of input stream IDs.
 		auto begin2 = begin;
-		ArchiveReader archive(This->get_version_path(version_number));
+		ArchiveReader archive(This->get_version_path(version_number), This->get_keypair().get());
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
 			auto it = begin2;
@@ -814,7 +814,7 @@ void BackupSystem::perform_restore(
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
-	ArchiveReader archive(this->get_version_path(version));
+	ArchiveReader archive(this->get_version_path(version), this->keypair.get());
 	return archive.get_base_objects();
 }
 
@@ -849,12 +849,45 @@ bool BackupSystem::full_verify(version_number_t version) const{
 	try{
 		if (!this->verify(version))
 			return false;
-		auto deps = ArchiveReader(this->get_version_path(version)).read_manifest()->version_dependencies;
+		auto deps = ArchiveReader(this->get_version_path(version), this->keypair.get())
+			.read_manifest()->version_dependencies;
 		for (auto d : deps)
 			if (!this->verify(d))
 				return false;
 		return true;
 	}catch (NonFatalException &){
 		return false;
+	}
+}
+
+template <typename T>
+std::vector<byte> to_vector(const T &key){
+	std::string temp;
+	key.Save(CryptoPP::StringSink(temp));
+	std::vector<byte> ret;
+	ret.resize(temp.size());
+	std::copy(temp.begin(), temp.end(), ret.begin());
+	return ret;
+}
+
+void BackupSystem::generate_keypair(const std::wstring &recipient, const std::wstring &filename, const std::string &symmetric_key){
+	CryptoPP::AutoSeededRandomPool rnd;
+	while (1){
+		CryptoPP::RSA::PrivateKey rsaPrivate;
+		rsaPrivate.GenerateRandomWithKeySize(rnd, 4 << 10);
+		if (!rsaPrivate.Validate(rnd, 3))
+			continue;
+		CryptoPP::RSA::PublicKey rsaPublic(rsaPrivate);
+		if (!rsaPublic.Validate(rnd, 3))
+			continue;
+
+		auto pri = to_vector(rsaPrivate);
+		auto pub = to_vector(rsaPublic);
+
+		RsaKeyPair pair(pri, pub, symmetric_key);
+		boost::filesystem::ofstream file(filename, std::ios::binary);
+		SerializerStream ss(file);
+		ss.begin_serialization(pair, false);
+		break;
 	}
 }
