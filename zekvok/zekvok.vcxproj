@@ -258,7 +258,6 @@
     <ClInclude Include="..\serialization\postsrc\Serializable.h" />
     <ClInclude Include="..\serialization\postsrc\serialization_utils.h" />
     <ClInclude Include="..\serialization\postsrc\SerializerStream.h" />
-    <ClInclude Include="..\src\Archive.h" />
     <ClInclude Include="..\src\ArchiveIO.h" />
     <ClInclude Include="..\src\AutoHandle.h" />
     <ClInclude Include="..\src\BackupSystem.h" />

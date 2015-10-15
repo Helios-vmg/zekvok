@@ -137,9 +137,6 @@
     <ClInclude Include="..\src\SimpleTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Archive.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\serialization\postsrc\DeserializerStream.h">
       <Filter>Header Files\Serialization\External</Filter>
     </ClInclude>
