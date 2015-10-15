@@ -5,3 +5,6 @@
 	path = cryptopp
 	url = https://github.com/Helios-vmg/cryptopp.git
 	branch = helios-branch
+[submodule "liblzma"]
+	path = liblzma
+	url = https://github.com/Helios-vmg/zekvok-liblzma.git
