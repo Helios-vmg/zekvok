@@ -47,3 +47,8 @@ test/001_test_backup_and_restore/restore_script.txt
 test/001_test_backup_and_restore/revision_data.pickle
 test/001_test_backup_and_restore/test_repo/
 test/001_test_backup_and_restore/__pycache__/
+test/002_test_crypto/__pycache__/
+test/002_test_crypto/*.txt
+test/002_test_crypto/*.dat
+test/002_test_crypto/*.pickle
+test/002_test_crypto/test_repo/
