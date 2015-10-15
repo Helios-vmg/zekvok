@@ -6,16 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
-#include "BackupSystem.h"
-#include "ArchiveIO.h"
-#include "System/SystemOperations.h"
-#include "System/VSS.h"
-#include "SymbolicConstants.h"
-#include "serialization_utils.h"
-#include "Utility.h"
-#include "VersionForRestore.h"
-#include "BoundedStreamFilter.h"
-#include "NullStream.h"
 
 const wchar_t * const system_path_prefix = L"\\\\?\\";
 

@@ -6,8 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
-#include "LzmaFilter.h"
-#include "Utility.h"
 
 LzmaOutputFilter::LzmaOutputFilter(
 		std::ostream &stream,

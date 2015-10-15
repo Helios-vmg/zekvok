@@ -6,9 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
-#include "Filters.h"
-#include "CryptoFilter.h"
-#include "Utility.h"
 
 template <typename T>
 class GenericCryptoOutputFilter : public CryptoOutputFilter{

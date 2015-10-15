@@ -6,8 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
-#include "fso.generated.h"
-#include "../Exception.h"
 
 const std::uint8_t init_vector[] = {
 	0x24, 0xcc, 0x03, 0x54,

@@ -6,11 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
-#include "fso.generated.h"
-#include "../Exception.h"
-#include "../Utility.h"
-#include "../AutoHandle.h"
-#include "../System/SystemOperations.h"
 
 OpaqueTimestamp OpaqueTimestamp::utc_now(){
 	FILETIME ft;

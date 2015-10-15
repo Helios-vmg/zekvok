@@ -6,9 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
-#include "VersionForRestore.h"
-#include "BackupSystem.h"
-#include "ArchiveIO.h"
 
 VersionForRestore::VersionForRestore(version_number_t version, BackupSystem &bs, RsaKeyPair *keypair):
 		backup_system(&bs),

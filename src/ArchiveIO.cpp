@@ -6,15 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
-#include "ArchiveIO.h"
-#include "SymbolicConstants.h"
-#include "Utility.h"
-#include "LzmaFilter.h"
-#include "BoundedStreamFilter.h"
-#include "HashFilter.h"
-#include "serialization/ImplementedDS.h"
-#include "NullStream.h"
-#include "CryptoFilter.h"
 
 const Algorithm default_crypto_algorithm = Algorithm::Twofish;
 

@@ -7,12 +7,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "SimpleTypes.h"
-#include "Utility.h"
-#include "System/SystemOperations.h"
-#include "serialization/fso.generated.h"
-#include "VersionForRestore.h"
-
 class VssSnapshot;
 
 class BackupSystem{

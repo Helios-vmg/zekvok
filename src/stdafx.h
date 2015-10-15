@@ -64,3 +64,25 @@ Distributed under a permissive license. See COPYING.txt for details.
 #ifdef min
 #undef min
 #endif
+
+#include "SimpleTypes.h"
+#include "SymbolicConstants.h"
+#include "serialization/fso.generated.h"
+#include "Exception.h"
+#include "Utility.h"
+#include "System/SystemOperations.h"
+#include "System/Transactions.h"
+#include "System/VSS.h"
+#include "Filters.h"
+#include "AutoHandle.h"
+#include "BoundedStreamFilter.h"
+#include "ComposingFilter.h"
+#include "CryptoFilter.h"
+#include "HashFilter.h"
+#include "LzmaFilter.h"
+#include "NullStream.h"
+#include "ArchiveIO.h"
+#include "VersionForRestore.h"
+#include "BackupSystem.h"
+#include "LineProcessor.h"
+#include "serialization/ImplementedDS.h"

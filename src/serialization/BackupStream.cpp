@@ -6,7 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
-#include "fso.generated.h"
 
 void UnmodifiedStream::get_dependencies(std::set<version_number_t> &dst) const{
 	dst.insert(this->containing_version);

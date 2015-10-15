@@ -7,10 +7,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "SimpleTypes.h"
-#include "serialization/fso.generated.h"
-#include "ArchiveIO.h"
-
 class BackupSystem;
 
 class VersionForRestore{

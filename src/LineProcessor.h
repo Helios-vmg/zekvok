@@ -6,9 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #pragma once
-#include "Utility.h"
-#include "SimpleTypes.h"
-#include "BackupSystem.h"
 
 class LineProcessor{
 	std::vector<std::string> args;

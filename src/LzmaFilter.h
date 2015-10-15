@@ -6,8 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #pragma once
-#include "Filters.h"
-#include "Utility.h"
 
 const size_t default_buffer_size = 1 << 12;
 

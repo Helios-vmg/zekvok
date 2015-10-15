@@ -7,8 +7,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "../Exception.h"
-
 class VssShadow{
 	VSS_ID snapshot_set_id;
 	VSS_ID id;
