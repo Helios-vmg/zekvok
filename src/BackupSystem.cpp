@@ -593,7 +593,7 @@ std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject
 		default:
 			throw InvalidSwitchVariableException();
 	}
-	assert(!!ret);
+	zekvok_assert(!!ret);
 	auto &guid = filish.get_file_system_guid();
 	if (guid.valid)
 		known_guids[guid.data] = ret;
@@ -624,7 +624,7 @@ bool BackupSystem::file_has_changed(version_number_t &dst, FilishFso &new_file){
 		new_file.compute_hash();
 		return true;
 	}
-	assert(old_fso);
+	zekvok_assert(old_fso);
 	auto old_file = static_cast<FilishFso *>(old_fso);
 	auto criterium = this->get_change_criterium(new_file);
 	bool ret;
@@ -783,7 +783,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 			if (begin2 == end || begin2->second->get_latest_version() > it->second->get_latest_version())
 				break;
 		}
-		assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
+		zekvok_assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
 	}
 }
 

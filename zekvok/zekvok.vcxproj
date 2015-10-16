@@ -203,6 +203,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\src\StackingFilter.cpp" />
     <ClCompile Include="..\src\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -270,6 +271,7 @@
     <ClInclude Include="..\src\serialization\UnmodifiedStream.h" />
     <ClInclude Include="..\src\serialization\VersionManifest.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />
+    <ClInclude Include="..\src\StackingFilter.h" />
     <ClInclude Include="..\src\stdafx.h" />
     <ClInclude Include="..\src\SymbolicConstants.h" />
     <ClInclude Include="..\src\System\SystemOperations.h" />

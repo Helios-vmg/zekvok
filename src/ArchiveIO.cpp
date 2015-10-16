@@ -66,7 +66,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(){
 	if (!this->version_manifest)
 		this->read_manifest();
-	assert(this->version_manifest);
+	zekvok_assert(this->version_manifest);
 	decltype(this->base_objects) ret;
 	ret.reserve(this->version_manifest->archive_metadata.entry_sizes.size());
 	auto stream = this->get_stream();
@@ -110,7 +110,7 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	}
 	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
 
-	assert(this->stream_ids.size() == this->stream_sizes.size());
+	zekvok_assert(this->stream_ids.size() == this->stream_sizes.size());
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
 		boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, this->stream_sizes[i]);
 		sink(std::make_pair(this->stream_ids[i], &bounded2));

@@ -230,3 +230,9 @@ It find_first_true(It begin, It end, F &f){
 	}
 	return end;
 }
+
+template <typename T>
+inline void zekvok_assert(const T &condition){
+	if (!condition)
+		throw IncorrectImplementationException();
+}

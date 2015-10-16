@@ -102,6 +102,9 @@
     <ClCompile Include="..\src\serialization\Inlining.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\StackingFilter.cpp">
+      <Filter>Source Files\Stream filters</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -244,6 +247,9 @@
     </ClInclude>
     <ClInclude Include="..\src\CryptoFilter.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StackingFilter.h">
+      <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -337,7 +337,7 @@ bool path_contains_path(path_t dir, path_t file)
 	file = file.normalize();
 	if (dir.filename() == ".")
 		dir.remove_filename();
-	assert(file.has_filename());
+	zekvok_assert(file.has_filename());
 	file.remove_filename();
 	auto dir_len = std::distance(dir.begin(), dir.end());
 	auto file_len = std::distance(file.begin(), file.end());
