@@ -74,7 +74,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "System/Transactions.h"
 #include "System/VSS.h"
 #include "Filters.h"
-#include "StackingFilter.h"
 #include "AutoHandle.h"
 #include "BoundedStreamFilter.h"
 #include "ComposingFilter.h"

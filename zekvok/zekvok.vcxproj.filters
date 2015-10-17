@@ -102,9 +102,6 @@
     <ClCompile Include="..\src\serialization\Inlining.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\StackingFilter.cpp">
-      <Filter>Source Files\Stream filters</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">

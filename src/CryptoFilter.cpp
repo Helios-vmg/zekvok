@@ -44,10 +44,7 @@ public:
 			memcpy(buffer.data(), key.data(), key.size());
 			memcpy(buffer.data() + key.size(), init_vector, sizeof(init_vector));
 			std::string temp;
-			CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(prng, enc, new CryptoPP::StringSink(temp)));
-			auto array = serialize_fixed_le_int((std::uint32_t)temp.size());
-			this->next_write((const char *)array.data(), array.size());
-			this->next_write(temp.c_str(), temp.size());
+			CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(prng, enc, new CryptoPP::FileSink(*this->stream)));
 		}
 
 		this->data->e.SetKeyWithIV(key, key.size(), init_vector, sizeof(init_vector));
@@ -126,19 +123,14 @@ public:
 		CryptoPP::SecByteBlock key(T::MAX_KEYLENGTH);
 		byte init_vector[16];
 		{
-			std::uint32_t n;
-			char serialized[sizeof(n)];
-			auto read = this->next_read(serialized, sizeof(serialized));
-			if (read != sizeof(serialized))
-				throw std::exception("!!!");
-			n = deserialize_fixed_le_int<std::uint32_t>(serialized);
+			auto n = 4096 / 8;
 
 			typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA>>::Decryptor decryptor_t;
 			typedef CryptoPP::PK_DecryptorFilter filter_t;
 			decryptor_t dec(priv);
 			CryptoPP::SecByteBlock buffer(key.size() + sizeof(init_vector));
 			CryptoPP::SecByteBlock temp(n);
-			read = this->next_read((char *)temp.data(), temp.size());
+			auto read = this->next_read((char *)temp.data(), temp.size());
 			if (read != temp.size())
 				throw std::exception("!!!");
 			CryptoPP::ArraySource(temp.data(), temp.size(), true, new filter_t(prng, dec, new CryptoPP::ArraySink(buffer.data(), buffer.size())));
