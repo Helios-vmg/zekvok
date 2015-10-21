@@ -66,7 +66,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #endif
 
 #include "SimpleTypes.h"
-#include "SymbolicConstants.h"
+#include "Globals.h"
 #include "Exception.h"
 #include "Utility.h"
 #include "serialization/fso.generated.h"
