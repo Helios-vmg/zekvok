@@ -11,3 +11,4 @@ extern const wchar_t * const system_path_prefix;
 namespace config{
 const bool include_typehashes = true;
 }
+extern std::unique_ptr<CryptoPP::AutoSeededRandomPool> random_number_generator;

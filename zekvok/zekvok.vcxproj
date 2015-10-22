@@ -162,6 +162,7 @@
     <ClCompile Include="..\src\BoundedStreamFilter.cpp" />
     <ClCompile Include="..\src\ComposingFilter.cpp" />
     <ClCompile Include="..\src\Exception.cpp" />
+    <ClCompile Include="..\src\Globals.cpp" />
     <ClCompile Include="..\src\HashFilter.cpp" />
     <ClCompile Include="..\src\LineProcessor.cpp" />
     <ClCompile Include="..\src\LzmaFilter.cpp" />
@@ -272,7 +273,7 @@
     <ClInclude Include="..\src\SimpleTypes.h" />
     <ClInclude Include="..\src\StackingFilter.h" />
     <ClInclude Include="..\src\stdafx.h" />
-    <ClInclude Include="..\src\SymbolicConstants.h" />
+    <ClInclude Include="..\src\Globals.h" />
     <ClInclude Include="..\src\System\SystemOperations.h" />
     <ClInclude Include="..\src\System\Transactions.h" />
     <ClInclude Include="..\src\System\VSS.h" />

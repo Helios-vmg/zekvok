@@ -9,12 +9,110 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 const Algorithm default_crypto_algorithm = Algorithm::Twofish;
 
+ArchiveKeys::ArchiveKeys(size_t key_size, size_t iv_size){
+	this->init(key_size, iv_size);
+}
+
+void ArchiveKeys::init(size_t key_size, size_t iv_size, bool randomize){
+	this->size = 0;
+	for (auto &i : this->keys){
+		i.resize(key_size);
+		this->size += key_size;
+		if (randomize)
+			random_number_generator->GenerateBlock(i.data(), i.size());
+	}
+	for (auto &i : this->ivs){
+		i.resize(iv_size);
+		this->size += iv_size;
+		if (randomize)
+			random_number_generator->GenerateBlock(i.data(), i.size());
+	}
+	zekvok_assert(this->size <= 4096 / 8 - 42);
+}
+
+const CryptoPP::SecByteBlock &ArchiveKeys::get_key(size_t i) const{
+	if (i > array_size(this->keys))
+		throw IncorrectImplementationException();
+	return this->keys[i];
+}
+
+const CryptoPP::SecByteBlock &ArchiveKeys::get_iv(size_t i) const{
+	if (i > array_size(this->ivs))
+		throw IncorrectImplementationException();
+	return this->ivs[i];
+}
+
+ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
+	this->init(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::IV_LENGTH, false);
+
+	auto &private_key = keypair.get_private_key();
+
+	CryptoPP::RSA::PrivateKey priv;
+	priv.Load(CryptoPP::ArraySource((const byte *)&private_key[0], private_key.size(), true));
+
+	CryptoPP::SecByteBlock buffer(this->size);
+	{
+		auto n = 4096 / 8;
+
+		typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA>>::Decryptor decryptor_t;
+		typedef CryptoPP::PK_DecryptorFilter filter_t;
+		decryptor_t dec(priv);
+		CryptoPP::SecByteBlock temp(n);
+		stream.read((char *)temp.data(), temp.size());
+		auto read = stream.gcount();
+		if (read != temp.size())
+			throw std::exception("!!!");
+		CryptoPP::ArraySource(temp.data(), temp.size(), true, new filter_t(*random_number_generator, dec, new CryptoPP::ArraySink(buffer.data(), buffer.size())));
+	}
+
+	size_t offset = 0;
+	for (size_t i = 0; i < this->key_count; i++){
+		auto &key = this->keys[i];
+		auto &iv = this->ivs[i];
+		memcpy(key.data(), buffer.data() + offset, key.size());
+		offset += key.size();
+		memcpy(iv.data(), buffer.data() + offset, iv.size());
+		offset += iv.size();
+	}
+}
+
+std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, RsaKeyPair *keypair){
+	std::unique_ptr<ArchiveKeys> ret;
+	if (keypair){
+		ret = make_unique(new ArchiveKeys(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::IV_LENGTH));
+
+		CryptoPP::RSA::PublicKey pub;
+		auto &public_key = keypair->get_public_key();
+		pub.Load(CryptoPP::ArraySource((const byte *)&public_key[0], public_key.size(), true));
+
+		typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA>>::Encryptor encryptor_t;
+		typedef CryptoPP::PK_EncryptorFilter filter_t;
+
+		encryptor_t enc(pub);
+		CryptoPP::SecByteBlock buffer(ret->get_size());
+		size_t offset = 0;
+		for (size_t i = 0; i < ret->key_count; i++){
+			auto &key = ret->get_key(i);
+			auto &iv = ret->get_iv(i);
+			memcpy(buffer.data() + offset, key.data(), key.size());
+			offset += key.size();
+			memcpy(buffer.data() + offset, iv.data(), iv.size());
+			offset += iv.size();
+		}
+		CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(*random_number_generator, enc, new CryptoPP::FileSink(stream)));
+	}
+	return ret;
+}
+
 ArchiveReader::ArchiveReader(const path_t &path, RsaKeyPair *keypair):
 		manifest_offset(-1),
 		path(path),
 		keypair(keypair){
 	if (!boost::filesystem::exists(path) || !boost::filesystem::is_regular_file(path))
 		throw FileNotFoundException(path);
+
+	auto stream = this->get_stream();
+	archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
 }
 
 std::unique_ptr<std::istream> ArchiveReader::get_stream(){
@@ -45,7 +143,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
+			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->archive_keys->get_key(0), &this->archive_keys->get_iv(0));
 			stream = crypto.get();
 		}
 		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -76,7 +174,7 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
+			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->archive_keys->get_key(1), &this->archive_keys->get_iv(1));
 			stream = crypto.get();
 		}
 		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -98,14 +196,14 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	if (!this->version_manifest)
 		this->read_manifest();
 	auto ptr = this->get_stream();
-	ptr->seekg(0);
+	ptr->seekg(4096 / 8);
 
 	boost::iostreams::stream<BoundedInputFilter> bounded(*ptr, this->base_objects_offset);
 	std::istream *stream = &bounded;
 
 	std::shared_ptr<std::istream> crypto;
 	if (this->keypair){
-		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_private_key());
+		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->archive_keys->get_key(2), &this->archive_keys->get_iv(2));
 		stream = crypto.get();
 	}
 	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -137,13 +235,17 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 	sha256_digest complete_hash;
 	{
 		hash_stream_t overall_hash(*this->stream, new CryptoPP::SHA256);
+		auto keys = ArchiveKeys::create_and_save(overall_hash, this->keypair);
+		size_t archive_key_index = 0;
+		
 		this->initial_fso_offset = 0;
 		{
 			boost::iostreams::stream<ByteCounterOutputFilter> counter(overall_hash, &this->initial_fso_offset);
 			std::ostream *stream = &counter;
 			std::shared_ptr<std::ostream> crypto;
 			if (this->keypair){
-				crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_public_key());
+				crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &keys->get_key(archive_key_index), &keys->get_iv(archive_key_index));
+				archive_key_index++;
 				stream = crypto.get();
 			}
 			this->add_files(*stream, begin);
@@ -154,7 +256,8 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 			std::ostream *stream = &counter;
 			std::shared_ptr<std::ostream> crypto;
 			if (this->keypair){
-				crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_public_key());
+				crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &keys->get_key(archive_key_index), &keys->get_iv(archive_key_index));
+				archive_key_index++;
 				stream = crypto.get();
 			}
 			this->add_base_objects(*stream, begin);
@@ -166,7 +269,8 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 				std::ostream *stream = &counter;
 				std::shared_ptr<std::ostream> crypto;
 				if (this->keypair){
-					crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &this->keypair->get_public_key());
+					crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &keys->get_key(archive_key_index), &keys->get_iv(archive_key_index));
+					archive_key_index++;
 					stream = crypto.get();
 				}
 				this->add_version_manifest(*stream, begin);
@@ -182,7 +286,6 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 void ArchiveWriter::add_files(std::ostream &stream, std::unique_ptr<ArchiveWriter_helper> *&begin){
 	bool mt = true;
 	boost::iostreams::stream<LzmaOutputFilter> lzma(stream, &mt, 1);
-	CryptoPP::AutoSeededRandomPool prng;
 
 	auto co = (*(begin++))->first();
 	for (auto i : *co){

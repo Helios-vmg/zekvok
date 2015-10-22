@@ -9,6 +9,25 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
 
+class ArchiveKeys{
+public:
+	static const size_t key_count = 3;
+private:
+	size_t size;
+	CryptoPP::SecByteBlock keys[key_count];
+	CryptoPP::SecByteBlock ivs[key_count];
+	void init(size_t key_size, size_t iv_size, bool = true);
+public:
+	ArchiveKeys(std::istream &, RsaKeyPair &keypair);
+	ArchiveKeys(size_t key_size, size_t iv_size);
+	const CryptoPP::SecByteBlock &get_key(size_t) const;
+	const CryptoPP::SecByteBlock &get_iv(size_t) const;
+	size_t get_size() const{
+		return this->size;
+	}
+	static std::unique_ptr<ArchiveKeys> create_and_save(std::ostream &, RsaKeyPair *keypair);
+};
+
 class ArchiveReader{
 public:
 	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, std::istream *>> read_everything_co_t;
@@ -23,6 +42,7 @@ private:
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
 	RsaKeyPair *keypair;
+	std::unique_ptr<ArchiveKeys> archive_keys;
 
 	void read_everything(read_everything_co_t::push_type &);
 	std::unique_ptr<std::istream> get_stream();
@@ -103,6 +123,7 @@ class ArchiveWriter{
 	void add_files(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 	void add_base_objects(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 	void add_version_manifest(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
+	std::unique_ptr<ArchiveKeys> gen_and_save_keys(std::ostream &);
 public:
 	ArchiveWriter(const path_t &, RsaKeyPair *keypair);
 	void process(std::unique_ptr<ArchiveWriter_helper> *begin, std::unique_ptr<ArchiveWriter_helper> *end);

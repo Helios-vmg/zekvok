@@ -7,12 +7,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "../stdafx.h"
 
-const std::uint8_t init_vector[] = {
-	0x24, 0xcc, 0x03, 0x54,
-	0xfa, 0x15, 0xf7, 0x12,
-	0x54, 0xd3, 0x35, 0xf6,
-};
-
 const std::uint8_t salt[] = {
 	0x8c, 0x4c, 0x94, 0x9e,
 	0x5d, 0x63, 0x48, 0x90,
@@ -25,6 +19,7 @@ RsaKeyPair::RsaKeyPair(const std::vector<std::uint8_t> &private_key, const std::
 		, public_key(public_key)
 		, symmetric_key(symmetric_key)
 		, priv_size((std::uint32_t)private_key.size()){
+	random_number_generator->GenerateBlock(this->initialization_vector.data(), this->initialization_vector.size());
 	this->encrypt();
 }
 
@@ -48,12 +43,16 @@ struct twofish_decryption{
 };
 
 template <typename T>
-std::vector<std::uint8_t> cryptoprocess_buffer(const std::vector<std::uint8_t> &buffer, size_t constant_size, const std::string &symmetric_key){
+std::vector<std::uint8_t> cryptoprocess_buffer(
+		const std::vector<std::uint8_t> &buffer,
+		size_t constant_size,
+		const std::string &symmetric_key,
+		const std::array<uint8_t, 12> &initialization_vector){
 	CryptoPP::PKCS12_PBKDF<CryptoPP::SHA256> derivation;
-	CryptoPP::SecByteBlock key(CryptoPP::Twofish::DEFAULT_KEYLENGTH);
-	derivation.DeriveKey(key.data(), key.size(), 0, (const byte *)symmetric_key.c_str(), symmetric_key.size(), salt, sizeof(salt), 9476, 0);
+	CryptoPP::SecByteBlock key(CryptoPP::Twofish::MAX_KEYLENGTH);
+	derivation.DeriveKey(key.data(), key.size(), 0, (const byte *)symmetric_key.c_str(), symmetric_key.size(), salt, sizeof(salt), 1 << 10, 0);
 	typename T::algo_type e;
-	e.SetKeyWithIV(key, key.size(), init_vector, sizeof(init_vector));
+	e.SetKeyWithIV(key, key.size(), initialization_vector.data(), initialization_vector.size());
 	e.SpecifyDataLengths(0, constant_size, 0);
 
 	std::string pre,
@@ -71,13 +70,13 @@ std::vector<std::uint8_t> cryptoprocess_buffer(const std::vector<std::uint8_t> &
 void RsaKeyPair::encrypt(){
 	if (!this->symmetric_key.size())
 		throw IncorrectImplementationException();
-	this->encrypted_private_key = cryptoprocess_buffer<twofish_encryption>(this->private_key, this->priv_size, this->symmetric_key);
+	this->encrypted_private_key = cryptoprocess_buffer<twofish_encryption>(this->private_key, this->priv_size, this->symmetric_key, this->initialization_vector);
 }
 
 void RsaKeyPair::decrypt(){
 	if (!this->symmetric_key.size())
 		throw IncorrectImplementationException();
-	this->private_key = cryptoprocess_buffer<twofish_decryption>(this->encrypted_private_key, this->priv_size, this->symmetric_key);
+	this->private_key = cryptoprocess_buffer<twofish_decryption>(this->encrypted_private_key, this->priv_size, this->symmetric_key, this->initialization_vector);
 }
 
 const std::vector<std::uint8_t> &RsaKeyPair::get_private_key(){

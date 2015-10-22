@@ -9,6 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 int main(int argc, char **argv){
 	CoInitialize(nullptr);
+	random_number_generator.reset(new CryptoPP::AutoSeededRandomPool);
 	LineProcessor processor(argc, argv);
 	processor.process();
 	return 0;

@@ -861,14 +861,13 @@ std::vector<byte> to_vector(const T &key){
 }
 
 void BackupSystem::generate_keypair(const std::wstring &recipient, const std::wstring &filename, const std::string &symmetric_key){
-	CryptoPP::AutoSeededRandomPool rnd;
 	while (1){
 		CryptoPP::RSA::PrivateKey rsaPrivate;
-		rsaPrivate.GenerateRandomWithKeySize(rnd, 4 << 10);
-		if (!rsaPrivate.Validate(rnd, 3))
+		rsaPrivate.GenerateRandomWithKeySize(*random_number_generator, 4 << 10);
+		if (!rsaPrivate.Validate(*random_number_generator, 3))
 			continue;
 		CryptoPP::RSA::PublicKey rsaPublic(rsaPrivate);
-		if (!rsaPublic.Validate(rnd, 3))
+		if (!rsaPublic.Validate(*random_number_generator, 3))
 			continue;
 
 		auto pri = to_vector(rsaPrivate);

@@ -159,6 +159,9 @@
 		<vector name="public_key">
 			<uint8_t/>
 		</vector>
+		<array name="initialization_vector" length="12">
+			<uint8_t/>
+		</array>
 		<include header="&quot;RsaKeyPair.h&quot;" />
 	</class>
 </cpp>

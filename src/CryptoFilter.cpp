@@ -25,44 +25,31 @@ protected:
 		return this->data->filter.get();
 	}
 public:
-	GenericCryptoOutputFilter(std::ostream &stream, const std::vector<std::uint8_t> *public_key): CryptoOutputFilter(stream){
+	GenericCryptoOutputFilter(
+			std::ostream &stream,
+			const CryptoPP::SecByteBlock &key,
+			const CryptoPP::SecByteBlock &iv): CryptoOutputFilter(stream){
 		this->data.reset(new impl);
-		CryptoPP::RSA::PublicKey pub;
-		pub.Load(CryptoPP::ArraySource((const byte *)&(*public_key)[0], public_key->size(), true));
-		CryptoPP::AutoSeededRandomPool prng;
-
-		CryptoPP::SecByteBlock key(T::MAX_KEYLENGTH);
-		byte init_vector[16];
-		prng.GenerateBlock(key.data(), key.size());
-		prng.GenerateBlock(init_vector, sizeof(init_vector));
-
-		{
-			typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA>>::Encryptor encryptor_t;
-			typedef CryptoPP::PK_EncryptorFilter filter_t;
-			encryptor_t enc(pub);
-			CryptoPP::SecByteBlock buffer(key.size() + sizeof(init_vector));
-			memcpy(buffer.data(), key.data(), key.size());
-			memcpy(buffer.data() + key.size(), init_vector, sizeof(init_vector));
-			std::string temp;
-			CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(prng, enc, new CryptoPP::FileSink(*this->stream)));
-		}
-
-		this->data->e.SetKeyWithIV(key, key.size(), init_vector, sizeof(init_vector));
+		this->data->e.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
 		this->data->filter.reset(new CryptoPP::StreamTransformationFilter(this->data->e));
 	}
 };
 
-std::shared_ptr<std::ostream> CryptoOutputFilter::create(Algorithm algo, std::ostream &stream, const std::vector<std::uint8_t> *public_key){
+std::shared_ptr<std::ostream> CryptoOutputFilter::create(
+		Algorithm algo,
+		std::ostream &stream,
+		const CryptoPP::SecByteBlock *key,
+		const CryptoPP::SecByteBlock *iv){
 	std::shared_ptr<std::ostream> ret;
 	switch (algo){
 		case Algorithm::Rijndael:
-			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Rijndael>>(stream, public_key));
+			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Rijndael>>(stream, *key, *iv));
 			break;
 		case Algorithm::Serpent:
-			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Serpent>>(stream, public_key));
+			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Serpent>>(stream, *key, *iv));
 			break;
 		case Algorithm::Twofish:
-			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Twofish>>(stream, public_key));
+			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Twofish>>(stream, *key, *iv));
 			break;
 	}
 	return ret;
@@ -114,46 +101,28 @@ protected:
 		return this->data->filter.get();
 	}
 public:
-	GenericCryptoInputFilter(std::istream &stream, const std::vector<std::uint8_t> *private_key): CryptoInputFilter(stream){
+	GenericCryptoInputFilter(std::istream &stream, const CryptoPP::SecByteBlock &key, const CryptoPP::SecByteBlock &iv): CryptoInputFilter(stream){
 		this->data.reset(new impl);
-		CryptoPP::RSA::PrivateKey priv;
-		priv.Load(CryptoPP::ArraySource((const byte *)&(*private_key)[0], private_key->size(), true));
-		CryptoPP::AutoSeededRandomPool prng;
-
-		CryptoPP::SecByteBlock key(T::MAX_KEYLENGTH);
-		byte init_vector[16];
-		{
-			auto n = 4096 / 8;
-
-			typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA>>::Decryptor decryptor_t;
-			typedef CryptoPP::PK_DecryptorFilter filter_t;
-			decryptor_t dec(priv);
-			CryptoPP::SecByteBlock buffer(key.size() + sizeof(init_vector));
-			CryptoPP::SecByteBlock temp(n);
-			auto read = this->next_read((char *)temp.data(), temp.size());
-			if (read != temp.size())
-				throw std::exception("!!!");
-			CryptoPP::ArraySource(temp.data(), temp.size(), true, new filter_t(prng, dec, new CryptoPP::ArraySink(buffer.data(), buffer.size())));
-			memcpy(key.data(), buffer.data(), key.size());
-			memcpy(init_vector, buffer.data() + key.size(), sizeof(init_vector));
-		}
-
-		this->data->d.SetKeyWithIV(key, key.size(), init_vector, sizeof(init_vector));
+		this->data->d.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
 		this->data->filter.reset(new CryptoPP::StreamTransformationFilter(this->data->d));
 	}
 };
 
-std::shared_ptr<std::istream> CryptoInputFilter::create(Algorithm algo, std::istream &stream, const std::vector<std::uint8_t> *private_key){
+std::shared_ptr<std::istream> CryptoInputFilter::create(
+		Algorithm algo,
+		std::istream &stream,
+		const CryptoPP::SecByteBlock *key,
+		const CryptoPP::SecByteBlock *iv){
 	std::shared_ptr<std::istream> ret;
 	switch (algo){
 		case Algorithm::Rijndael:
-			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Rijndael>>(stream, private_key));
+			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Rijndael>>(stream, *key, *iv));
 			break;
 		case Algorithm::Serpent:
-			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Serpent>>(stream, private_key));
+			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Serpent>>(stream, *key, *iv));
 			break;
 		case Algorithm::Twofish:
-			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Twofish>>(stream, private_key));
+			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Twofish>>(stream, *key, *iv));
 			break;
 	}
 	return ret;

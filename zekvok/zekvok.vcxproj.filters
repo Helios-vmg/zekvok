@@ -102,6 +102,9 @@
     <ClCompile Include="..\src\serialization\Inlining.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Globals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -176,9 +179,6 @@
     <ClInclude Include="..\src\ProgressFilter.h">
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SymbolicConstants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\BoundedStreamFilter.h">
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
@@ -247,6 +247,9 @@
     </ClInclude>
     <ClInclude Include="..\src\StackingFilter.h">
       <Filter>Header Files\Stream filters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Globals.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

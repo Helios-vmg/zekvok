@@ -14,7 +14,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 //#include <map>
 //#include "../stdafx.h"
 #include "../SimpleTypes.h"
-#include "../SymbolicConstants.h"
+#include "../Globals.h"
 #include "../Utility.h"
 
 #define DEFINE_INLINE_GETTER(x) const decltype(x) &get_##x() const{ return this->x; } 
