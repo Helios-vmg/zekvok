@@ -43,7 +43,7 @@ const CryptoPP::SecByteBlock &ArchiveKeys::get_iv(size_t i) const{
 }
 
 ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
-	this->init(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::IV_LENGTH, false);
+	this->init(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::BLOCKSIZE, false);
 
 	auto &private_key = keypair.get_private_key();
 
@@ -79,7 +79,7 @@ ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
 std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, RsaKeyPair *keypair){
 	std::unique_ptr<ArchiveKeys> ret;
 	if (keypair){
-		ret = make_unique(new ArchiveKeys(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::IV_LENGTH));
+		ret = make_unique(new ArchiveKeys(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::BLOCKSIZE));
 
 		CryptoPP::RSA::PublicKey pub;
 		auto &public_key = keypair->get_public_key();
@@ -143,7 +143,12 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->archive_keys->get_key(0), &this->archive_keys->get_iv(0));
+			crypto = CryptoInputFilter::create(
+				default_crypto_algorithm,
+				*stream,
+				&this->archive_keys->get_key((size_t)KeyIndices::ManifestKey),
+				&this->archive_keys->get_iv((size_t)KeyIndices::ManifestKey)
+			);
 			stream = crypto.get();
 		}
 		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -174,7 +179,12 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->archive_keys->get_key(1), &this->archive_keys->get_iv(1));
+			crypto = CryptoInputFilter::create(
+				default_crypto_algorithm,
+				*stream,
+				&this->archive_keys->get_key((size_t)KeyIndices::FileObjectDataKey),
+				&this->archive_keys->get_iv((size_t)KeyIndices::FileObjectDataKey)
+			);
 			stream = crypto.get();
 		}
 		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -203,7 +213,12 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 
 	std::shared_ptr<std::istream> crypto;
 	if (this->keypair){
-		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &this->archive_keys->get_key(2), &this->archive_keys->get_iv(2));
+		crypto = CryptoInputFilter::create(
+			default_crypto_algorithm,
+			*stream,
+			&this->archive_keys->get_key((size_t)KeyIndices::FileDataKey),
+			&this->archive_keys->get_iv((size_t)KeyIndices::FileDataKey)
+		);
 		stream = crypto.get();
 	}
 	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);

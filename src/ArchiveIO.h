@@ -9,9 +9,16 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
 
+enum class KeyIndices{
+	FileDataKey = 0,
+	FileObjectDataKey,
+	ManifestKey,
+	KeyCount,
+};
+
 class ArchiveKeys{
 public:
-	static const size_t key_count = 3;
+	static const size_t key_count = (size_t)KeyIndices::KeyCount;
 private:
 	size_t size;
 	CryptoPP::SecByteBlock keys[key_count];
