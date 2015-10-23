@@ -112,7 +112,8 @@ ArchiveReader::ArchiveReader(const path_t &path, RsaKeyPair *keypair):
 		throw FileNotFoundException(path);
 
 	auto stream = this->get_stream();
-	archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
+	if (this->keypair)
+		archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
 }
 
 std::unique_ptr<std::istream> ArchiveReader::get_stream(){
@@ -206,9 +207,10 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	if (!this->version_manifest)
 		this->read_manifest();
 	auto ptr = this->get_stream();
-	ptr->seekg(4096 / 8);
+	auto file_data_start = this->keypair ? 4096 / 8 : 0;
+	ptr->seekg(file_data_start);
 
-	boost::iostreams::stream<BoundedInputFilter> bounded(*ptr, this->base_objects_offset);
+	boost::iostreams::stream<BoundedInputFilter> bounded(*ptr, this->base_objects_offset - file_data_start);
 	std::istream *stream = &bounded;
 
 	std::shared_ptr<std::istream> crypto;

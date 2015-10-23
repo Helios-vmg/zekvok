@@ -17,6 +17,9 @@ public:
 		*this->bytes_processed += n;
 		return this->next_write(s, n);
 	}
+	bool flush() override{
+		return this->internal_flush();
+	}
 };
 
 class BoundedInputFilter : public InputFilter{

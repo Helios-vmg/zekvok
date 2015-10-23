@@ -10,6 +10,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 class OutputFilter{
 protected:
 	std::ostream *stream;
+	bool flush_enabled;
+	int *copies;
 
 	std::streamsize next_write(const char* s, std::streamsize n){
 		this->stream->write(s, n);
@@ -17,18 +19,35 @@ protected:
 			return -1;
 		return n;
 	}
+	virtual bool internal_flush(){
+		this->stream->flush();
+		return this->stream->good();
+	}
 public:
 	typedef char char_type;
 	struct category :
 		boost::iostreams::sink_tag,
 		boost::iostreams::flushable_tag
 	{};
-	OutputFilter(std::ostream &stream): stream(&stream){}
-	virtual ~OutputFilter(){}
+	OutputFilter(std::ostream &stream):
+		stream(&stream),
+		flush_enabled(false),
+		copies(new int(1)){}
+	OutputFilter(const OutputFilter &b): stream(b.stream), flush_enabled(b.flush_enabled), copies(b.copies){
+		++*this->copies;
+	}
+	virtual ~OutputFilter(){
+		if (!--*this->copies)
+			delete this->copies;
+	}
 	virtual std::streamsize write(const char *s, std::streamsize n) = 0;
 	virtual bool flush(){
-		this->stream->flush();
-		return this->stream->good();
+		if (!this->flush_enabled)
+			return true;
+		return this->internal_flush();
+	}
+	void enable_flush(){
+		this->flush_enabled = true;
 	}
 };
 

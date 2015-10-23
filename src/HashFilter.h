@@ -38,6 +38,9 @@ class HashOutputFilter : public OutputFilter, public HashCalculator{
 public:
 	HashOutputFilter(std::ostream &stream, CryptoPP::HashTransformation *t): OutputFilter(stream), HashCalculator(t){}
 	std::streamsize write(const char *s, std::streamsize n) override;
+	bool flush() override{
+		return this->internal_flush();
+	}
 };
 
 class HashInputFilter : public InputFilter, public HashCalculator{

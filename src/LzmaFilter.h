@@ -55,10 +55,11 @@ class LzmaOutputFilter : public OutputFilter{
 	bool initialize_single_threaded(int, size_t, bool);
 	bool initialize_multithreaded(int, size_t, bool);
 	bool pass_data_to_stream(lzma_ret ret);
+	bool internal_flush() override;
 public:
 	LzmaOutputFilter(std::ostream &stream, bool *multithreaded, int compression_level = 7, size_t buffer_size = default_buffer_size, bool extreme_mode = false);
+	~LzmaOutputFilter();
 	std::streamsize write(const char *s, std::streamsize n) override;
-	bool flush() override;
 	std::uint64_t get_bytes_written() const{
 		return this->data->bytes_written;
 	}

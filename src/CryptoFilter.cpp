@@ -33,6 +33,12 @@ public:
 		this->data->e.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
 		this->data->filter.reset(new CryptoPP::StreamTransformationFilter(this->data->e));
 	}
+	~GenericCryptoOutputFilter(){
+		if (*this->copies == 1){
+			this->enable_flush();
+			this->flush();
+		}
+	}
 };
 
 std::shared_ptr<std::ostream> CryptoOutputFilter::create(
@@ -69,18 +75,21 @@ std::streamsize CryptoOutputFilter::write(const char *s, std::streamsize n){
 	return n;
 }
 
-bool CryptoOutputFilter::flush(){
+bool CryptoOutputFilter::internal_flush(){
 	auto filter = this->get_filter();
 	size_t size;
 	auto buffer = this->get_buffer(size);
-	filter->MessageEnd();
+	if (!this->flushed){
+		filter->MessageEnd();
+		this->flushed = true;
+	}
 	while (1){
 		auto read = filter->Get(buffer, size);
 		if (!read)
 			break;
 		this->next_write((const char *)buffer, read);
 	}
-	return OutputFilter::flush();
+	return OutputFilter::internal_flush();
 }
 
 template <typename T>
@@ -129,6 +138,8 @@ std::shared_ptr<std::istream> CryptoInputFilter::create(
 }
 
 std::streamsize CryptoInputFilter::read(char *s, std::streamsize n){
+	auto input_s = s;
+	auto input_n = n;
 	if (this->done)
 		return -1;
 	std::streamsize ret = 0;
