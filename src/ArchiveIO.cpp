@@ -241,7 +241,7 @@ ArchiveReader::read_everything_co_t::pull_type ArchiveReader::read_everything(){
 	});
 }
 
-ArchiveWriter::ArchiveWriter(const path_t &path, RsaKeyPair *keypair): keypair(keypair){
+ArchiveWriter::ArchiveWriter(KernelTransaction &tx, const path_t &path, RsaKeyPair *keypair): keypair(keypair), tx(tx){
 	this->stream.reset(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
 }
 

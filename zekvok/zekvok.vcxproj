@@ -168,6 +168,7 @@
     <ClCompile Include="..\src\LzmaFilter.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\CryptoFilter.cpp" />
+    <ClCompile Include="..\src\MemoryStream.cpp" />
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
@@ -245,6 +246,7 @@
     <ClInclude Include="..\src\HashFilter.h" />
     <ClInclude Include="..\src\LineProcessor.h" />
     <ClInclude Include="..\src\LzmaFilter.h" />
+    <ClInclude Include="..\src\MemoryStream.h" />
     <ClInclude Include="..\src\NullStream.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
     <ClInclude Include="..\src\CryptoFilter.h" />
@@ -271,7 +273,6 @@
     <ClInclude Include="..\src\serialization\UnmodifiedStream.h" />
     <ClInclude Include="..\src\serialization\VersionManifest.h" />
     <ClInclude Include="..\src\SimpleTypes.h" />
-    <ClInclude Include="..\src\StackingFilter.h" />
     <ClInclude Include="..\src\stdafx.h" />
     <ClInclude Include="..\src\Globals.h" />
     <ClInclude Include="..\src\System\SystemOperations.h" />

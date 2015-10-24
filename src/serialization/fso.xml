@@ -44,6 +44,7 @@
 			<FileSystemObject/>
 		</pointer>
 		<int32_t name="latest_version" />
+		<bool name="is_encrypted" />
 		<include header="&quot;FileSystemObject.h&quot;" />
 	</class>
 	

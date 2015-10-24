@@ -115,7 +115,7 @@ DERIVE_ArchiveWriter_helper(second);
 DERIVE_ArchiveWriter_helper(third);
 
 class ArchiveWriter{
-	KernelTransaction tx;
+	KernelTransaction &tx;
 	std::unique_ptr<std::ostream> stream;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
@@ -132,6 +132,6 @@ class ArchiveWriter{
 	void add_version_manifest(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 	std::unique_ptr<ArchiveKeys> gen_and_save_keys(std::ostream &);
 public:
-	ArchiveWriter(const path_t &, RsaKeyPair *keypair);
+	ArchiveWriter(KernelTransaction &tx, const path_t &, RsaKeyPair *keypair);
 	void process(std::unique_ptr<ArchiveWriter_helper> *begin, std::unique_ptr<ArchiveWriter_helper> *end);
 };

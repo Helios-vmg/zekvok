@@ -52,3 +52,4 @@ test/002_test_crypto/*.txt
 test/002_test_crypto/*.dat
 test/002_test_crypto/*.pickle
 test/002_test_crypto/test_repo/
+test/001_test_backup_and_restore/backup/*

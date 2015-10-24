@@ -54,6 +54,7 @@ protected:
 	}
 	BackupSystem *get_backup_system();
 	virtual void delete_existing_internal(const std::wstring *base_path = nullptr) = 0;
+	virtual void encrypt_internal(){}
 
 public:
 	FileSystemObject(const path_t &path, const path_t &unmapped_path, CreationSettings &settings);
@@ -115,3 +116,4 @@ public:
 	void delete_existing(const std::wstring *base_path = nullptr);
 	virtual void iterate(FileSystemObject::iterate_co_t::push_type &sink) = 0;
 	virtual void reverse_iterate(FileSystemObject::iterate_co_t::push_type &sink) = 0;
+	void encrypt();

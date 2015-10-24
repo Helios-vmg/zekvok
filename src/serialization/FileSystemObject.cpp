@@ -23,6 +23,7 @@ void FileSystemObject::default_values(){
 	this->backup_mode = BackupMode::NoBackup;
 	this->archive_flag = false;
 	this->backup_system = nullptr;
+	this->is_encrypted = false;
 }
 
 void FileHardlinkFso::default_values(){
@@ -635,4 +636,29 @@ bool FileHardlinkFso::restore(const path_t *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
 	system_ops::create_hardlink(path.wstring(), *this->link_target);
 	return true;
+}
+
+void FileSystemObject::encrypt(){
+	if (this->is_encrypted)
+		return;
+	this->name = encrypt_string(this->name);
+	if (this->mapped_base_path)
+		*this->mapped_base_path = encrypt_string(*this->mapped_base_path);
+	if (this->unmapped_base_path)
+		*this->unmapped_base_path = encrypt_string(*this->unmapped_base_path);
+	if (this->link_target)
+		*this->link_target = encrypt_string(*this->link_target);
+	this->exceptions.clear();
+	this->encrypt_internal();
+	this->is_encrypted = true;
+}
+
+void DirectoryFso::encrypt_internal(){
+	for (auto &child : this->children)
+		child->encrypt();
+}
+
+void FileHardlinkFso::encrypt_internal(){
+	for (auto &peer : this->peers)
+		peer = encrypt_string(peer);
 }

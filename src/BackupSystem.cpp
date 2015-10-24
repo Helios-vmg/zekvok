@@ -291,83 +291,117 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 	auto first_diff_id = this->next_differential_chain_id;
 	auto version_path = this->get_version_path(version);
 
-	ArchiveWriter archive(version_path, this->keypair.get());
-	auto stream_dict = this->generate_streams(generator);
-	std::set<version_number_t> version_dependencies;
+	KernelTransaction tx;
 
-	std::unique_ptr<ArchiveWriter_helper> array[] = {
-		make_unique(new ArchiveWriter_helper_first(
-			make_shared(new ArchiveWriter_helper::first_co_t::pull_type(
-				[&](ArchiveWriter_helper::first_co_t::push_type &sink){
-					sink({nullptr, 0, nullptr, 0});
-					for (auto &kv : stream_dict){
-						{
-							auto base_object = this->base_objects[kv.first];
-							for (auto &i : kv.second)
-								for (auto &j : i->get_file_system_objects())
-									j->set_backup_stream(i.get());
+	{
+		ArchiveWriter archive(tx, version_path, this->keypair.get());
+		auto stream_dict = this->generate_streams(generator);
+		std::set<version_number_t> version_dependencies;
 
-							for (auto &i : base_object->get_iterator())
-								this->get_dependencies(version_dependencies, *i);
-						}
+		std::unique_ptr<ArchiveWriter_helper> array[] = {
+			make_unique(new ArchiveWriter_helper_first(
+				make_shared(new ArchiveWriter_helper::first_co_t::pull_type(
+					[&](ArchiveWriter_helper::first_co_t::push_type &sink){
+						sink({nullptr, 0, nullptr, 0});
+						for (auto &kv : stream_dict){
+							{
+								auto base_object = this->base_objects[kv.first];
+								for (auto &i : kv.second)
+									for (auto &j : i->get_file_system_objects())
+										j->set_backup_stream(i.get());
 
-						for (auto &backup_stream : kv.second){
-							auto fso = backup_stream->get_file_system_objects()[0];
-							std::wcout << fso->get_unmapped_path() << std::endl;
-							bool compute = !fso->get_hash().valid;
-							sha256_digest digest;
-							std::uint64_t size;
-							auto stream = fso->open_for_exclusive_read(size);
-							ArchiveWriter_helper::first_push_t s = {
-								&digest,
-								backup_stream->get_unique_id(),
-								stream.get(),
-								size,
-							};
-							sink(s);
-							fso->set_hash(digest);
+								for (auto &i : base_object->get_iterator())
+									this->get_dependencies(version_dependencies, *i);
+							}
+
+							for (auto &backup_stream : kv.second){
+								auto fso = backup_stream->get_file_system_objects()[0];
+								std::wcout << fso->get_unmapped_path() << std::endl;
+								bool compute = !fso->get_hash().valid;
+								sha256_digest digest;
+								std::uint64_t size;
+								auto stream = fso->open_for_exclusive_read(size);
+								ArchiveWriter_helper::first_push_t s = {
+									&digest,
+									backup_stream->get_unique_id(),
+									stream.get(),
+									size,
+								};
+								sink(s);
+								fso->set_hash(digest);
+							}
 						}
 					}
-				}
-			))
-		)),
-		make_unique(new ArchiveWriter_helper_second(
-			make_shared(new ArchiveWriter_helper::second_co_t::pull_type(
-				[&](ArchiveWriter_helper::second_co_t::push_type &sink){
-					sink(nullptr);
-					for (auto &kv : stream_dict)
-						sink(this->base_objects[kv.first].get());
-				}
-			))
-		)),
-		make_unique(new ArchiveWriter_helper_third(
-			make_shared(new ArchiveWriter_helper::third_co_t::pull_type(
-				[&](ArchiveWriter_helper::third_co_t::push_type &sink){
-					sink(nullptr);
-					VersionManifest manifest;
-					manifest.creation_time = start_time;
-					manifest.version_number = version;
+				))
+			)),
+			make_unique(new ArchiveWriter_helper_second(
+				make_shared(new ArchiveWriter_helper::second_co_t::pull_type(
+					[&](ArchiveWriter_helper::second_co_t::push_type &sink){
+						sink(nullptr);
+						for (auto &kv : stream_dict)
+							sink(this->base_objects[kv.first].get());
+					}
+				))
+			)),
+			make_unique(new ArchiveWriter_helper_third(
+				make_shared(new ArchiveWriter_helper::third_co_t::pull_type(
+					[&](ArchiveWriter_helper::third_co_t::push_type &sink){
+						sink(nullptr);
+						VersionManifest manifest;
+						manifest.creation_time = start_time;
+						manifest.version_number = version;
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4244)
 #pragma warning(disable: 4267)
 #endif
-					manifest.entry_count = base_objects.size();
-					manifest.first_stream_id = first_stream_id;
-					manifest.first_differential_chain_id = first_diff_id;
-					manifest.next_stream_id = this->next_stream_id;
-					manifest.next_differential_chain_id = this->next_differential_chain_id;
+						manifest.entry_count = base_objects.size();
+						manifest.first_stream_id = first_stream_id;
+						manifest.first_differential_chain_id = first_diff_id;
+						manifest.next_stream_id = this->next_stream_id;
+						manifest.next_differential_chain_id = this->next_differential_chain_id;
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-					manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
-					sink(&manifest);
-				}
-			))
-		)),
-	};
+						manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
+						sink(&manifest);
+					}
+				))
+			)),
+		};
 
-	archive.process(array, array + array_size(array));
+		archive.process(array, array + array_size(array));
+	}
+
+	this->save_encrypted_base_objects(tx, version);
+}
+
+void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_number_t version){
+	auto dst = this->target_path;
+	dst /= ".aux";
+	if (!boost::filesystem::exists(dst))
+		boost::filesystem::create_directory(dst);
+	else if (!boost::filesystem::is_directory(dst))
+		return;
+	
+	{
+		std::stringstream temp;
+		temp << "fso" << std::setw(8) << std::setfill('0') << version << ".dat";
+		dst /= temp.str();
+	}
+	boost::iostreams::stream<TransactedFileSink> file(tx, dst.wstring().c_str());
+	for (auto &fso : this->base_objects){
+		auto cloned = easy_clone(*fso);
+		cloned->encrypt();
+		buffer_t mem;
+		{
+			boost::iostreams::stream<MemorySink> omem(&mem);
+			SerializerStream stream(omem);
+			stream.begin_serialization(*cloned);
+		}
+
+		simple_buffer_serialization(file, mem);
+	}
 }
 
 std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemObject &fso, known_guids_t &known_guids){

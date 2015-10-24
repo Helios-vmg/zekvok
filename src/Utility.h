@@ -236,3 +236,52 @@ inline void zekvok_assert(const T &condition){
 	if (!condition)
 		throw IncorrectImplementationException();
 }
+
+template <typename T>
+std::shared_ptr<T> easy_clone(const T &src){
+	buffer_t mem;
+	{
+		boost::iostreams::stream<MemorySink> omem(&mem);
+		SerializerStream stream(omem);
+		stream.begin_serialization(src);
+	}
+	std::shared_ptr<T> cloned;
+	{
+		boost::iostreams::stream<MemorySource> imem(&mem);
+		ImplementedDeserializerStream stream(imem);
+		cloned.reset(stream.begin_deserialization<T>());
+	}
+	return cloned;
+}
+
+inline void simple_buffer_serialization(std::ostream &stream, const buffer_t &buffer){
+	auto size = serialize_fixed_le_int<std::uint64_t>(buffer.size());
+	stream.write((const char *)size.data(), size.size());
+	stream.write((const char *)&buffer[0], buffer.size());
+}
+
+inline bool simple_buffer_deserialization(buffer_t &buffer, std::istream &stream){
+	char temp[sizeof(std::uint64_t)];
+	stream.read(temp, sizeof(temp));
+	if (stream.gcount() != sizeof(temp))
+		return false;
+	auto size64 = deserialize_fixed_le_int<std::uint64_t>(temp);
+	size_t size = (size_t)size64;
+	if ((std::uint64_t)size != size64)
+		return false;
+	buffer.resize(size);
+	stream.read((char *)&buffer[0], buffer.size());
+	return stream.gcount() == buffer.size();
+}
+
+inline std::wstring encrypt_string(const std::wstring &s){
+	static_assert(sizeof(wchar_t) == 2, "encrypt_string(const std::wstring &) requires 2-byte wchar_t.");
+	CryptoPP::SHA256 hash;
+	hash.Update((const byte *)s.c_str(), s.size());
+	sha256_digest digest;
+	hash.Final(digest.data());
+	std::wstring ret;
+	ret.resize(digest.size() / sizeof(wchar_t));
+	memcpy(&ret[0], digest.data(), digest.size());
+	return ret;
+}

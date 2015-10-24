@@ -69,6 +69,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Globals.h"
 #include "Exception.h"
 #include "Utility.h"
+#include "MemoryStream.h"
 #include "serialization/fso.generated.h"
 #include "System/SystemOperations.h"
 #include "System/Transactions.h"
