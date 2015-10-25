@@ -277,11 +277,15 @@ inline bool simple_buffer_deserialization(buffer_t &buffer, std::istream &stream
 inline std::wstring encrypt_string(const std::wstring &s){
 	static_assert(sizeof(wchar_t) == 2, "encrypt_string(const std::wstring &) requires 2-byte wchar_t.");
 	CryptoPP::SHA256 hash;
-	hash.Update((const byte *)s.c_str(), s.size());
+	hash.Update((const byte *)s.c_str(), s.size() * sizeof(wchar_t));
 	sha256_digest digest;
 	hash.Final(digest.data());
 	std::wstring ret;
 	ret.resize(digest.size() / sizeof(wchar_t));
 	memcpy(&ret[0], digest.data(), digest.size());
 	return ret;
+}
+
+inline std::wstring encrypt_string_ci(const std::wstring &s){
+	return encrypt_string(to_lower(s));
 }
