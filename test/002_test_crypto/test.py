@@ -156,12 +156,13 @@ def simple_wd():
 	return to_memory_slash(path)
 
 def generate_backup_script(base):
+	cd = os.getcwd()
 	script  = 'open %s\n' % backup_dst
-	script += 'add %s\n' % base
+	script += 'add %s\\%s\n' % (cd, base)
 	script += 'exclude name dirs .svn\n'
 	script += 'set change_criterium date\n'
 	script += 'set use_snapshots false\n'
-	script += 'select keypair key.dat 123456\n'
+	script += 'select keypair key.dat\n'
 	script += 'backup\n'
 	script += 'quit\n'
 	open(script_path, 'w').write(script)

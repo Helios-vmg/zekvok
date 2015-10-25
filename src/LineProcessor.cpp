@@ -341,7 +341,7 @@ std::ostream &operator<<(std::ostream &stream, OpaqueTimestamp &ts){
 void LineProcessor::process_show_version_summary(const std::wstring *begin, const std::wstring *end){
 	this->ensure_existing_version();
 	std::cout << "Version number: " << this->selected_version << std::endl;
-	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version), this->backup_system->get_keypair().get());
+	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version), nullptr, this->backup_system->get_keypair().get());
 	auto manifest = archive.read_manifest();
 	std::cout <<
 		"Date created: " << manifest->creation_time << "\n"

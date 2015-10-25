@@ -73,6 +73,7 @@ public:
 	DEFINE_INLINE_SETTER_GETTER(archive_flag)
 	DEFINE_INLINE_SETTER_GETTER(modification_time)
 	DEFINE_INLINE_SETTER_GETTER(parent)
+	DEFINE_INLINE_GETTER(is_encrypted)
 	void set_link_target(const path_t &path){
 		this->set_link_target(make_shared(new std::wstring(path.wstring())));
 	}

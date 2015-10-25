@@ -68,6 +68,7 @@ class BackupSystem{
 	std::shared_ptr<VersionForRestore> compute_latest_version(version_number_t);
 	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<std::pair<version_number_t, FileSystemObject *>> &);
 	void save_encrypted_base_objects(KernelTransaction &, version_number_t);
+	std::vector<std::shared_ptr<FileSystemObject>> get_old_objects(ArchiveReader &, version_number_t);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();
@@ -87,6 +88,8 @@ public:
 	stream_id_t get_stream_id();
 	void enqueue_file_for_guid_get(FilishFso *);
 	path_t get_version_path(version_number_t) const;
+	path_t get_aux_path() const;
+	path_t get_aux_fso_path(version_number_t) const;
 	std::vector<std::shared_ptr<FileSystemObject>> get_entries(version_number_t);
 	bool verify(version_number_t) const;
 	bool full_verify(version_number_t) const;

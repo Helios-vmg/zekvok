@@ -12,7 +12,7 @@ typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_
 enum class KeyIndices{
 	FileDataKey = 0,
 	FileObjectDataKey,
-	ManifestKey,
+	//ManifestKey,
 	KeyCount,
 };
 
@@ -53,8 +53,9 @@ private:
 
 	void read_everything(read_everything_co_t::push_type &);
 	std::unique_ptr<std::istream> get_stream();
+	bool get_key_iv(CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, KeyIndices);
 public:
-	ArchiveReader(const path_t &, RsaKeyPair *keypair);
+	ArchiveReader(const path_t &archive, const path_t *encrypted_fso, RsaKeyPair *keypair);
 	std::shared_ptr<VersionManifest> read_manifest();
 	std::vector<std::shared_ptr<FileSystemObject>> read_base_objects();
 	std::vector<std::shared_ptr<FileSystemObject>> get_base_objects(){

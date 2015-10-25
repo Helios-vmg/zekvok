@@ -222,29 +222,46 @@ DEFINE_get_type(FileHardlink)
 //------------------------------------------------------------------------------
 
 const FileSystemObject *FileSystemObject::find(const path_t &_path) const{
-	path_t my_base = *this->get_mapped_base_path();
-	my_base.normalize();
+	if (!this->is_encrypted || true){
+		path_t my_base = *this->get_mapped_base_path();
+		my_base.normalize();
+		auto path = _path;
+		path.normalize();
+		auto b0 = my_base.begin(),
+			e0 = my_base.end();
+		auto b1 = path.begin(),
+			e1 = path.end();
+		for (; b0 != e0 && b1 != e1; ++b0, ++b1)
+			if (!strcmpci().equal(b0->wstring(), b1->wstring()))
+				return nullptr;
+		if (b0 != e0)
+			return nullptr;
+		if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
+			return nullptr;
+		return this->find(b1, e1);
+	}
+
+	auto my_base = *this->get_mapped_base_path();
 	auto path = _path;
 	path.normalize();
-	auto b0 = my_base.begin(),
-		e0 = my_base.end();
 	auto b1 = path.begin(),
 		e1 = path.end();
-	for (; b0 != e0 && b1 != e1; ++b0, ++b1)
-		if (!strcmpci().equal(b0->wstring(), b1->wstring()))
-			return nullptr;
-	if (b0 != e0)
-		return nullptr;
-	if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
-		return nullptr;
-	return this->find(b1, e1);
+	for (; b1 != e1; ++b1)
+		if (encrypt_string_ci(b1->wstring()) == my_base)
+			return this->find(b1, e1);
+	return nullptr;
 }
 
 const FileSystemObject *DirectoryFso::find(path_t::iterator begin, path_t::iterator end) const{
 	if (begin == end)
 		return nullptr;
-	if (!strcmpci().equal(begin->wstring(), this->name))
-		return nullptr;
+	if (!this->is_encrypted || !this->parent){
+		if (!strcmpci().equal(begin->wstring(), this->name))
+			return nullptr;
+	}else{
+		if (encrypt_string_ci(begin->wstring()) != this->name)
+			return nullptr;
+	}
 	auto next = begin;
 	++next;
 	if (next == end)
@@ -264,7 +281,9 @@ const FileSystemObject *DirectorySymlinkFso::find(path_t::iterator begin, path_t
 	++next;
 	if (next != end)
 		return nullptr;
-	return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	if (!this->is_encrypted)
+		return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	return encrypt_string_ci(begin->wstring()) == this->name ? this : nullptr;
 }
 
 const FileSystemObject *FilishFso::find(path_t::iterator begin, path_t::iterator end) const{
@@ -274,7 +293,9 @@ const FileSystemObject *FilishFso::find(path_t::iterator begin, path_t::iterator
 	++next;
 	if (next != end)
 		return nullptr;
-	return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	if (!this->is_encrypted)
+		return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	return encrypt_string_ci(begin->wstring()) == this->name ? this : nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -641,11 +662,12 @@ bool FileHardlinkFso::restore(const path_t *base_path){
 void FileSystemObject::encrypt(){
 	if (this->is_encrypted)
 		return;
-	this->name = encrypt_string(this->name);
-	if (this->mapped_base_path)
-		*this->mapped_base_path = encrypt_string(*this->mapped_base_path);
-	if (this->unmapped_base_path)
-		*this->unmapped_base_path = encrypt_string(*this->unmapped_base_path);
+	if (!!this->parent)
+		this->name = encrypt_string(this->name);
+	//if (this->mapped_base_path)
+	//	*this->mapped_base_path = encrypt_string_ci(*this->mapped_base_path);
+	//if (this->unmapped_base_path)
+	//	*this->unmapped_base_path = encrypt_string_ci(*this->unmapped_base_path);
 	if (this->link_target)
 		*this->link_target = encrypt_string(*this->link_target);
 	this->exceptions.clear();

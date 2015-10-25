@@ -12,7 +12,7 @@ VersionForRestore::VersionForRestore(version_number_t version, BackupSystem &bs,
 		version_number(version),
 		dependencies_full(false){
 	this->path = bs.get_version_path(version);
-	this->archive_reader.reset(new ArchiveReader(this->path, keypair));
+	this->archive_reader.reset(new ArchiveReader(this->path, nullptr, keypair));
 	this->manifest = this->archive_reader->read_manifest();
 }
 

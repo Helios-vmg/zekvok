@@ -108,7 +108,7 @@ path_t BackupSystem::get_version_path(version_number_t version) const{
 }
 
 std::vector<version_number_t> BackupSystem::get_version_dependencies(version_number_t version) const{
-	ArchiveReader reader(this->get_version_path(version), this->keypair.get());
+	ArchiveReader reader(this->get_version_path(version), nullptr, this->keypair.get());
 	return reader.read_manifest()->version_dependencies;
 }
 
@@ -376,19 +376,25 @@ void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_
 	this->save_encrypted_base_objects(tx, version);
 }
 
-void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_number_t version){
+path_t BackupSystem::get_aux_path() const{
 	auto dst = this->target_path;
-	dst /= ".aux";
+	return dst / ".aux";
+}
+
+path_t BackupSystem::get_aux_fso_path(version_number_t version) const{
+	std::stringstream temp;
+	temp << "fso" << std::setw(8) << std::setfill('0') << version << ".dat";
+	return this->get_aux_path() / temp.str();
+}
+
+void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_number_t version){
+	auto dst = this->get_aux_path();
 	if (!boost::filesystem::exists(dst))
 		boost::filesystem::create_directory(dst);
 	else if (!boost::filesystem::is_directory(dst))
 		return;
 	
-	{
-		std::stringstream temp;
-		temp << "fso" << std::setw(8) << std::setfill('0') << version << ".dat";
-		dst /= temp.str();
-	}
+	dst = this->get_aux_fso_path(version);
 	boost::iostreams::stream<TransactedFileSink> file(tx, dst.wstring().c_str());
 	for (auto &fso : this->base_objects){
 		auto cloned = easy_clone(*fso);
@@ -397,7 +403,7 @@ void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_nu
 		{
 			boost::iostreams::stream<MemorySink> omem(&mem);
 			SerializerStream stream(omem);
-			stream.begin_serialization(*cloned);
+			stream.begin_serialization(*cloned, config::include_typehashes);
 		}
 
 		simple_buffer_serialization(file, mem);
@@ -552,8 +558,10 @@ std::wstring normalize_path(const std::wstring &path){
 	size_t skip = 0;
 	if (starts_with(path, system_path_prefix)){
 		ret = system_path_prefix;
-		ret += path_t(path.substr(4)).normalize().wstring();
+		skip = 4;
 	}
+	ret += path_t(path.substr(skip)).normalize().wstring();
+	std::transform(ret.begin(), ret.end(), ret.begin(), [](wchar_t c){ return c == '/' ? '\\' : c; });
 	return ret;
 }
 
@@ -561,11 +569,27 @@ std::wstring simplify_path(const std::wstring &path){
 	return to_lower(normalize_path(path));
 }
 
+std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(ArchiveReader &archive, version_number_t v){
+	boost::filesystem::ifstream file(this->get_aux_fso_path(v), std::ios::binary);
+	if (!file)
+		return archive.get_base_objects();
+
+	std::vector<std::shared_ptr<FileSystemObject>> ret;
+	buffer_t mem;
+	while (simple_buffer_deserialization(mem, file)){
+		boost::iostreams::stream<MemorySource> stream(&mem);
+		ImplementedDeserializerStream ds(stream);
+		ret.push_back(make_shared(ds.begin_deserialization<FileSystemObject>(config::include_typehashes)));
+	}
+	return ret;
+}
+
 void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	{
-		ArchiveReader archive(this->get_version_path(this->versions.back()), this->keypair.get());
+		auto version = this->versions.back();
+		ArchiveReader archive(this->get_version_path(version), &this->get_aux_fso_path(version), this->keypair.get());
 		auto manifest = archive.read_manifest();
-		this->old_objects = archive.get_base_objects();
+		this->old_objects = this->get_old_objects(archive, version);
 		this->next_stream_id = manifest->next_stream_id;
 		this->next_differential_chain_id = manifest->next_differential_chain_id;
 	}
@@ -573,10 +597,22 @@ void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	this->set_base_objects();
 	for (auto &base_object : this->base_objects){
 		for (auto &fso : base_object->get_iterator()){
-			auto it = this->old_objects_map.find(simplify_path(fso->get_mapped_path().wstring()));
-			if (it == this->old_objects_map.end())
+			auto search_path = simplify_path(fso->get_mapped_path().wstring());
+			auto it = this->old_objects_map.find(search_path);
+			FileSystemObject *found = nullptr;
+			if (it == this->old_objects_map.end()){
+				for (auto &fso2 : this->old_objects){
+					if (!fso2->get_is_encrypted())
+						continue;
+					found = fso2->find(search_path);
+					if (found)
+						break;
+				}
+			}else
+				found = it->second;
+			if (!found)
 				continue;
-			fso->set_stream_id(it->second->get_stream_id());
+			fso->set_stream_id(found->get_stream_id());
 			break;
 		}
 	}
@@ -585,9 +621,12 @@ void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 
 void BackupSystem::set_old_objects_map(){
 	this->old_objects_map.clear();
-	for (auto &old_object : this->old_objects)
+	for (auto &old_object : this->old_objects){
+		if (old_object->get_is_encrypted())
+			continue;
 		for (auto &fso : old_object->get_iterator())
 			this->old_objects_map[simplify_path(fso->get_mapped_path().wstring())] = fso;
+	}
 }
 
 std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject &fso, known_guids_t &known_guids){
@@ -793,7 +832,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 		}
 		//Assume monotonicity of input stream IDs.
 		auto begin2 = begin;
-		ArchiveReader archive(This->get_version_path(version_number), This->get_keypair().get());
+		ArchiveReader archive(This->get_version_path(version_number), &This->get_aux_fso_path(version_number), This->get_keypair().get());
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
 			auto it = begin2;
@@ -838,7 +877,7 @@ void BackupSystem::perform_restore(
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
-	ArchiveReader archive(this->get_version_path(version), this->keypair.get());
+	ArchiveReader archive(this->get_version_path(version), &this->get_aux_fso_path(version), this->keypair.get());
 	return archive.get_base_objects();
 }
 
@@ -873,7 +912,7 @@ bool BackupSystem::full_verify(version_number_t version) const{
 	try{
 		if (!this->verify(version))
 			return false;
-		auto deps = ArchiveReader(this->get_version_path(version), this->keypair.get())
+		auto deps = ArchiveReader(this->get_version_path(version), nullptr, this->keypair.get())
 			.read_manifest()->version_dependencies;
 		for (auto d : deps)
 			if (!this->verify(d))

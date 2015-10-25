@@ -104,16 +104,30 @@ std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, 
 	return ret;
 }
 
-ArchiveReader::ArchiveReader(const path_t &path, RsaKeyPair *keypair):
+ArchiveReader::ArchiveReader(const path_t &path, const path_t *encrypted_fso, RsaKeyPair *keypair):
 		manifest_offset(-1),
 		path(path),
 		keypair(keypair){
 	if (!boost::filesystem::exists(path) || !boost::filesystem::is_regular_file(path))
 		throw FileNotFoundException(path);
 
-	auto stream = this->get_stream();
-	if (this->keypair)
-		archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
+	
+}
+
+bool ArchiveReader::get_key_iv(CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, KeyIndices index){
+	if (!this->keypair)
+		return false;
+	if (!this->archive_keys){
+		auto stream = this->get_stream();
+		try{
+			this->archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
+		}catch (std::exception &){
+			return false;
+		}
+	}
+	key = this->archive_keys->get_key((size_t)index);
+	iv = this->archive_keys->get_iv((size_t)index);
+	return true;
 }
 
 std::unique_ptr<std::istream> ArchiveReader::get_stream(){
@@ -142,16 +156,16 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	{
 		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_size);
 		std::istream *stream = &bounded;
-		std::shared_ptr<std::istream> crypto;
-		if (this->keypair){
-			crypto = CryptoInputFilter::create(
-				default_crypto_algorithm,
-				*stream,
-				&this->archive_keys->get_key((size_t)KeyIndices::ManifestKey),
-				&this->archive_keys->get_iv((size_t)KeyIndices::ManifestKey)
-			);
-			stream = crypto.get();
-		}
+		//std::shared_ptr<std::istream> crypto;
+		//if (this->keypair){
+		//	crypto = CryptoInputFilter::create(
+		//		default_crypto_algorithm,
+		//		*stream,
+		//		&this->archive_keys->get_key((size_t)KeyIndices::ManifestKey),
+		//		&this->archive_keys->get_iv((size_t)KeyIndices::ManifestKey)
+		//	);
+		//	stream = crypto.get();
+		//}
 		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
 
 		ImplementedDeserializerStream ds(lzma);
@@ -180,12 +194,9 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 		std::istream *stream = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
-			crypto = CryptoInputFilter::create(
-				default_crypto_algorithm,
-				*stream,
-				&this->archive_keys->get_key((size_t)KeyIndices::FileObjectDataKey),
-				&this->archive_keys->get_iv((size_t)KeyIndices::FileObjectDataKey)
-			);
+			CryptoPP::SecByteBlock key, iv;
+			zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileObjectDataKey));
+			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &key, &iv);
 			stream = crypto.get();
 		}
 		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -215,12 +226,9 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 
 	std::shared_ptr<std::istream> crypto;
 	if (this->keypair){
-		crypto = CryptoInputFilter::create(
-			default_crypto_algorithm,
-			*stream,
-			&this->archive_keys->get_key((size_t)KeyIndices::FileDataKey),
-			&this->archive_keys->get_iv((size_t)KeyIndices::FileDataKey)
-		);
+		CryptoPP::SecByteBlock key, iv;
+		zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileDataKey));
+		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &key, &iv);
 		stream = crypto.get();
 	}
 	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
@@ -284,12 +292,12 @@ void ArchiveWriter::process(std::unique_ptr<ArchiveWriter_helper> *begin, std::u
 			{
 				boost::iostreams::stream<ByteCounterOutputFilter> counter(overall_hash, &manifest_length);
 				std::ostream *stream = &counter;
-				std::shared_ptr<std::ostream> crypto;
-				if (this->keypair){
-					crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &keys->get_key(archive_key_index), &keys->get_iv(archive_key_index));
-					archive_key_index++;
-					stream = crypto.get();
-				}
+				//std::shared_ptr<std::ostream> crypto;
+				//if (this->keypair){
+				//	crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &keys->get_key(archive_key_index), &keys->get_iv(archive_key_index));
+				//	archive_key_index++;
+				//	stream = crypto.get();
+				//}
 				this->add_version_manifest(*stream, begin);
 			}
 			auto s_manifest_length = serialize_fixed_le_int(manifest_length);
