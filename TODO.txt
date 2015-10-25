@@ -1,6 +1,6 @@
 Work before 0.3.0 release:
 
-* Save base objects to one-way encrypted files to allow unattended backups.
++ Save base objects to one-way encrypted files to allow unattended backups.
 
 
 Work before 0.4.0 release:

@@ -396,6 +396,8 @@ void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_nu
 	
 	dst = this->get_aux_fso_path(version);
 	boost::iostreams::stream<TransactedFileSink> file(tx, dst.wstring().c_str());
+	bool mt = false;
+	boost::iostreams::stream<LzmaOutputFilter> lzma(file, &mt, 8);
 	for (auto &fso : this->base_objects){
 		auto cloned = easy_clone(*fso);
 		cloned->encrypt();
@@ -406,7 +408,7 @@ void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_nu
 			stream.begin_serialization(*cloned, config::include_typehashes);
 		}
 
-		simple_buffer_serialization(file, mem);
+		simple_buffer_serialization(lzma, mem);
 	}
 }
 
@@ -573,10 +575,11 @@ std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(Arc
 	boost::filesystem::ifstream file(this->get_aux_fso_path(v), std::ios::binary);
 	if (!file)
 		return archive.get_base_objects();
+	boost::iostreams::stream<LzmaInputFilter> lzma(file);
 
 	std::vector<std::shared_ptr<FileSystemObject>> ret;
 	buffer_t mem;
-	while (simple_buffer_deserialization(mem, file)){
+	while (simple_buffer_deserialization(mem, lzma)){
 		boost::iostreams::stream<MemorySource> stream(&mem);
 		ImplementedDeserializerStream ds(stream);
 		ret.push_back(make_shared(ds.begin_deserialization<FileSystemObject>(config::include_typehashes)));
