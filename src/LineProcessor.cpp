@@ -253,13 +253,13 @@ void LineProcessor::process_exclude_name(const std::wstring *begin, const std::w
 
 void LineProcessor::ensure_backup_initialized(){
 	if (!this->backup_system)
-		throw std::exception("No backup selected.");
+		throw StdStringException("No backup selected.");
 }
 
 void LineProcessor::ensure_existing_version(){
 	this->ensure_backup_initialized();
 	if (!this->backup_system->get_version_count())
-		throw std::exception("Backup has never been performed.");
+		throw StdStringException("Backup has never been performed.");
 }
 
 void LineProcessor::process_select_version(const std::wstring *begin, const std::wstring *end){
@@ -271,7 +271,7 @@ void LineProcessor::process_select_version(const std::wstring *begin, const std:
 	if (version < 0)
 		version += this->backup_system->get_version_count();
 	if (!this->backup_system->version_exists(version))
-		throw std::exception("No such version in backup.");
+		throw StdStringException("No such version in backup.");
 	this->selected_version = version;
 }
 

@@ -76,14 +76,18 @@ void RsaKeyPair::encrypt(){
 void RsaKeyPair::decrypt(){
 	if (!this->symmetric_key.size())
 		throw IncorrectImplementationException();
-	this->private_key = cryptoprocess_buffer<twofish_decryption>(this->encrypted_private_key, this->priv_size, this->symmetric_key, this->initialization_vector);
+	try{
+		this->private_key = cryptoprocess_buffer<twofish_decryption>(this->encrypted_private_key, this->priv_size, this->symmetric_key, this->initialization_vector);
+	}catch (...){
+		throw PrivateKeyDecryptionException("Decrypting the private key failed. Invalid symmetric key?");
+	}
 }
 
 const std::vector<std::uint8_t> &RsaKeyPair::get_private_key(){
 	if (this->private_key.size())
 		return this->private_key;
 	if (!this->symmetric_key.size())
-		throw std::exception("Symmetric key hasn't been set");
+			throw PrivateKeyDecryptionException();
 	this->decrypt();
 	return this->private_key;
 }
@@ -93,7 +97,7 @@ const std::vector<std::uint8_t> &RsaKeyPair::get_private_key(const std::string &
 		return this->private_key;
 	if (!this->symmetric_key.size()){
 		if (!symmetric_key.size())
-			throw std::exception("Symmetric key hasn't been set");
+			throw PrivateKeyDecryptionException();
 		this->symmetric_key = symmetric_key;
 	}
 	this->decrypt();

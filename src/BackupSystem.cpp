@@ -39,7 +39,7 @@ BackupSystem::BackupSystem(const std::wstring &dst):
 	this->target_path = dst;
 	if (fs::exists(this->target_path)){
 		if (!fs::is_directory(this->target_path))
-			throw std::exception("Target path exists and is not a directory.");
+			throw StdStringException("Target path exists and is not a directory.");
 	}else
 		fs::create_directory(this->target_path);
 	
@@ -99,7 +99,7 @@ bool BackupSystem::version_exists(version_number_t v) const{
 
 path_t BackupSystem::get_version_path(version_number_t version) const{
 	if (version <= invalid_version_number)
-		throw std::exception("Invalid version number.");
+		throw StdStringException("Invalid version number.");
 	path_t ret = this->target_path;
 	std::wstringstream stream;
 	stream << L"version" << std::setw(8) << std::setfill(L'0') << version << L".arc";
@@ -781,7 +781,7 @@ void BackupSystem::restore_backup(version_number_t version_number){
 	if (version_number < 0)
 		version_number = this->versions.back() + version_number + 1;
 	if (!this->version_exists(version_number))
-		throw std::exception("No such version");
+		throw StdStringException("No such version");
 
 	std::cout << "Initializing structures...\n";
 	auto latest_version = this->compute_latest_version(version_number);

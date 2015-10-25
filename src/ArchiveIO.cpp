@@ -61,8 +61,14 @@ ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
 		stream.read((char *)temp.data(), temp.size());
 		auto read = stream.gcount();
 		if (read != temp.size())
-			throw std::exception("!!!");
-		CryptoPP::ArraySource(temp.data(), temp.size(), true, new filter_t(*random_number_generator, dec, new CryptoPP::ArraySink(buffer.data(), buffer.size())));
+			throw RsaBlockDecryptionException("Not enough bytes read from RSA block.");
+		try{
+			auto sink = new CryptoPP::ArraySink(buffer.data(), buffer.size());
+			auto filter = new filter_t(*random_number_generator, dec, sink);
+			CryptoPP::ArraySource(temp.data(), temp.size(), true, filter);
+		}catch (...){
+			throw RsaBlockDecryptionException("Invalid data in RSA block.");
+		}
 	}
 
 	size_t offset = 0;
@@ -110,8 +116,6 @@ ArchiveReader::ArchiveReader(const path_t &path, const path_t *encrypted_fso, Rs
 		keypair(keypair){
 	if (!boost::filesystem::exists(path) || !boost::filesystem::is_regular_file(path))
 		throw FileNotFoundException(path);
-
-	
 }
 
 bool ArchiveReader::get_key_iv(CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlock &iv, KeyIndices index){
@@ -119,11 +123,7 @@ bool ArchiveReader::get_key_iv(CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlo
 		return false;
 	if (!this->archive_keys){
 		auto stream = this->get_stream();
-		try{
-			this->archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
-		}catch (std::exception &){
-			return false;
-		}
+		this->archive_keys.reset(new ArchiveKeys(*stream, *this->keypair));
 	}
 	key = this->archive_keys->get_key((size_t)index);
 	iv = this->archive_keys->get_iv((size_t)index);
@@ -146,7 +146,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		char temp[uint64_length];
 		stream->read(temp, uint64_length);
 		if (stream->gcount() != uint64_length)
-			throw std::exception("Invalid data");
+			throw ArchiveReadException("Invalid data: File is too small to possibly be valid");
 		deserialize_fixed_le_int(this->manifest_size, temp);
 		start -= this->manifest_size;
 		stream->seekg(start, std::ios::end);
@@ -155,23 +155,12 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		stream->seekg(this->manifest_offset);
 	{
 		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_size);
-		std::istream *stream = &bounded;
-		//std::shared_ptr<std::istream> crypto;
-		//if (this->keypair){
-		//	crypto = CryptoInputFilter::create(
-		//		default_crypto_algorithm,
-		//		*stream,
-		//		&this->archive_keys->get_key((size_t)KeyIndices::ManifestKey),
-		//		&this->archive_keys->get_iv((size_t)KeyIndices::ManifestKey)
-		//	);
-		//	stream = crypto.get();
-		//}
-		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
+		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 
 		ImplementedDeserializerStream ds(lzma);
 		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
-			throw std::exception("Error during deserialization");
+			throw ArchiveReadException("Invalid data: Error during manifest deserialization");
 	}
 
 	this->base_objects_offset = this->manifest_offset - this->version_manifest->archive_metadata.entries_size_in_archive;
@@ -206,7 +195,7 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 			ImplementedDeserializerStream ds(bounded2);
 			std::shared_ptr<FileSystemObject> fso(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
 			if (!fso)
-				throw std::exception("Error during deserialization");
+				throw ArchiveReadException("Invalid data: Error during FSO deserialization");
 			ret.push_back(fso);
 		}
 	}

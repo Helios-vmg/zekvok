@@ -62,6 +62,22 @@ public:
 	DeserializationException(int);
 };
 
+class PrivateKeyDecryptionException : public StdStringException{
+public:
+	PrivateKeyDecryptionException(): StdStringException("Symmetric key hasn't been set"){}
+	PrivateKeyDecryptionException(const char *s): StdStringException(s){}
+};
+
+class RsaBlockDecryptionException : public StdStringException{
+public:
+	RsaBlockDecryptionException(const char *s): StdStringException(s){}
+};
+
+class ArchiveReadException : public StdStringException{
+public:
+	ArchiveReadException(const char *s): StdStringException(s){}
+};
+
 class FatalException : public std::exception{
 public:
 	virtual ~FatalException() = 0 {}

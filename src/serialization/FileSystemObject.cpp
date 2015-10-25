@@ -222,34 +222,22 @@ DEFINE_get_type(FileHardlink)
 //------------------------------------------------------------------------------
 
 const FileSystemObject *FileSystemObject::find(const path_t &_path) const{
-	if (!this->is_encrypted || true){
-		path_t my_base = *this->get_mapped_base_path();
-		my_base.normalize();
-		auto path = _path;
-		path.normalize();
-		auto b0 = my_base.begin(),
-			e0 = my_base.end();
-		auto b1 = path.begin(),
-			e1 = path.end();
-		for (; b0 != e0 && b1 != e1; ++b0, ++b1)
-			if (!strcmpci().equal(b0->wstring(), b1->wstring()))
-				return nullptr;
-		if (b0 != e0)
-			return nullptr;
-		if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
-			return nullptr;
-		return this->find(b1, e1);
-	}
-
-	auto my_base = *this->get_mapped_base_path();
+	path_t my_base = *this->get_mapped_base_path();
+	my_base.normalize();
 	auto path = _path;
 	path.normalize();
+	auto b0 = my_base.begin(),
+		e0 = my_base.end();
 	auto b1 = path.begin(),
 		e1 = path.end();
-	for (; b1 != e1; ++b1)
-		if (encrypt_string_ci(b1->wstring()) == my_base)
-			return this->find(b1, e1);
-	return nullptr;
+	for (; b0 != e0 && b1 != e1; ++b0, ++b1)
+		if (!strcmpci().equal(b0->wstring(), b1->wstring()))
+			return nullptr;
+	if (b0 != e0)
+		return nullptr;
+	if (b1 == e1 || !strcmpci().equal(this->name, b1->wstring()))
+		return nullptr;
+	return this->find(b1, e1);
 }
 
 const FileSystemObject *DirectoryFso::find(path_t::iterator begin, path_t::iterator end) const{
