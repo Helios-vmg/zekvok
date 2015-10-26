@@ -291,13 +291,17 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">cd "$(SolutionDir)\src\serialization"
+"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\src\serialization\fso.aux.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.h;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">cd "$(SolutionDir)\src\serialization"
+"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)\src\serialization\fso.aux.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.h;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cd "$(SolutionDir)\src\serialization"
+"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)\src\serialization\fso.aux.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.h;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cd "$(SolutionDir)\src\serialization"
+"$(SolutionDir)\bin\LAS.exe" "$(FullPath)"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\src\serialization\fso.aux.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.cpp;$(SolutionDir)\src\serialization\fso.generated.h;%(Outputs)</Outputs>
     </CustomBuild>
   </ItemGroup>
