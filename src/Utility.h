@@ -199,7 +199,7 @@ std::basic_string<T> to_lower(const std::basic_string<T> &s){
 	std::basic_string<T> ret;
 	ret.reserve(s.size());
 	for (auto c : s)
-		ret.push_back(tolower(c));
+		ret.push_back((T)tolower(c));
 	return ret;
 }
 
