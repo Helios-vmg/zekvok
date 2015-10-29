@@ -87,7 +87,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>..\include;..\serialization\postsrc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\cryptopp;$(SolutionDir)\liblzma\src\liblzma\api;$(SolutionDir)\serialization\postsrc</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -105,7 +105,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>..\include;..\serialization\postsrc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\cryptopp;$(SolutionDir)\liblzma\src\liblzma\api;$(SolutionDir)\serialization\postsrc</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -125,7 +125,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>..\include;..\serialization\postsrc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\cryptopp;$(SolutionDir)\liblzma\src\liblzma\api;$(SolutionDir)\serialization\postsrc</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
@@ -150,7 +150,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>..\include;..\serialization\postsrc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\cryptopp;$(SolutionDir)\liblzma\src\liblzma\api;$(SolutionDir)\serialization\postsrc</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>None</DebugInformationFormat>
