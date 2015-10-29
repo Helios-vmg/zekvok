@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
+#include "Transactions.h"
 
 KernelTransaction::KernelTransaction(){
 	this->tx = CreateTransaction(nullptr, 0, 0, 0, 0, 0, nullptr);

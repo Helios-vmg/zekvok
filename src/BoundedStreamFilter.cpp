@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
+#include "BoundedStreamFilter.h"
 
 std::streamsize BoundedInputFilter::read(char *output, std::streamsize length){
 	if (this->bytes_read == this->simulated_length)

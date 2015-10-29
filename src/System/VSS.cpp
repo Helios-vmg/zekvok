@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
+#include "VSS.h"
 
 #define CALL_HRESULT_FUNCTION(f, params)           \
 	{                                              \

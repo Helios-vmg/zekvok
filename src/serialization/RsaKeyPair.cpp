@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
+#include "fso.generated.h"
 
 const std::uint8_t salt[] = {
 	0x8c, 0x4c, 0x94, 0x9e,

@@ -7,7 +7,12 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-typedef std::function<void(boost::iostreams::filtering_istream &)> input_filter_generator_t;
+class RsaKeyPair;
+class KernelTransaction;
+class HashOutputFilter;
+class VersionManifest;
+class FileSystemObject;
+class FilishFso;
 
 enum class KeyIndices{
 	FileDataKey = 0,
@@ -73,49 +78,15 @@ public:
 	}
 };
 
-class ArchiveWriter_helper{
-public:
-	struct first_push_t{
-		sha256_digest *dst;
-		stream_id_t id;
-		std::istream *stream;
-		std::uint64_t stream_size;
-	};
-	typedef const FileSystemObject *second_push_t;
-	typedef VersionManifest *third_push_t;
-	typedef boost::coroutines::asymmetric_coroutine<first_push_t> first_co_t;
-	typedef boost::coroutines::asymmetric_coroutine<second_push_t> second_co_t;
-	typedef boost::coroutines::asymmetric_coroutine<third_push_t> third_co_t;
-
-	virtual ~ArchiveWriter_helper(){}
-
-	virtual std::shared_ptr<first_co_t::pull_type> first(){
-		throw IncorrectImplementationException();
-	}
-	virtual std::shared_ptr<second_co_t::pull_type> second(){
-		throw IncorrectImplementationException();
-	}
-	virtual std::shared_ptr<third_co_t::pull_type> third(){
-		throw IncorrectImplementationException();
-	}
-};
-
-#define DERIVE_ArchiveWriter_helper(x)                        \
-class ArchiveWriter_helper_##x : public ArchiveWriter_helper{ \
-	typedef std::shared_ptr<x##_co_t::pull_type> r;           \
-	r data;                                                   \
-public:                                                       \
-	ArchiveWriter_helper_##x(const r &data): data(data){}     \
-	r x() override{                                           \
-		return this->data;                                    \
-	}                                                         \
-}
-
-DERIVE_ArchiveWriter_helper(first);
-DERIVE_ArchiveWriter_helper(second);
-DERIVE_ArchiveWriter_helper(third);
-
 class ArchiveWriter{
+	enum class State{
+		Initial,
+		FilesWritten,
+		FsosWritten,
+		ManifestWritten,
+		Final,
+	};
+	State state;
 	KernelTransaction &tx;
 	std::unique_ptr<std::ostream> stream;
 	std::vector<stream_id_t> stream_ids;
@@ -125,14 +96,19 @@ class ArchiveWriter{
 	std::uint64_t entries_size_in_archive;
 	std::vector<std::uint64_t> base_object_entry_sizes;
 	RsaKeyPair *keypair;
+	std::ostream *nested_stream;
+	std::unique_ptr<ArchiveKeys> keys;
+	size_t archive_key_index;
 
-	typedef boost::iostreams::stream<HashOutputFilter> hash_stream_t;
-
-	void add_files(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
-	void add_base_objects(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
-	void add_version_manifest(std::ostream &overall_hash, std::unique_ptr<ArchiveWriter_helper> *&begin);
 	std::unique_ptr<ArchiveKeys> gen_and_save_keys(std::ostream &);
 public:
 	ArchiveWriter(KernelTransaction &tx, const path_t &, RsaKeyPair *keypair);
-	void process(std::unique_ptr<ArchiveWriter_helper> *begin, std::unique_ptr<ArchiveWriter_helper> *end);
+	void process(const std::function<void()> &callback);
+	struct FileQueueElement{
+		FilishFso *fso;
+		stream_id_t stream_id;
+	};
+	void add_files(const std::vector<FileQueueElement> &files);
+	void add_base_objects(const std::vector<FileSystemObject *> &base_objects);
+	void add_version_manifest(VersionManifest &manifest);
 };

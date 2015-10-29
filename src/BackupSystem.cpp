@@ -6,6 +6,18 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
+#include "BackupSystem.h"
+#include "serialization/fso.generated.h"
+#include "serialization/ImplementedDS.h"
+#include "ArchiveIO.h"
+#include "System/SystemOperations.h"
+#include "System/VSS.h"
+#include "System/Transactions.h"
+#include "LzmaFilter.h"
+#include "HashFilter.h"
+#include "VersionForRestore.h"
+#include "BoundedStreamFilter.h"
+#include "NullStream.h"
 
 const wchar_t * const system_path_prefix = L"\\\\?\\";
 
@@ -287,93 +299,83 @@ void BackupSystem::set_base_objects(){
 }
 
 void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_archive_fp generator, version_number_t version){
-	auto first_stream_id = this->next_stream_id;
-	auto first_diff_id = this->next_differential_chain_id;
 	auto version_path = this->get_version_path(version);
 
 	KernelTransaction tx;
 
 	{
 		ArchiveWriter archive(tx, version_path, this->keypair.get());
-		auto stream_dict = this->generate_streams(generator);
-		std::set<version_number_t> version_dependencies;
+		archive.process([&](){ this->archive_process_callback(start_time, generator, version, archive); });
+	}
 
-		std::unique_ptr<ArchiveWriter_helper> array[] = {
-			make_unique(new ArchiveWriter_helper_first(
-				make_shared(new ArchiveWriter_helper::first_co_t::pull_type(
-					[&](ArchiveWriter_helper::first_co_t::push_type &sink){
-						sink({nullptr, 0, nullptr, 0});
-						for (auto &kv : stream_dict){
-							{
-								auto base_object = this->base_objects[kv.first];
-								for (auto &i : kv.second)
-									for (auto &j : i->get_file_system_objects())
-										j->set_backup_stream(i.get());
+	this->save_encrypted_base_objects(tx, version);
+}
 
-								for (auto &i : base_object->get_iterator())
-									this->get_dependencies(version_dependencies, *i);
-							}
+void BackupSystem::archive_process_callback(
+		const OpaqueTimestamp &start_time,
+		generate_archive_fp generator,
+		version_number_t version,
+		ArchiveWriter &archive){
+	auto stream_dict = this->generate_streams(generator);
+	std::set<version_number_t> version_dependencies;
 
-							for (auto &backup_stream : kv.second){
-								auto fso = backup_stream->get_file_system_objects()[0];
-								std::wcout << fso->get_unmapped_path() << std::endl;
-								bool compute = !fso->get_hash().valid;
-								sha256_digest digest;
-								std::uint64_t size;
-								auto stream = fso->open_for_exclusive_read(size);
-								ArchiveWriter_helper::first_push_t s = {
-									&digest,
-									backup_stream->get_unique_id(),
-									stream.get(),
-									size,
-								};
-								sink(s);
-								fso->set_hash(digest);
-							}
-						}
-					}
-				))
-			)),
-			make_unique(new ArchiveWriter_helper_second(
-				make_shared(new ArchiveWriter_helper::second_co_t::pull_type(
-					[&](ArchiveWriter_helper::second_co_t::push_type &sink){
-						sink(nullptr);
-						for (auto &kv : stream_dict)
-							sink(this->base_objects[kv.first].get());
-					}
-				))
-			)),
-			make_unique(new ArchiveWriter_helper_third(
-				make_shared(new ArchiveWriter_helper::third_co_t::pull_type(
-					[&](ArchiveWriter_helper::third_co_t::push_type &sink){
-						sink(nullptr);
-						VersionManifest manifest;
-						manifest.creation_time = start_time;
-						manifest.version_number = version;
+	this->archive_process_files(stream_dict, version_dependencies, archive);
+	this->archive_process_objects(stream_dict, archive);
+	this->archive_process_manifest(start_time, version, stream_dict, version_dependencies, archive);
+}
+
+void BackupSystem::archive_process_files(stream_dict_t &stream_dict, std::set<version_number_t> &version_dependencies, ArchiveWriter &archive){
+	std::vector<ArchiveWriter::FileQueueElement> file_queue;
+
+	for (auto &kv : stream_dict){
+		auto base_object = this->base_objects[kv.first];
+		for (auto &i : kv.second)
+			for (auto &j : i->get_file_system_objects())
+				j->set_backup_stream(i.get());
+
+		for (auto &i : base_object->get_iterator())
+			this->get_dependencies(version_dependencies, *i);
+
+		for (auto &backup_stream : kv.second){
+			auto fso = backup_stream->get_file_system_objects()[0];
+			auto id = backup_stream->get_unique_id();
+			file_queue.push_back({ fso, id });
+		}
+	}
+	archive.add_files(file_queue);
+}
+
+void BackupSystem::archive_process_objects(stream_dict_t &stream_dict, ArchiveWriter &archive){
+	std::vector<FileSystemObject *> base_objects;
+	for (auto &kv : stream_dict)
+		base_objects.push_back(this->base_objects[kv.first].get());
+	archive.add_base_objects(base_objects);
+}
+
+void BackupSystem::archive_process_manifest(
+		const OpaqueTimestamp &start_time,
+		version_number_t version,
+		stream_dict_t &stream_dict,
+		std::set<version_number_t> &version_dependencies,
+		ArchiveWriter &archive){
+	VersionManifest manifest;
+	manifest.creation_time = start_time;
+	manifest.version_number = version;
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4244)
 #pragma warning(disable: 4267)
 #endif
-						manifest.entry_count = base_objects.size();
-						manifest.first_stream_id = first_stream_id;
-						manifest.first_differential_chain_id = first_diff_id;
-						manifest.next_stream_id = this->next_stream_id;
-						manifest.next_differential_chain_id = this->next_differential_chain_id;
+	manifest.entry_count = base_objects.size();
+	manifest.first_stream_id = this->next_stream_id;
+	manifest.first_differential_chain_id = this->next_differential_chain_id;
+	manifest.next_stream_id = this->next_stream_id;
+	manifest.next_differential_chain_id = this->next_differential_chain_id;
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-						manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
-						sink(&manifest);
-					}
-				))
-			)),
-		};
-
-		archive.process(array, array + array_size(array));
-	}
-
-	this->save_encrypted_base_objects(tx, version);
+	manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
+	archive.add_version_manifest(manifest);
 }
 
 path_t BackupSystem::get_aux_path() const{

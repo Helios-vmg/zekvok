@@ -8,6 +8,11 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 class BackupSystem;
+class VersionManifest;
+class ArchiveReader;
+class FileSystemObject;
+class BackupStream;
+class RsaKeyPair;
 
 class VersionForRestore{
 	BackupSystem *backup_system;

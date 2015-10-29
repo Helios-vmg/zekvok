@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
+#include "LineProcessor.h"
 
 int main(int argc, char **argv){
 	CoInitialize(nullptr);

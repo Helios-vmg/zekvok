@@ -7,25 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "Filters.h"
+
 const size_t default_buffer_size = 1 << 12;
-
-class LzmaInitializationException : public std::exception{
-	std::string message;
-public:
-	LzmaInitializationException(const char *msg) : message(msg){}
-	const char *what() const override{
-		return this->message.c_str();
-	}
-};
-
-class LzmaOperationException : public std::exception{
-	std::string message;
-public:
-	LzmaOperationException(const char *msg) : message(msg){}
-	const char *what() const override{
-		return this->message.c_str();
-	}
-};
 
 class LzmaOutputFilter : public OutputFilter{
 	struct impl{

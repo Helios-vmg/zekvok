@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
+#include "ComposingFilter.h"
 
 ComposingInputFilter::ComposingInputFilter(co_t::pull_type &co): co(&co), current_stream(nullptr){}
 

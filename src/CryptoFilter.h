@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "Filters.h"
+
 enum class Algorithm{
 	Rijndael,
 	Twofish,

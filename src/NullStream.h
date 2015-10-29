@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "Filters.h"
+
 class NullOutputStream{
 public:
 	NullOutputStream(int){}

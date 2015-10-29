@@ -7,6 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#define WINVER       _WIN32_WINNT_VISTA
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -51,6 +54,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <aes.h>
 #include <ccm.h>
 #include <pwdbased.h>
+
+
 #include <Windows.h>
 #include <ktmw32.h>
 #include <vss.h>
@@ -65,25 +70,19 @@ Distributed under a permissive license. See COPYING.txt for details.
 #undef min
 #endif
 
+/*
+Explanation: A weak_unique_ptr is a smart pointer that *could* be a unique_ptr,
+but doesn't need to be because the efficiency gains are irrelevant in the given
+context.
+In this case, it's redefined to shared_ptr because shared_ptr can be used to
+declare class members without having to have the complete type definition for
+the object type.
+*/
+#define weak_unique_ptr shared_ptr
+
 #include "SimpleTypes.h"
 #include "Globals.h"
 #include "Exception.h"
 #include "Utility.h"
 #include "MemoryStream.h"
-#include "serialization/fso.generated.h"
-#include "System/SystemOperations.h"
-#include "System/Transactions.h"
-#include "System/VSS.h"
-#include "Filters.h"
-#include "AutoHandle.h"
-#include "BoundedStreamFilter.h"
-#include "ComposingFilter.h"
-#include "CryptoFilter.h"
-#include "HashFilter.h"
-#include "LzmaFilter.h"
-#include "NullStream.h"
-#include "ArchiveIO.h"
-#include "VersionForRestore.h"
-#include "BackupSystem.h"
-#include "LineProcessor.h"
-#include "serialization/ImplementedDS.h"
+#include "serialization/fso.aux.h"

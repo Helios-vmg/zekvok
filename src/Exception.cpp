@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "stdafx.h"
+#include "Exception.h"
 #include <DeserializerStream.h>
 
 Win32Exception::Win32Exception(DWORD error): error(error){

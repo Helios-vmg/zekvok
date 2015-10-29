@@ -78,6 +78,24 @@ public:
 	ArchiveReadException(const char *s): StdStringException(s){}
 };
 
+class LzmaInitializationException : public std::exception{
+	std::string message;
+public:
+	LzmaInitializationException(const char *msg) : message(msg){}
+	const char *what() const override{
+		return this->message.c_str();
+	}
+};
+
+class LzmaOperationException : public std::exception{
+	std::string message;
+public:
+	LzmaOperationException(const char *msg) : message(msg){}
+	const char *what() const override{
+		return this->message.c_str();
+	}
+};
+
 class FatalException : public std::exception{
 public:
 	virtual ~FatalException() = 0 {}
