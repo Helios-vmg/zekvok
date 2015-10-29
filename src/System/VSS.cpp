@@ -61,9 +61,13 @@ VssSnapshot::VssSnapshot(const std::vector<std::wstring> &targets){
 		}
 	}
 	auto hres = this->do_snapshot();
+	if (FAILED(hres)){
+		this->uninit();
+		throw HresultException("VssSnapshot::do_snapshot()", hres);
+	}
 }
 
-VssSnapshot::~VssSnapshot(){
+void VssSnapshot::uninit(){
 	if (this->state == VssState::SnapshotPerformed){
 		try{
 			CALL_ASYNC_FUNCTION(this->vbc->GatherWriterStatus);
@@ -86,6 +90,10 @@ VssSnapshot::~VssSnapshot(){
 	}
 	if (this->vbc)
 		this->vbc->Release();
+}
+
+VssSnapshot::~VssSnapshot(){
+	this->uninit();
 }
 
 void VssSnapshot::begin(){

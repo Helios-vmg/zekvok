@@ -69,6 +69,7 @@ class VssSnapshot{
 	void begin();
 	HRESULT push_target(const std::wstring &target);
 	HRESULT do_snapshot();
+	void uninit();
 public:
 	VssSnapshot(const std::vector<std::wstring> &targets);
 	~VssSnapshot();
