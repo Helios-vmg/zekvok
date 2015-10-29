@@ -150,7 +150,7 @@ std::vector<typename T::key_type> get_map_keys(const T &m){
 
 template <typename T>
 std::basic_string<T> ensure_last_character_is_not_backslash(std::basic_string<T> s){
-	while (s.back() == '\\')
+	while (s.size() && s.back() == '\\')
 		s.pop_back();
 	return s;
 }
