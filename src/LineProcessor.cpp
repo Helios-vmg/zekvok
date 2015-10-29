@@ -129,7 +129,7 @@ void LineProcessor::process_open(const std::wstring *begin, const std::wstring *
 
 void LineProcessor::process_add(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
-	this->backup_system->add_source(*begin);
+	this->backup_system->add_source(ensure_last_character_is_not_backslash(*begin));
 }
 
 void LineProcessor::process_exclude(const std::wstring *begin, const std::wstring *end){
@@ -231,7 +231,7 @@ void LineProcessor::process_exclude_extension(const std::wstring *begin, const s
 
 void LineProcessor::process_exclude_path(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
-	this->backup_system->add_ignored_path(*begin);
+	this->backup_system->add_ignored_path(ensure_last_character_is_not_backslash(*begin));
 }
 
 void LineProcessor::process_exclude_name(const std::wstring *begin, const std::wstring *end){
