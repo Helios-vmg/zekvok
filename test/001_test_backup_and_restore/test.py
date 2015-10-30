@@ -93,7 +93,7 @@ def generate_new_binaries_batch(base, addenda):
 		path = 'binary.files/%08d.bin'%i
 		addenda.append(path)
 		file = open(base + '/' + path, 'wb')
-		buffer = bytearray(os.urandom(int(exponential_distribution() * 1e+8)))
+		buffer = bytearray(os.urandom(int(exponential_distribution() * 1e+6)))
 		file.write(buffer)
 
 def generate_next_version(base, directories, files):
@@ -106,7 +106,7 @@ def generate_next_version(base, directories, files):
 			generate_new_file(base + '/' + path)
 		os.mkdir('%s/binary.files'%base)
 		addenda.append('binary.files')
-		#generate_new_binaries_batch(base, addenda)
+		generate_new_binaries_batch(base, addenda)
 	else:
 		for i in range(min(random.randint(1, 100), len(files))):
 			path = random.sample(files, 1)[0]
@@ -136,7 +136,7 @@ def generate_next_version(base, directories, files):
 				addenda.append(path)
 				generate_new_file(base + '/' + path)
 		
-		if random.randint(1, 50) == 1:
+		if random.randint(1, 10) == 1:
 			generate_new_binaries_batch(base, addenda)
 	
 	return
@@ -156,8 +156,9 @@ def simple_wd():
 	return to_memory_slash(path)
 
 def generate_backup_script(base):
+	cd = os.getcwd()
 	script  = 'open %s\n' % backup_dst
-	script += 'add %s\n' % base
+	script += 'add %s\\%s\n' % (cd, base)
 	script += 'exclude name dirs .svn\n'
 	script += 'set change_criterium date\n'
 	script += 'set use_snapshots false\n'
