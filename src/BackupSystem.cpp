@@ -324,14 +324,52 @@ void BackupSystem::archive_process_callback(
 	this->archive_process_manifest(start_time, version, stream_dict, version_dependencies, archive);
 }
 
+bool extension_sort(const std::wstring &a, const std::wstring &b){
+	auto a_is_text = is_text_extension(a);
+	auto b_is_text = is_text_extension(b);
+	if (a_is_text != b_is_text)
+		return a_is_text && !b_is_text;
+	return strcmpci::less_than(a, b);
+}
+
+void reorder_file_streams(std::vector<ArchiveWriter::FileQueueElement> &file_queue){
+	typedef std::pair<std::wstring, ArchiveWriter::FileQueueElement> pair_t;
+	std::vector<pair_t> sortable;
+	std::vector<decltype(file_queue[0].stream_id)> old_ids;
+	for (auto &fqe : file_queue){
+		sortable.push_back(std::make_pair(get_extension(fqe.fso->get_name()), fqe));
+		old_ids.push_back(fqe.stream_id);
+	}
+
+	std::sort(sortable.begin(), sortable.end(),
+		[](const pair_t &a, const pair_t &b){
+			return extension_sort(a.first, b.first);
+		}
+	);
+	std::sort(old_ids.begin(), old_ids.end());
+
+	file_queue.clear();
+	file_queue.reserve(sortable.size());
+	zekvok_assert(sortable.size() == old_ids.size());
+	for (size_t i = 0; i < sortable.size(); i++){
+		auto fso = sortable[i].second.fso;
+		auto id = old_ids[i];
+		fso->set_stream_id(id);
+		auto stream = fso->get_backup_stream();
+		zekvok_assert(stream);
+		stream->set_unique_id(id);
+		file_queue.push_back({ fso, id });
+	}
+}
+
 void BackupSystem::archive_process_files(stream_dict_t &stream_dict, std::set<version_number_t> &version_dependencies, ArchiveWriter &archive){
 	std::vector<ArchiveWriter::FileQueueElement> file_queue;
 
 	for (auto &kv : stream_dict){
 		auto base_object = this->base_objects[kv.first];
-		for (auto &i : kv.second)
-			for (auto &j : i->get_file_system_objects())
-				j->set_backup_stream(i.get());
+		for (auto &stream : kv.second)
+			for (auto &fso : stream->get_file_system_objects())
+				fso->set_backup_stream(stream.get());
 
 		for (auto &i : base_object->get_iterator())
 			this->get_dependencies(version_dependencies, *i);
@@ -342,6 +380,9 @@ void BackupSystem::archive_process_files(stream_dict_t &stream_dict, std::set<ve
 			file_queue.push_back({ fso, id });
 		}
 	}
+
+	reorder_file_streams(file_queue);
+
 	archive.add_files(file_queue);
 }
 

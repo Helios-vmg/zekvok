@@ -10,13 +10,13 @@ Distributed under a permissive license. See COPYING.txt for details.
 struct strcmpci
 {
 	template <typename CharType>
-	bool operator()(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b) const
+	static bool less_than(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b)
 	{
 		auto ap = &a[0];
 		auto bp = &b[0];
 		auto an = a.size();
 		auto bn = b.size();
-		auto n = an < bn ? an : bn;
+		auto n = std::min(an, bn);
 		for (decltype(an) i = 0; i != n; i++)
 		{
 			auto ac = tolower(ap[i]);
@@ -28,8 +28,57 @@ struct strcmpci
 		}
 		return an < bn;
 	}
+	template <typename LeftCharType, typename RightCharType>
+	static bool less_than(const std::basic_string<LeftCharType> &a, const RightCharType *b)
+	{
+		auto an = a.size();
+		decltype(an) bn = 0;
+		for (; b[bn] != 0; bn++);
+		auto ap = &a[0];
+		auto bp = &b[0];
+		auto n = std::min(an, bn);
+		for (decltype(an) i = 0; i != n; i++)
+		{
+			auto ac = tolower(ap[i]);
+			auto bc = tolower(bp[i]);
+			if (ac < bc)
+				return true;
+			if (ac > bc)
+				return false;
+		}
+		return an < bn;
+	}
+	template <typename LeftCharType, typename RightCharType>
+	static bool greater_than(const std::basic_string<LeftCharType> &a, const RightCharType *b)
+	{
+		auto an = a.size();
+		decltype(an) bn = 0;
+		for (; b[bn] != 0; bn++);
+		auto ap = &a[0];
+		auto bp = &b[0];
+		auto n = std::min(an, bn);
+		for (decltype(an) i = 0; i != n; i++)
+		{
+			auto ac = tolower(ap[i]);
+			auto bc = tolower(bp[i]);
+			if (ac > bc)
+				return true;
+			if (ac < bc)
+				return false;
+		}
+		return an > bn;
+	}
+	template <typename LeftCharType, typename RightCharType>
+	static bool geq(const std::basic_string<LeftCharType> &a, const RightCharType *b){
+		return !less_than(a, b);
+	}
 	template <typename CharType>
-	bool equal(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b) const
+	bool operator()(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b) const
+	{
+		return less_than(a, b);
+	}
+	template <typename CharType>
+	static bool equal(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b)
 	{
 		auto an = a.size();
 		auto bn = b.size();
@@ -46,11 +95,11 @@ struct strcmpci
 		}
 		return true;
 	}
-	template <typename CharType>
-	static bool equal(const std::basic_string<CharType> &a, const CharType *b)
+	template <typename LeftCharType, typename RightCharType>
+	static bool equal(const std::basic_string<LeftCharType> &a, const RightCharType *b)
 	{
 		auto an = a.size();
-		auto bn = 0;
+		decltype(an) bn = 0;
 		for (; b[bn] != 0; bn++);
 		if (an != bn)
 			return false;
@@ -231,6 +280,11 @@ It find_first_true(It begin, It end, F &f){
 	return end;
 }
 
+template<class It, class F>
+bool existence_binary_search(It begin, It end, F &f){
+	return find_first_true(begin, end, f) != end;
+}
+
 template <typename T>
 inline void zekvok_assert(const T &condition){
 	if (!condition)
@@ -289,3 +343,13 @@ inline std::wstring encrypt_string(const std::wstring &s){
 inline std::wstring encrypt_string_ci(const std::wstring &s){
 	return encrypt_string(to_lower(s));
 }
+
+template <typename T>
+std::basic_string<T> get_extension(const std::basic_string<T> &s){
+	auto last = s.rfind('.');
+	if (last == s.npos)
+		return std::basic_string<T>();
+	return to_lower(s.substr(last + 1));
+}
+
+bool is_text_extension(const std::wstring &);
