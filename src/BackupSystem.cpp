@@ -343,7 +343,11 @@ void reorder_file_streams(std::vector<ArchiveWriter::FileQueueElement> &file_que
 
 	std::sort(sortable.begin(), sortable.end(),
 		[](const pair_t &a, const pair_t &b){
-			return extension_sort(a.first, b.first);
+			if (extension_sort(a.first, b.first))
+				return true;
+			if (extension_sort(b.first, a.first))
+				return false;
+			return a.second.fso->get_size() < b.second.fso->get_size();
 		}
 	);
 	std::sort(old_ids.begin(), old_ids.end());
