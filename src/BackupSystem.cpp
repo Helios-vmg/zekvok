@@ -343,7 +343,11 @@ void reorder_file_streams(std::vector<ArchiveWriter::FileQueueElement> &file_que
 
 	std::sort(sortable.begin(), sortable.end(),
 		[](const pair_t &a, const pair_t &b){
-			return extension_sort(a.first, b.first);
+			if (extension_sort(a.first, b.first))
+				return true;
+			if (extension_sort(b.first, a.first))
+				return false;
+			return a.second.fso->get_size() < b.second.fso->get_size();
 		}
 	);
 	std::sort(old_ids.begin(), old_ids.end());
@@ -625,7 +629,13 @@ std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(Arc
 	while (simple_buffer_deserialization(mem, lzma)){
 		boost::iostreams::stream<MemorySource> stream(&mem);
 		ImplementedDeserializerStream ds(stream);
-		ret.push_back(make_shared(ds.begin_deserialization<FileSystemObject>(config::include_typehashes)));
+		auto fso = make_shared(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
+		ret.push_back(fso);
+		auto mbp = fso->get_unmapped_base_path();
+		if (!mbp)
+			continue;
+		auto mapped = this->map_forward(*mbp).wstring();
+		fso->set_mapped_base_path(make_shared(new decltype(mapped)(mapped)));
 	}
 	return ret;
 }

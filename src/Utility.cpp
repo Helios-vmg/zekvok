@@ -8,41 +8,37 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "stdafx.h"
 #include "Utility.h"
 
-static const char * const known_text_extensions[] = {
-	"asm",
-	"bat",
-	"c",
-	"cpp",
-	"f",
-	"gcl",
-	"gitignore",
-	"gitmodules",
-	"h",
-	"hpp",
-	"hs",
-	"htm",
-	"html",
-	"java",
-	"js",
-	"log",
-	"lua",
-	"pas",
-	"py",
-	"qbk",
-	"s",
-	"sh",
-	"ss",
-	"txt",
-	"xml",
+std::set<std::wstring, strcmpci> known_text_extensions = {
+	L"asm",
+	L"bat",
+	L"c",
+	L"cpp",
+	L"cs",
+	L"cxx",
+	L"f",
+	L"gcl",
+	L"gitignore",
+	L"gitmodules",
+	L"h",
+	L"hpp",
+	L"hs",
+	L"htm",
+	L"html",
+	L"hxx",
+	L"java",
+	L"js",
+	L"log",
+	L"lua",
+	L"pas",
+	L"py",
+	L"qbk",
+	L"s",
+	L"sh",
+	L"ss",
+	L"txt",
+	L"xml",
 };
-static const size_t known_text_extensions_size = sizeof(known_text_extensions) / sizeof(*known_text_extensions);
 
 bool is_text_extension(const std::wstring &ext){
-	return existence_binary_search(
-		known_text_extensions,
-		known_text_extensions + known_text_extensions_size,
-		[&ext](const char *s){
-			return strcmpci::less_than(ext, s);
-		}
-	);
+	return known_text_extensions.find(ext) != known_text_extensions.end();
 }

@@ -35,7 +35,7 @@ std::uint32_t OpaqueTimestamp::set_to_file_modification_time(const std::wstring 
 	};
 	DWORD error;
 	for (auto attr : attributes){
-		AutoHandle handle(CreateFileW(path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, attr, nullptr));
+		AutoHandle handle(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, attr, nullptr));
 		if (handle.handle == INVALID_HANDLE_VALUE){
 			error = GetLastError();
 			continue;
