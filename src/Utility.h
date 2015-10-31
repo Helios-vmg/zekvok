@@ -280,9 +280,10 @@ It find_first_true(It begin, It end, F &f){
 	return end;
 }
 
-template<class It, class F>
-bool existence_binary_search(It begin, It end, F &f){
-	return find_first_true(begin, end, f) != end;
+template<class It, class F, class G>
+bool existence_binary_search(It begin, It end, F &partitioner, G &equality){
+	auto found = find_first_true(begin, end, partitioner);
+	return found != end && equality(*found);
 }
 
 template <typename T>
