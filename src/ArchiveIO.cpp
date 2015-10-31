@@ -299,7 +299,8 @@ void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
 		sha256_digest digest;
 		{
 			boost::iostreams::stream<HashInputFilter> hash(*stream, new CryptoPP::SHA256);
-			lzma << hash.rdbuf();
+			if (size)
+				lzma << hash.rdbuf();
 			hash->get_result(digest.data(), digest.size());
 		}
 		fso->set_hash(digest);
