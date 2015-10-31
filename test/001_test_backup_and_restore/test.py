@@ -13,6 +13,35 @@ script_path = data_base_path + '\\' + script_name
 max_line_length = 120
 min_line_length = max_line_length / 10
 
+text_extensions = [
+	'asm',
+	'bat',
+	'c',
+	'cpp',
+	'cs',
+	'cxx',
+	'f',
+	'gcl',
+	'h',
+	'hpp',
+	'hs',
+	'htm',
+	'html',
+	'hxx',
+	'java',
+	'js',
+	'log',
+	'lua',
+	'pas',
+	'py',
+	'qbk',
+	's',
+	'sh',
+	'ss',
+	'txt',
+	'xml'
+]
+
 def to_native_slash(s):
 	return s.replace('/', '\\')
 	#return s
@@ -46,6 +75,8 @@ def generate_random_line(override_length = -1):
 
 def generate_new_file(path):
 	file = open(path, 'w')
+	if random.randint(1, 3) == 1:
+		return
 	ret = ''
 	lines = random.randint(20, 512)
 	for i in range(lines):
@@ -67,16 +98,17 @@ def edit_line(line):
 
 def edit_existing_file(path):
 	lines = load_file(path)
-	for i in range(random.randint(0, 5)):
-		blockstart = random.randint(0, len(lines) - 1)
-		r = random.randint(1, 100)
-		count = min(len(lines) - blockstart, r)
-		for j in range(blockstart, blockstart + count):
-			#if j >= len(lines):
-			#	print('%d, %d, %d, %d'%(len(lines), blockstart, r, count))
-			lines[j] = edit_line(lines[j])
+	if len(lines) > 0:
+		for i in range(random.randint(0, 5)):
+			blockstart = random.randint(0, len(lines) - 1)
+			r = random.randint(1, 100)
+			count = min(len(lines) - blockstart, r)
+			for j in range(blockstart, blockstart + count):
+				#if j >= len(lines):
+				#	print('%d, %d, %d, %d'%(len(lines), blockstart, r, count))
+				lines[j] = edit_line(lines[j])
 	
-	if random.randint(0, 3) == 0:
+	if random.randint(0, 3) == 0 or len(lines) == 0:
 		new_lines_count = random.randint(20, 512)
 		for i in range(new_lines_count):
 			lines.append(generate_random_line())
@@ -96,11 +128,14 @@ def generate_new_binaries_batch(base, addenda):
 		buffer = bytearray(os.urandom(int(exponential_distribution() * 1e+6)))
 		file.write(buffer)
 
+def random_filename():
+	return pick_word() + '.' + random.choice(text_extensions)
+
 def generate_next_version(base, directories, files):
 	addenda = []
 	if len(files) == 0:
 		for i in range(random.randint(0, 10)):
-			path = pick_word() + '.txt'
+			path = random_filename()
 			files.add(path)
 			addenda.append(path)
 			generate_new_file(base + '/' + path)
@@ -131,7 +166,7 @@ def generate_next_version(base, directories, files):
 					container = ''
 				else:
 					container = random.sample(directories, 1)[0] + '/'
-				path = container + pick_word() + '.txt'
+				path = container + random_filename()
 				files.add(path)
 				addenda.append(path)
 				generate_new_file(base + '/' + path)
