@@ -1,0 +1,21 @@
+
+stable-0.3.1
+
+Fixed minor bug causing link targets to be unreadable.
+
+
+stable-0.3.0
+
+* Private key no longer required to create new backups or backup versions.
+* Theoretical compression ratio improvements.
+* Cryptographic fixes.
+
+
+stable-0.2.0
+
+New feature: RSA+Twofish backup encryption.
+
+
+stable-0.1.0
+
+Initial release.
