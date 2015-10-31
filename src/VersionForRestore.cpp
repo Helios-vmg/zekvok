@@ -7,15 +7,16 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "VersionForRestore.h"
-#include "BackupSystem.h"
+#include "serialization/fso.generated.h"
 #include "ArchiveIO.h"
+#include "BackupSystem.h"
 
 VersionForRestore::VersionForRestore(version_number_t version, BackupSystem &bs, RsaKeyPair *keypair):
 		backup_system(&bs),
 		version_number(version),
 		dependencies_full(false){
 	this->path = bs.get_version_path(version);
-	this->archive_reader.reset(new ArchiveReader(this->path, keypair));
+	this->archive_reader.reset(new ArchiveReader(this->path, nullptr, keypair));
 	this->manifest = this->archive_reader->read_manifest();
 }
 

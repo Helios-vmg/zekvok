@@ -7,8 +7,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "../Exception.h"
-
 class VssShadow{
 	VSS_ID snapshot_set_id;
 	VSS_ID id;
@@ -71,6 +69,7 @@ class VssSnapshot{
 	void begin();
 	HRESULT push_target(const std::wstring &target);
 	HRESULT do_snapshot();
+	void uninit();
 public:
 	VssSnapshot(const std::vector<std::wstring> &targets);
 	~VssSnapshot();

@@ -7,13 +7,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "../stdafx.h"
 #include "fso.generated.h"
-#include "../Exception.h"
-#include "../Utility.h"
-#include "../BackupSystem.h"
 #include "../System/SystemOperations.h"
+#include "../BackupSystem.h"
 #include "../NullStream.h"
 #include "../HashFilter.h"
-#include "../SymbolicConstants.h"
 
 //------------------------------------------------------------------------------
 // default_values()
@@ -31,6 +28,7 @@ void FileSystemObject::default_values(){
 	this->backup_mode = BackupMode::NoBackup;
 	this->archive_flag = false;
 	this->backup_system = nullptr;
+	this->is_encrypted = false;
 }
 
 void FileHardlinkFso::default_values(){
@@ -250,8 +248,13 @@ const FileSystemObject *FileSystemObject::find(const path_t &_path) const{
 const FileSystemObject *DirectoryFso::find(path_t::iterator begin, path_t::iterator end) const{
 	if (begin == end)
 		return nullptr;
-	if (!strcmpci().equal(begin->wstring(), this->name))
-		return nullptr;
+	if (!this->is_encrypted || !this->parent){
+		if (!strcmpci().equal(begin->wstring(), this->name))
+			return nullptr;
+	}else{
+		if (encrypt_string_ci(begin->wstring()) != this->name)
+			return nullptr;
+	}
 	auto next = begin;
 	++next;
 	if (next == end)
@@ -271,7 +274,9 @@ const FileSystemObject *DirectorySymlinkFso::find(path_t::iterator begin, path_t
 	++next;
 	if (next != end)
 		return nullptr;
-	return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	if (!this->is_encrypted)
+		return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	return encrypt_string_ci(begin->wstring()) == this->name ? this : nullptr;
 }
 
 const FileSystemObject *FilishFso::find(path_t::iterator begin, path_t::iterator end) const{
@@ -281,7 +286,9 @@ const FileSystemObject *FilishFso::find(path_t::iterator begin, path_t::iterator
 	++next;
 	if (next != end)
 		return nullptr;
-	return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	if (!this->is_encrypted)
+		return strcmpci().equal(begin->wstring(), this->name) ? this : nullptr;
+	return encrypt_string_ci(begin->wstring()) == this->name ? this : nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -345,7 +352,7 @@ bool path_contains_path(path_t dir, path_t file)
 	file = file.normalize();
 	if (dir.filename() == ".")
 		dir.remove_filename();
-	assert(file.has_filename());
+	zekvok_assert(file.has_filename());
 	file.remove_filename();
 	auto dir_len = std::distance(dir.begin(), dir.end());
 	auto file_len = std::distance(file.begin(), file.end());
@@ -643,4 +650,30 @@ bool FileHardlinkFso::restore(const path_t *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
 	system_ops::create_hardlink(path.wstring(), *this->link_target);
 	return true;
+}
+
+void FileSystemObject::encrypt(){
+	if (this->is_encrypted)
+		return;
+	if (!!this->parent)
+		this->name = encrypt_string(this->name);
+	//if (this->mapped_base_path)
+	//	*this->mapped_base_path = encrypt_string_ci(*this->mapped_base_path);
+	//if (this->unmapped_base_path)
+	//	*this->unmapped_base_path = encrypt_string_ci(*this->unmapped_base_path);
+	if (this->link_target)
+		*this->link_target = encrypt_string(*this->link_target);
+	this->exceptions.clear();
+	this->encrypt_internal();
+	this->is_encrypted = true;
+}
+
+void DirectoryFso::encrypt_internal(){
+	for (auto &child : this->children)
+		child->encrypt();
+}
+
+void FileHardlinkFso::encrypt_internal(){
+	for (auto &peer : this->peers)
+		peer = encrypt_string(peer);
 }

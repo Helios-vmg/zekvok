@@ -7,13 +7,20 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "SimpleTypes.h"
-#include "Utility.h"
-#include "System/SystemOperations.h"
-#include "serialization/fso.generated.h"
-#include "VersionForRestore.h"
-
+//#include "System/SystemOperations.h"
+namespace system_ops{
+struct VolumeInfo;
+};
 class VssSnapshot;
+class FileSystemObject;
+class FilishFso;
+class BackupStream;
+class RsaKeyPair;
+class OpaqueTimestamp;
+class VersionForRestore;
+class KernelTransaction;
+class ArchiveReader;
+class ArchiveWriter;
 
 class BackupSystem{
 	version_number_t version_count;
@@ -73,6 +80,23 @@ class BackupSystem{
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
 	std::shared_ptr<VersionForRestore> compute_latest_version(version_number_t);
 	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<std::pair<version_number_t, FileSystemObject *>> &);
+	void save_encrypted_base_objects(KernelTransaction &, version_number_t);
+	std::vector<std::shared_ptr<FileSystemObject>> get_old_objects(ArchiveReader &, version_number_t);
+	void archive_process_callback(
+		const OpaqueTimestamp &start_time,
+		generate_archive_fp generator,
+		version_number_t version,
+		ArchiveWriter &archive
+	);
+	void archive_process_files(stream_dict_t &stream_dict, std::set<version_number_t> &version_dependencies, ArchiveWriter &archive);
+	void archive_process_objects(stream_dict_t &stream_dict, ArchiveWriter &archive);
+	void archive_process_manifest(
+		const OpaqueTimestamp &start_time,
+		version_number_t version,
+		stream_dict_t &stream_dict,
+		std::set<version_number_t> &version_dependencies,
+		ArchiveWriter &archive
+	);
 public:
 	BackupSystem(const std::wstring &);
 	version_number_t get_version_count();
@@ -92,6 +116,8 @@ public:
 	stream_id_t get_stream_id();
 	void enqueue_file_for_guid_get(FilishFso *);
 	path_t get_version_path(version_number_t) const;
+	path_t get_aux_path() const;
+	path_t get_aux_fso_path(version_number_t) const;
 	std::vector<std::shared_ptr<FileSystemObject>> get_entries(version_number_t);
 	bool verify(version_number_t) const;
 	bool full_verify(version_number_t) const;

@@ -8,8 +8,11 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "stdafx.h"
 #include "LineProcessor.h"
 #include "BackupSystem.h"
-#include "Exception.h"
+#include "serialization/fso.generated.h"
 #include "serialization/ImplementedDS.h"
+#include "ArchiveIO.h"
+#include "System/SystemOperations.h"
+#include <Shellapi.h>
 
 std::string format_size(double size){
 	static const char *units[] = {
@@ -133,7 +136,7 @@ void LineProcessor::process_open(const std::wstring *begin, const std::wstring *
 
 void LineProcessor::process_add(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
-	this->backup_system->add_source(*begin);
+	this->backup_system->add_source(ensure_last_character_is_not_backslash(*begin));
 }
 
 void LineProcessor::process_exclude(const std::wstring *begin, const std::wstring *end){
@@ -235,7 +238,7 @@ void LineProcessor::process_exclude_extension(const std::wstring *begin, const s
 
 void LineProcessor::process_exclude_path(const std::wstring *begin, const std::wstring *end){
 	this->ensure_backup_initialized();
-	this->backup_system->add_ignored_path(*begin);
+	this->backup_system->add_ignored_path(ensure_last_character_is_not_backslash(*begin));
 }
 
 void LineProcessor::process_exclude_name(const std::wstring *begin, const std::wstring *end){
@@ -257,13 +260,13 @@ void LineProcessor::process_exclude_name(const std::wstring *begin, const std::w
 
 void LineProcessor::ensure_backup_initialized(){
 	if (!this->backup_system)
-		throw std::exception("No backup selected.");
+		throw StdStringException("No backup selected.");
 }
 
 void LineProcessor::ensure_existing_version(){
 	this->ensure_backup_initialized();
 	if (!this->backup_system->get_version_count())
-		throw std::exception("Backup has never been performed.");
+		throw StdStringException("Backup has never been performed.");
 }
 
 void LineProcessor::process_select_version(const std::wstring *begin, const std::wstring *end){
@@ -275,7 +278,7 @@ void LineProcessor::process_select_version(const std::wstring *begin, const std:
 	if (version < 0)
 		version += this->backup_system->get_version_count();
 	if (!this->backup_system->version_exists(version))
-		throw std::exception("No such version in backup.");
+		throw StdStringException("No such version in backup.");
 	this->selected_version = version;
 }
 
@@ -345,7 +348,7 @@ std::ostream &operator<<(std::ostream &stream, OpaqueTimestamp &ts){
 void LineProcessor::process_show_version_summary(const std::wstring *begin, const std::wstring *end){
 	this->ensure_existing_version();
 	std::cout << "Version number: " << this->selected_version << std::endl;
-	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version), this->backup_system->get_keypair().get());
+	ArchiveReader archive(this->backup_system->get_version_path(this->selected_version), nullptr, this->backup_system->get_keypair().get());
 	auto manifest = archive.read_manifest();
 	std::cout <<
 		"Date created: " << manifest->creation_time << "\n"

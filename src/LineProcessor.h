@@ -6,9 +6,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #pragma once
-#include "Utility.h"
-#include "SimpleTypes.h"
-#include "BackupSystem.h"
+
+class BackupSystem;
 
 class LineProcessor{
 	std::vector<std::string> args;
@@ -18,7 +17,7 @@ class LineProcessor{
 		Pipe,
 	};
 	OperationMode operation_mode;
-	std::unique_ptr<BackupSystem> backup_system;
+	std::weak_unique_ptr<BackupSystem> backup_system;
 	version_number_t selected_version;
 
 	void ensure_backup_initialized();

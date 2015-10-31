@@ -6,7 +6,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #pragma once
-#include "Filters.h"
 
 template <typename F, typename T>
 class ProgressFilter{

@@ -44,6 +44,7 @@
 			<FileSystemObject/>
 		</pointer>
 		<int32_t name="latest_version" />
+		<bool name="is_encrypted" />
 		<include header="&quot;FileSystemObject.h&quot;" />
 	</class>
 	
@@ -159,6 +160,9 @@
 		<vector name="public_key">
 			<uint8_t/>
 		</vector>
+		<array name="initialization_vector" length="12">
+			<uint8_t/>
+		</array>
 		<include header="&quot;RsaKeyPair.h&quot;" />
 	</class>
 </cpp>

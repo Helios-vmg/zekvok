@@ -1,0 +1,9 @@
+Work before 0.3.0 release:
+
++ Save base objects to one-way encrypted files to allow unattended backups.
++ Implement stream reordering during backup generation to maximize compression ratio.
+
+
+Work before 0.4.0 release:
+
+* Implement rdiff algorithm.

@@ -7,6 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#define WINVER       _WIN32_WINNT_VISTA
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -39,18 +42,20 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <boost/optional.hpp>
 #define LZMA_API_STATIC
 #include <lzma.h>
-#include <cryptlib/sha.h>
-#include <cryptlib/files.h>
-#include <cryptlib/base64.h>
-#include <cryptlib/rsa.h>
-#include <cryptlib/oaep.h>
-#include <cryptlib/osrng.h>
-#include <cryptlib/cryptlib.h>
-#include <cryptlib/twofish.h>
-#include <cryptlib/serpent.h>
-#include <cryptlib/aes.h>
-#include <cryptlib/ccm.h>
-#include <cryptlib/pwdbased.h>
+#include <sha.h>
+#include <files.h>
+#include <base64.h>
+#include <rsa.h>
+#include <oaep.h>
+#include <osrng.h>
+#include <cryptlib.h>
+#include <twofish.h>
+#include <serpent.h>
+#include <aes.h>
+#include <ccm.h>
+#include <pwdbased.h>
+
+
 #include <Windows.h>
 #include <ktmw32.h>
 #include <vss.h>
@@ -64,3 +69,20 @@ Distributed under a permissive license. See COPYING.txt for details.
 #ifdef min
 #undef min
 #endif
+
+/*
+Explanation: A weak_unique_ptr is a smart pointer that *could* be a unique_ptr,
+but doesn't need to be because the efficiency gains are irrelevant in the given
+context.
+In this case, it's redefined to shared_ptr because shared_ptr can be used to
+declare class members without having to have the complete type definition for
+the object type.
+*/
+#define weak_unique_ptr shared_ptr
+
+#include "SimpleTypes.h"
+#include "Globals.h"
+#include "Exception.h"
+#include "Utility.h"
+#include "MemoryStream.h"
+#include "serialization/fso.aux.h"

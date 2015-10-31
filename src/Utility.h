@@ -10,13 +10,13 @@ Distributed under a permissive license. See COPYING.txt for details.
 struct strcmpci
 {
 	template <typename CharType>
-	bool operator()(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b) const
+	static bool less_than(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b)
 	{
 		auto ap = &a[0];
 		auto bp = &b[0];
 		auto an = a.size();
 		auto bn = b.size();
-		auto n = an < bn ? an : bn;
+		auto n = std::min(an, bn);
 		for (decltype(an) i = 0; i != n; i++)
 		{
 			auto ac = tolower(ap[i]);
@@ -28,8 +28,57 @@ struct strcmpci
 		}
 		return an < bn;
 	}
+	template <typename LeftCharType, typename RightCharType>
+	static bool less_than(const std::basic_string<LeftCharType> &a, const RightCharType *b)
+	{
+		auto an = a.size();
+		decltype(an) bn = 0;
+		for (; b[bn] != 0; bn++);
+		auto ap = &a[0];
+		auto bp = &b[0];
+		auto n = std::min(an, bn);
+		for (decltype(an) i = 0; i != n; i++)
+		{
+			auto ac = tolower(ap[i]);
+			auto bc = tolower(bp[i]);
+			if (ac < bc)
+				return true;
+			if (ac > bc)
+				return false;
+		}
+		return an < bn;
+	}
+	template <typename LeftCharType, typename RightCharType>
+	static bool greater_than(const std::basic_string<LeftCharType> &a, const RightCharType *b)
+	{
+		auto an = a.size();
+		decltype(an) bn = 0;
+		for (; b[bn] != 0; bn++);
+		auto ap = &a[0];
+		auto bp = &b[0];
+		auto n = std::min(an, bn);
+		for (decltype(an) i = 0; i != n; i++)
+		{
+			auto ac = tolower(ap[i]);
+			auto bc = tolower(bp[i]);
+			if (ac > bc)
+				return true;
+			if (ac < bc)
+				return false;
+		}
+		return an > bn;
+	}
+	template <typename LeftCharType, typename RightCharType>
+	static bool geq(const std::basic_string<LeftCharType> &a, const RightCharType *b){
+		return !less_than(a, b);
+	}
 	template <typename CharType>
-	bool equal(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b) const
+	bool operator()(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b) const
+	{
+		return less_than(a, b);
+	}
+	template <typename CharType>
+	static bool equal(const std::basic_string<CharType> &a, const std::basic_string<CharType> &b)
 	{
 		auto an = a.size();
 		auto bn = b.size();
@@ -46,11 +95,11 @@ struct strcmpci
 		}
 		return true;
 	}
-	template <typename CharType>
-	static bool equal(const std::basic_string<CharType> &a, const CharType *b)
+	template <typename LeftCharType, typename RightCharType>
+	static bool equal(const std::basic_string<LeftCharType> &a, const RightCharType *b)
 	{
 		auto an = a.size();
-		auto bn = 0;
+		decltype(an) bn = 0;
 		for (; b[bn] != 0; bn++);
 		if (an != bn)
 			return false;
@@ -150,7 +199,7 @@ std::vector<typename T::key_type> get_map_keys(const T &m){
 
 template <typename T>
 std::basic_string<T> ensure_last_character_is_not_backslash(std::basic_string<T> s){
-	while (s.back() == '\\')
+	while (s.size() && s.back() == '\\')
 		s.pop_back();
 	return s;
 }
@@ -199,7 +248,7 @@ std::basic_string<T> to_lower(const std::basic_string<T> &s){
 	std::basic_string<T> ret;
 	ret.reserve(s.size());
 	for (auto c : s)
-		ret.push_back(tolower(c));
+		ret.push_back((T)tolower(c));
 	return ret;
 }
 
@@ -230,3 +279,77 @@ It find_first_true(It begin, It end, F &f){
 	}
 	return end;
 }
+
+template<class It, class F>
+bool existence_binary_search(It begin, It end, F &f){
+	return find_first_true(begin, end, f) != end;
+}
+
+template <typename T>
+inline void zekvok_assert(const T &condition){
+	if (!condition)
+		throw IncorrectImplementationException();
+}
+
+template <typename T>
+std::shared_ptr<T> easy_clone(const T &src){
+	buffer_t mem;
+	{
+		boost::iostreams::stream<MemorySink> omem(&mem);
+		SerializerStream stream(omem);
+		stream.begin_serialization(src);
+	}
+	std::shared_ptr<T> cloned;
+	{
+		boost::iostreams::stream<MemorySource> imem(&mem);
+		ImplementedDeserializerStream stream(imem);
+		cloned.reset(stream.begin_deserialization<T>());
+	}
+	return cloned;
+}
+
+inline void simple_buffer_serialization(std::ostream &stream, const buffer_t &buffer){
+	auto size = serialize_fixed_le_int<std::uint64_t>(buffer.size());
+	stream.write((const char *)size.data(), size.size());
+	stream.write((const char *)&buffer[0], buffer.size());
+}
+
+inline bool simple_buffer_deserialization(buffer_t &buffer, std::istream &stream){
+	char temp[sizeof(std::uint64_t)];
+	stream.read(temp, sizeof(temp));
+	if (stream.gcount() != sizeof(temp))
+		return false;
+	auto size64 = deserialize_fixed_le_int<std::uint64_t>(temp);
+	size_t size = (size_t)size64;
+	if ((std::uint64_t)size != size64)
+		return false;
+	buffer.resize(size);
+	stream.read((char *)&buffer[0], buffer.size());
+	return stream.gcount() == buffer.size();
+}
+
+inline std::wstring encrypt_string(const std::wstring &s){
+	static_assert(sizeof(wchar_t) == 2, "encrypt_string(const std::wstring &) requires 2-byte wchar_t.");
+	CryptoPP::SHA256 hash;
+	hash.Update((const byte *)s.c_str(), s.size() * sizeof(wchar_t));
+	sha256_digest digest;
+	hash.Final(digest.data());
+	std::wstring ret;
+	ret.resize(digest.size() / sizeof(wchar_t));
+	memcpy(&ret[0], digest.data(), digest.size());
+	return ret;
+}
+
+inline std::wstring encrypt_string_ci(const std::wstring &s){
+	return encrypt_string(to_lower(s));
+}
+
+template <typename T>
+std::basic_string<T> get_extension(const std::basic_string<T> &s){
+	auto last = s.rfind('.');
+	if (last == s.npos)
+		return std::basic_string<T>();
+	return to_lower(s.substr(last + 1));
+}
+
+bool is_text_extension(const std::wstring &);

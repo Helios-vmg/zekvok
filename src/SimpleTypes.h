@@ -65,3 +65,5 @@ enum class FileSystemObjectType{
     FileReparsePoint,
     FileHardlink,
 };
+
+typedef std::vector<std::uint8_t> buffer_t;

@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #pragma once
+
 #include "Filters.h"
 
 class ByteCounterOutputFilter : public OutputFilter{
@@ -17,6 +18,9 @@ public:
 	std::streamsize write(const char *s, std::streamsize n) override{
 		*this->bytes_processed += n;
 		return this->next_write(s, n);
+	}
+	bool flush() override{
+		return this->internal_flush();
 	}
 };
 

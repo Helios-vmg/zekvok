@@ -7,12 +7,14 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "BackupSystem.h"
+#include "serialization/fso.generated.h"
+#include "serialization/ImplementedDS.h"
 #include "ArchiveIO.h"
 #include "System/SystemOperations.h"
 #include "System/VSS.h"
-#include "SymbolicConstants.h"
-#include "serialization_utils.h"
-#include "Utility.h"
+#include "System/Transactions.h"
+#include "LzmaFilter.h"
+#include "HashFilter.h"
 #include "VersionForRestore.h"
 #include "BoundedStreamFilter.h"
 #include "NullStream.h"
@@ -49,7 +51,7 @@ BackupSystem::BackupSystem(const std::wstring &dst):
 	this->target_path = dst;
 	if (fs::exists(this->target_path)){
 		if (!fs::is_directory(this->target_path))
-			throw std::exception("Target path exists and is not a directory.");
+			throw StdStringException("Target path exists and is not a directory.");
 	}else
 		fs::create_directory(this->target_path);
 	
@@ -109,7 +111,7 @@ bool BackupSystem::version_exists(version_number_t v) const{
 
 path_t BackupSystem::get_version_path(version_number_t version) const{
 	if (version <= invalid_version_number)
-		throw std::exception("Invalid version number.");
+		throw StdStringException("Invalid version number.");
 	path_t ret = this->target_path;
 	std::wstringstream stream;
 	stream << L"version" << std::setw(8) << std::setfill(L'0') << version << L".arc";
@@ -118,7 +120,7 @@ path_t BackupSystem::get_version_path(version_number_t version) const{
 }
 
 std::vector<version_number_t> BackupSystem::get_version_dependencies(version_number_t version) const{
-	ArchiveReader reader(this->get_version_path(version), this->keypair.get());
+	ArchiveReader reader(this->get_version_path(version), nullptr, this->keypair.get());
 	return reader.read_manifest()->version_dependencies;
 }
 
@@ -297,87 +299,160 @@ void BackupSystem::set_base_objects(){
 }
 
 void BackupSystem::generate_archive(const OpaqueTimestamp &start_time, generate_archive_fp generator, version_number_t version){
-	auto first_stream_id = this->next_stream_id;
-	auto first_diff_id = this->next_differential_chain_id;
 	auto version_path = this->get_version_path(version);
 
-	ArchiveWriter archive(version_path, this->keypair.get());
+	KernelTransaction tx;
+
+	{
+		ArchiveWriter archive(tx, version_path, this->keypair.get());
+		archive.process([&](){ this->archive_process_callback(start_time, generator, version, archive); });
+	}
+
+	this->save_encrypted_base_objects(tx, version);
+}
+
+void BackupSystem::archive_process_callback(
+		const OpaqueTimestamp &start_time,
+		generate_archive_fp generator,
+		version_number_t version,
+		ArchiveWriter &archive){
 	auto stream_dict = this->generate_streams(generator);
 	std::set<version_number_t> version_dependencies;
 
-	std::unique_ptr<ArchiveWriter_helper> array[] = {
-		make_unique(new ArchiveWriter_helper_first(
-			make_shared(new ArchiveWriter_helper::first_co_t::pull_type(
-				[&](ArchiveWriter_helper::first_co_t::push_type &sink){
-					sink({nullptr, 0, nullptr, 0});
-					for (auto &kv : stream_dict){
-						{
-							auto base_object = this->base_objects[kv.first];
-							for (auto &i : kv.second)
-								for (auto &j : i->get_file_system_objects())
-									j->set_backup_stream(i.get());
+	this->archive_process_files(stream_dict, version_dependencies, archive);
+	this->archive_process_objects(stream_dict, archive);
+	this->archive_process_manifest(start_time, version, stream_dict, version_dependencies, archive);
+}
 
-							for (auto &i : base_object->get_iterator())
-								this->get_dependencies(version_dependencies, *i);
-						}
+bool extension_sort(const std::wstring &a, const std::wstring &b){
+	auto a_is_text = is_text_extension(a);
+	auto b_is_text = is_text_extension(b);
+	if (a_is_text != b_is_text)
+		return a_is_text && !b_is_text;
+	return strcmpci::less_than(a, b);
+}
 
-						for (auto &backup_stream : kv.second){
-							auto fso = backup_stream->get_file_system_objects()[0];
-							std::wcout << fso->get_unmapped_path() << std::endl;
-							bool compute = !fso->get_hash().valid;
-							sha256_digest digest;
-							std::uint64_t size;
-							auto stream = fso->open_for_exclusive_read(size);
-							ArchiveWriter_helper::first_push_t s = {
-								&digest,
-								backup_stream->get_unique_id(),
-								stream.get(),
-								size,
-							};
-							sink(s);
-							fso->set_hash(digest);
-						}
-					}
-				}
-			))
-		)),
-		make_unique(new ArchiveWriter_helper_second(
-			make_shared(new ArchiveWriter_helper::second_co_t::pull_type(
-				[&](ArchiveWriter_helper::second_co_t::push_type &sink){
-					sink(nullptr);
-					for (auto &kv : stream_dict)
-						sink(this->base_objects[kv.first].get());
-				}
-			))
-		)),
-		make_unique(new ArchiveWriter_helper_third(
-			make_shared(new ArchiveWriter_helper::third_co_t::pull_type(
-				[&](ArchiveWriter_helper::third_co_t::push_type &sink){
-					sink(nullptr);
-					VersionManifest manifest;
-					manifest.creation_time = start_time;
-					manifest.version_number = version;
+void reorder_file_streams(std::vector<ArchiveWriter::FileQueueElement> &file_queue){
+	typedef std::pair<std::wstring, ArchiveWriter::FileQueueElement> pair_t;
+	std::vector<pair_t> sortable;
+	std::vector<decltype(file_queue[0].stream_id)> old_ids;
+	for (auto &fqe : file_queue){
+		sortable.push_back(std::make_pair(get_extension(fqe.fso->get_name()), fqe));
+		old_ids.push_back(fqe.stream_id);
+	}
+
+	std::sort(sortable.begin(), sortable.end(),
+		[](const pair_t &a, const pair_t &b){
+			return extension_sort(a.first, b.first);
+		}
+	);
+	std::sort(old_ids.begin(), old_ids.end());
+
+	file_queue.clear();
+	file_queue.reserve(sortable.size());
+	zekvok_assert(sortable.size() == old_ids.size());
+	for (size_t i = 0; i < sortable.size(); i++){
+		auto fso = sortable[i].second.fso;
+		auto id = old_ids[i];
+		fso->set_stream_id(id);
+		auto stream = fso->get_backup_stream();
+		zekvok_assert(stream);
+		stream->set_unique_id(id);
+		file_queue.push_back({ fso, id });
+	}
+}
+
+void BackupSystem::archive_process_files(stream_dict_t &stream_dict, std::set<version_number_t> &version_dependencies, ArchiveWriter &archive){
+	std::vector<ArchiveWriter::FileQueueElement> file_queue;
+
+	for (auto &kv : stream_dict){
+		auto base_object = this->base_objects[kv.first];
+		for (auto &stream : kv.second)
+			for (auto &fso : stream->get_file_system_objects())
+				fso->set_backup_stream(stream.get());
+
+		for (auto &i : base_object->get_iterator())
+			this->get_dependencies(version_dependencies, *i);
+
+		for (auto &backup_stream : kv.second){
+			auto fso = backup_stream->get_file_system_objects()[0];
+			auto id = backup_stream->get_unique_id();
+			file_queue.push_back({ fso, id });
+		}
+	}
+
+	reorder_file_streams(file_queue);
+
+	archive.add_files(file_queue);
+}
+
+void BackupSystem::archive_process_objects(stream_dict_t &stream_dict, ArchiveWriter &archive){
+	std::vector<FileSystemObject *> base_objects;
+	for (auto &kv : stream_dict)
+		base_objects.push_back(this->base_objects[kv.first].get());
+	archive.add_base_objects(base_objects);
+}
+
+void BackupSystem::archive_process_manifest(
+		const OpaqueTimestamp &start_time,
+		version_number_t version,
+		stream_dict_t &stream_dict,
+		std::set<version_number_t> &version_dependencies,
+		ArchiveWriter &archive){
+	VersionManifest manifest;
+	manifest.creation_time = start_time;
+	manifest.version_number = version;
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4244)
 #pragma warning(disable: 4267)
 #endif
-					manifest.entry_count = base_objects.size();
-					manifest.first_stream_id = first_stream_id;
-					manifest.first_differential_chain_id = first_diff_id;
-					manifest.next_stream_id = this->next_stream_id;
-					manifest.next_differential_chain_id = this->next_differential_chain_id;
+	manifest.entry_count = base_objects.size();
+	manifest.first_stream_id = this->next_stream_id;
+	manifest.first_differential_chain_id = this->next_differential_chain_id;
+	manifest.next_stream_id = this->next_stream_id;
+	manifest.next_differential_chain_id = this->next_differential_chain_id;
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-					manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
-					sink(&manifest);
-				}
-			))
-		)),
-	};
+	manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
+	archive.add_version_manifest(manifest);
+}
 
-	archive.process(array, array + array_size(array));
+path_t BackupSystem::get_aux_path() const{
+	auto dst = this->target_path;
+	return dst / ".aux";
+}
+
+path_t BackupSystem::get_aux_fso_path(version_number_t version) const{
+	std::stringstream temp;
+	temp << "fso" << std::setw(8) << std::setfill('0') << version << ".dat";
+	return this->get_aux_path() / temp.str();
+}
+
+void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_number_t version){
+	auto dst = this->get_aux_path();
+	if (!boost::filesystem::exists(dst))
+		boost::filesystem::create_directory(dst);
+	else if (!boost::filesystem::is_directory(dst))
+		return;
+	
+	dst = this->get_aux_fso_path(version);
+	boost::iostreams::stream<TransactedFileSink> file(tx, dst.wstring().c_str());
+	bool mt = false;
+	boost::iostreams::stream<LzmaOutputFilter> lzma(file, &mt, 8);
+	for (auto &fso : this->base_objects){
+		auto cloned = easy_clone(*fso);
+		cloned->encrypt();
+		buffer_t mem;
+		{
+			boost::iostreams::stream<MemorySink> omem(&mem);
+			SerializerStream stream(omem);
+			stream.begin_serialization(*cloned, config::include_typehashes);
+		}
+
+		simple_buffer_serialization(lzma, mem);
+	}
 }
 
 std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemObject &fso, known_guids_t &known_guids){
@@ -528,8 +603,10 @@ std::wstring normalize_path(const std::wstring &path){
 	size_t skip = 0;
 	if (starts_with(path, system_path_prefix)){
 		ret = system_path_prefix;
-		ret += path_t(path.substr(4)).normalize().wstring();
+		skip = 4;
 	}
+	ret += path_t(path.substr(skip)).normalize().wstring();
+	std::transform(ret.begin(), ret.end(), ret.begin(), [](wchar_t c){ return c == '/' ? '\\' : c; });
 	return ret;
 }
 
@@ -537,11 +614,28 @@ std::wstring simplify_path(const std::wstring &path){
 	return to_lower(normalize_path(path));
 }
 
+std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(ArchiveReader &archive, version_number_t v){
+	boost::filesystem::ifstream file(this->get_aux_fso_path(v), std::ios::binary);
+	if (!file)
+		return archive.get_base_objects();
+	boost::iostreams::stream<LzmaInputFilter> lzma(file);
+
+	std::vector<std::shared_ptr<FileSystemObject>> ret;
+	buffer_t mem;
+	while (simple_buffer_deserialization(mem, lzma)){
+		boost::iostreams::stream<MemorySource> stream(&mem);
+		ImplementedDeserializerStream ds(stream);
+		ret.push_back(make_shared(ds.begin_deserialization<FileSystemObject>(config::include_typehashes)));
+	}
+	return ret;
+}
+
 void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	{
-		ArchiveReader archive(this->get_version_path(this->versions.back()), this->keypair.get());
+		auto version = this->versions.back();
+		ArchiveReader archive(this->get_version_path(version), &this->get_aux_fso_path(version), this->keypair.get());
 		auto manifest = archive.read_manifest();
-		this->old_objects = archive.get_base_objects();
+		this->old_objects = this->get_old_objects(archive, version);
 		this->next_stream_id = manifest->next_stream_id;
 		this->next_differential_chain_id = manifest->next_differential_chain_id;
 	}
@@ -549,10 +643,22 @@ void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	this->set_base_objects();
 	for (auto &base_object : this->base_objects){
 		for (auto &fso : base_object->get_iterator()){
-			auto it = this->old_objects_map.find(simplify_path(fso->get_mapped_path().wstring()));
-			if (it == this->old_objects_map.end())
+			auto search_path = simplify_path(fso->get_mapped_path().wstring());
+			auto it = this->old_objects_map.find(search_path);
+			FileSystemObject *found = nullptr;
+			if (it == this->old_objects_map.end()){
+				for (auto &fso2 : this->old_objects){
+					if (!fso2->get_is_encrypted())
+						continue;
+					found = fso2->find(search_path);
+					if (found)
+						break;
+				}
+			}else
+				found = it->second;
+			if (!found)
 				continue;
-			fso->set_stream_id(it->second->get_stream_id());
+			fso->set_stream_id(found->get_stream_id());
 			break;
 		}
 	}
@@ -561,9 +667,12 @@ void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 
 void BackupSystem::set_old_objects_map(){
 	this->old_objects_map.clear();
-	for (auto &old_object : this->old_objects)
+	for (auto &old_object : this->old_objects){
+		if (old_object->get_is_encrypted())
+			continue;
 		for (auto &fso : old_object->get_iterator())
 			this->old_objects_map[simplify_path(fso->get_mapped_path().wstring())] = fso;
+	}
 }
 
 std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject &fso, known_guids_t &known_guids){
@@ -603,7 +712,7 @@ std::shared_ptr<BackupStream> BackupSystem::check_and_maybe_add(FileSystemObject
 		default:
 			throw InvalidSwitchVariableException();
 	}
-	assert(!!ret);
+	zekvok_assert(!!ret);
 	auto &guid = filish.get_file_system_guid();
 	if (guid.valid)
 		known_guids[guid.data] = ret;
@@ -634,7 +743,7 @@ bool BackupSystem::file_has_changed(version_number_t &dst, FilishFso &new_file){
 		new_file.compute_hash();
 		return true;
 	}
-	assert(old_fso);
+	zekvok_assert(old_fso);
 	auto old_file = static_cast<FilishFso *>(old_fso);
 	auto criterium = this->get_change_criterium(new_file);
 	bool ret;
@@ -718,7 +827,7 @@ void BackupSystem::restore_backup(version_number_t version_number){
 	if (version_number < 0)
 		version_number = this->versions.back() + version_number + 1;
 	if (!this->version_exists(version_number))
-		throw std::exception("No such version");
+		throw StdStringException("No such version");
 
 	std::cout << "Initializing structures...\n";
 	auto latest_version = this->compute_latest_version(version_number);
@@ -769,7 +878,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 		}
 		//Assume monotonicity of input stream IDs.
 		auto begin2 = begin;
-		ArchiveReader archive(This->get_version_path(version_number), This->get_keypair().get());
+		ArchiveReader archive(This->get_version_path(version_number), &This->get_aux_fso_path(version_number), This->get_keypair().get());
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
 			auto it = begin2;
@@ -793,7 +902,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 			if (begin2 == end || begin2->second->get_latest_version() > it->second->get_latest_version())
 				break;
 		}
-		assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
+		zekvok_assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
 	}
 }
 
@@ -814,7 +923,7 @@ void BackupSystem::perform_restore(
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
-	ArchiveReader archive(this->get_version_path(version), this->keypair.get());
+	ArchiveReader archive(this->get_version_path(version), &this->get_aux_fso_path(version), this->keypair.get());
 	return archive.get_base_objects();
 }
 
@@ -849,7 +958,7 @@ bool BackupSystem::full_verify(version_number_t version) const{
 	try{
 		if (!this->verify(version))
 			return false;
-		auto deps = ArchiveReader(this->get_version_path(version), this->keypair.get())
+		auto deps = ArchiveReader(this->get_version_path(version), nullptr, this->keypair.get())
 			.read_manifest()->version_dependencies;
 		for (auto d : deps)
 			if (!this->verify(d))
@@ -871,14 +980,13 @@ std::vector<byte> to_vector(const T &key){
 }
 
 void BackupSystem::generate_keypair(const std::wstring &recipient, const std::wstring &filename, const std::string &symmetric_key){
-	CryptoPP::AutoSeededRandomPool rnd;
 	while (1){
 		CryptoPP::RSA::PrivateKey rsaPrivate;
-		rsaPrivate.GenerateRandomWithKeySize(rnd, 4 << 10);
-		if (!rsaPrivate.Validate(rnd, 3))
+		rsaPrivate.GenerateRandomWithKeySize(*random_number_generator, 4 << 10);
+		if (!rsaPrivate.Validate(*random_number_generator, 3))
 			continue;
 		CryptoPP::RSA::PublicKey rsaPublic(rsaPrivate);
-		if (!rsaPublic.Validate(rnd, 3))
+		if (!rsaPublic.Validate(*random_number_generator, 3))
 			continue;
 
 		auto pri = to_vector(rsaPrivate);

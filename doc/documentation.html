@@ -1,0 +1,117 @@
+<HTML>
+<BODY>
+
+<h1>Requirements</h1>
+<p>You'll need a Windows Vista or newer to run the program. Only x86-64 (a.k.a. AMD64, EM64T, and other names) is supported. Because LZMA compression uses a lot of memory, 2 GB of RAM is probably the bare minimum to be able to run it effectively. 4 GB or more is recommended.</p>
+
+<h1>Building</h1>
+<h3>Requirements</h3>
+<ul>
+<li>Boost 1.57.0 or newer.</li>
+</ul>
+<h3>Instructions</h3>
+<p>To build, simply open the project in Visual Studio 2013 or newer and select &quot;build solution&quot;. All dependencies except Boost are included and handled automatically by the solution. The output goes to <font face="monospace">$(SolutionDir)\bin64\zekvok.exe</font></p>
+
+<h1>Limitations and known issues</h1>
+<ul>
+<li>VSS does not work with nested file systems (e.g. an NTFS volume in a VHD stored in an NTFS volume, or an NTFS volume in a TrueCrypt volume in an NTFS volume). However, with block-level incremental backups, it will be possible to make space-efficient backups of virtual hard disks, although encrypted file systems are incompressible.</li>
+
+<li>Backing up locked files in a network share is not supported.</li>
+
+<li>Transacted writes to network shares are not supported. Writing the backup files to a network share will work, but the process will not be transacted. This means that the backup version that was being generated may be left incomplete, and thus corrupted, in case of a power failure on either machine. Once power is restored, it is possible to run a verification on the archive and clean up broken files.</li>
+
+<li>Hardlinks are detected by examining and generating file GUIDs. When using VSS, it is possible for the situation to arise that one of two files (both of which were hardlinks with each other at the time the VSS snapshot was taken) may be deleted after the VSS snapshot is taken but before the file GUIDs are generated. If this happens, the two files may be treated as two unrelated regular files and stored redundantly.</li>
+
+</ul>
+
+<H1>Usage</H1>
+<P>Currently, the interface is an in-process command-line. Using the program involves typing in commands for it to perform. The program must be run as an administrator for much of its functionality to be available.</P>
+
+<h2>Basic commands</H2>
+<div id="open">
+<P><font face="monospace">open &lt;path&gt;</font><BR>
+Creates a backup object that will generate archive files at &lt;path&gt;. If previously a backup has been performed at this location, it will be opened to extract metadata or to perform a new backup. Commands with a <span style="background: #66ff66">green background</span> will fail if issued before any <a href="#open"><font face="monospace"><span style="background: #DDDDDD">open</span></font></a> commands.</P>
+</div>
+
+<P><font face="monospace"><span style="background: #66ff66">add &lt;path&gt;</span></font><br>Adds &lt;path&gt; to a list of sources in the backup object. Files and directory structures will be read from here when performing the backup.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">backup</span></font><br>Perform a backup.</P>
+
+<div id="restore">
+<P><font face="monospace"><span style="background: #66ff66">restore</span></font><br>Restore a backup at the selected version (see below). The destination is set to the source from which the backup was generated. In the future it will be possible to restore a backup to a different location while remapping links.<BR>
+<B>WARNING: THIS COMMAND OVERWRITES AND DELETES FILES WITHOUT ASKING FOR CONFIRMATION.</B></P>
+</div>
+
+<P><font face="monospace">if &lt;variable&gt; &lt;command&gt;</font><BR>
+If &lt;variable&gt; was passed to the program as a command-line argument, &lt;command&gt; will be executed.</P>
+
+<div id="generate_keypair">
+<P><font face="monospace">generate keypair &lt;recipient&gt; &lt;file&gt; &lt;password&gt;</font><BR>
+Generates a 4096-bit RSA key pair for &lt;recipient&gt;, encrypts the private key with &lt;password&gt;, and stores the result in &lt;file&gt;. Currently, the recipient option is ignored and does nothing.</P>
+</div>
+
+<h2>Exclusion commands</H2>
+
+<P><font face="monospace"><span style="background: #66ff66">exclude extension &lt;extension&gt;</span></font><br>
+When creating the backup, all files of the given extension will be ignored.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">exclude path &lt;path&gt;</span></font><br>
+When creating the backup: if &lt;path&gt; is a file, it will not be backed up; if it's a directory, its contents will not be backed up.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">exclude name &lt;name&gt;</span></font><br>
+When creating the backup, all file system objects (both directories and files) named &lt;name&gt; will not be backed up.</P>
+
+<h2>Selection commands</H2>
+
+<P><font face="monospace"><span style="background: #66ff66">select version &lt;number&gt;</span></font><br>
+Selects a backup version. 0 is the first version, 1 is the second version, etc. -1 is the latest version, -2 is the second-to-latest version, etc.<BR>
+When the <a href="#open"><font face="monospace"><span style="background: #DDDDDD">open</span></font></a> command automatically selects the latest version. This command modifies the behavior of various other commands. E.g.
+<a href="#restore"><font face="monospace"><span style="background: #DDDDDD">restore</span></font></a> will restore the selected version.</P>
+
+<div id="select_keypair">
+<P><font face="monospace"><span style="background: #66ff66">select keypair &lt;path&gt; [&lt;password&gt;]</span></font><br>
+Loads a keypair from file &lt;path&gt; to be used to de/encrypt backups. The file must have been generated by a <a href="#generate_keypair"><font face="monospace"><span style="background: #DDDDDD">generate keypair</span></font></a> command. The password is used to decrypt the private key, and it's optional when performing backups. It must be entered when restoring a backup, or to read some metadata from the archive.</P>
+</div>
+
+<h2>Show commands</H2>
+
+<P>Note: All show commands require a previous <a href="#open"><font face="monospace"><span style="background: #DDDDDD">open</span></font></a> command. Commands with a <span style="background: #ffff00">yellow background</span> additionally require having supplied a password to a <a href="#select_keypair"><font face="monospace"><span style="background: #DDDDDD">select keypair</span></font></a> command.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">show dependencies</span></font><br>Shows a list of the versions which are required to restore the selected version.</P>
+
+<P><span style="background: #ffff00"><font face="monospace">show paths</span></font><br>
+Shows a detailed list of the contents of a backup.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">show versions</span></font><br>
+Shows a list of all available versions.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">show version_count</span></font><br>
+Shows a count of all available versions.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">show version_summary</span></font><br>
+Shows a brief summary of information about the selected version, such as creation date and sizes used by the various sections.</P>
+
+<h2>Set commands</H2>
+
+<P><font face="monospace"><span style="background: #66ff66">set use_snapshots {true|false}</span></font><br>
+Defaults to true. If false, snapshots will not be used when performing the backup. This can speed up the backup if backup consistency is guaranteed by other mechanisms, and it's also required in specific circumstances, such as when backing up a directory stored in inside a TrueCrypt volume.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">set change_criterium {archive_flag|size|date|hash|hash_auto}</span></font><br>
+Sets the criterium that is used to determine when a file has changed.<BR>
+<b><font face="monospace">archive_flag</font></b>: Only check if the archive flag is set.<BR>
+<b><font face="monospace">size</font></b>: Only check if the size is different.<BR>
+<b><font face="monospace">date</font></b>: Only check if the modification time is different.<BR>
+<b><font face="monospace">hash</font></b>: Check if the SHA-256 digest is different.<BR>
+<b><font face="monospace">hash_auto</font></b>: Check the digest for small files, and check the date for larger files.<BR>
+The default is hash_auto.</P>
+
+<h2>Archive verification commands</H2>
+<P>Note: Without performing a more thorough analysis, it's not safe to restore a backup if it fails the verification process. In such a case, the program may behave in unintended ways.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">verify</span></font><br>
+Checks the integrity of the selected version. This check is only intended to protect against accidental storage/transmission errors, NOT against malicious modifications.</P>
+
+<P><font face="monospace"><span style="background: #66ff66">verify full</span></font><br>
+Does the same as verify, but also checks all dependencies of the selected version. Again, this check offers NO protection against malicious modifications.</P>
+</BODY>
+</HTML>
