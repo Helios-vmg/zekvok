@@ -206,6 +206,7 @@ DWORD internal_get_reparse_point_target(const wchar_t *path, unsigned long *unre
 						*unrecognized = buf->ReparseTag;
 					return ERROR_UNIDENTIFIED_ERROR;
 			}
+			return ERROR_SUCCESS;
 		}else{
 			if (error == ERROR_MORE_DATA){
 				size *= 2;
