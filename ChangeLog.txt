@@ -4,6 +4,7 @@ stable-0.3.0
 * Private key no longer required to create new backups or backup versions.
 * Theoretical compression ratio improvements.
 * Cryptographic fixes.
+* Bug fixes.
 
 
 stable-0.2.0
