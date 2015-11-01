@@ -25,12 +25,12 @@ void HashCalculator::write_result(){
 	if (!this->dst)
 		return;
 	if (this->dst_length >= this->get_hash_length()){
-		this->hash->Final((byte *)this->dst);
+		this->hash->Final(static_cast<byte *>(this->dst));
 		return;
 	}
 	quick_buffer b(this->get_hash_length());
-	this->hash->Final((byte *)b.data);
-	memcpy((byte *)this->dst, b.data, this->dst_length);
+	this->hash->Final(static_cast<byte *>(b.data));
+	memcpy(static_cast<byte *>(this->dst), b.data, this->dst_length);
 }
 
 std::streamsize HashOutputFilter::write(const char *input, std::streamsize length){
@@ -49,7 +49,7 @@ std::streamsize HashInputFilter::read(char *output, std::streamsize length){
 			break;
 		}
 		ret += temp;
-		output = (char *)output + temp;
+		output += temp;
 		length -= temp;
 	}
 	this->update(head, ret);

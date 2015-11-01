@@ -33,6 +33,7 @@ LzmaOutputFilter::LzmaOutputFilter(
 LzmaOutputFilter::~LzmaOutputFilter(){
 	if (*this->copies == 1){
 		this->enable_flush();
+		// ReSharper disable once CppVirtualFunctionCallInsideCtor
 		this->flush();
 	}
 }
@@ -111,7 +112,7 @@ bool LzmaOutputFilter::pass_data_to_stream(lzma_ret ret){
 		size_t write_size = d->output_buffer.size() - d->lstream.avail_out;
 
 		auto temp = &d->output_buffer[0];
-		if (this->next_write((const char *)temp, write_size) < 0)
+		if (this->next_write(reinterpret_cast<const char *>(temp), write_size) < 0)
 			return false;
 		d->bytes_written += write_size;
 
@@ -149,7 +150,7 @@ std::streamsize LzmaOutputFilter::write(const char *buffer, std::streamsize leng
 			if (!length)
 				break;
 			d->bytes_read += length;
-			d->lstream.next_in = (const uint8_t *)buffer;
+			d->lstream.next_in = reinterpret_cast<const uint8_t *>(buffer);
 			d->lstream.avail_in = length;
 			length -= d->lstream.avail_in;
 		}
@@ -198,13 +199,12 @@ std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
 	auto d = this->data.get();
 	if (d->at_eof)
 		return -1;
-	size_t ret = 0;
-	d->lstream.next_out = (uint8_t *)buffer;
+	d->lstream.next_out = reinterpret_cast<uint8_t *>(buffer);
 	d->lstream.avail_out = size;
 	while (d->lstream.avail_out){
 		if (d->lstream.avail_in == 0){
 			d->lstream.next_in = &d->input_buffer[0];
-			auto r = this->next_read((char *)&d->input_buffer[0], d->input_buffer.size());
+			auto r = this->next_read(reinterpret_cast<char *>(&d->input_buffer[0]), d->input_buffer.size());
 			d->lstream.avail_in = r < 0 ? 0 : r;
 			d->bytes_read += d->lstream.avail_in;
 		}
@@ -238,7 +238,7 @@ std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
 			throw LzmaOperationException(msg);
 		}
 	}
-	ret = size - d->lstream.avail_out;
+	size_t ret = size - d->lstream.avail_out;
 	d->bytes_written += ret;
 	d->at_eof = !ret && size;
 	return ret;

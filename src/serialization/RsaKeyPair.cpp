@@ -16,10 +16,10 @@ const std::uint8_t salt[] = {
 };
 
 RsaKeyPair::RsaKeyPair(const std::vector<std::uint8_t> &private_key, const std::vector<std::uint8_t> &public_key, const std::string &symmetric_key)
-		: private_key(private_key)
+		: priv_size((std::uint32_t)private_key.size())
 		, public_key(public_key)
-		, symmetric_key(symmetric_key)
-		, priv_size((std::uint32_t)private_key.size()){
+		, private_key(private_key)
+		, symmetric_key(symmetric_key){
 	random_number_generator->GenerateBlock(this->initialization_vector.data(), this->initialization_vector.size());
 	this->encrypt();
 }
@@ -51,7 +51,7 @@ std::vector<std::uint8_t> cryptoprocess_buffer(
 		const std::array<uint8_t, 12> &initialization_vector){
 	CryptoPP::PKCS12_PBKDF<CryptoPP::SHA256> derivation;
 	CryptoPP::SecByteBlock key(CryptoPP::Twofish::MAX_KEYLENGTH);
-	derivation.DeriveKey(key.data(), key.size(), 0, (const byte *)symmetric_key.c_str(), symmetric_key.size(), salt, sizeof(salt), 1 << 10, 0);
+	derivation.DeriveKey(key.data(), key.size(), 0, reinterpret_cast<const byte *>(symmetric_key.c_str()), symmetric_key.size(), salt, sizeof(salt), 1 << 10, 0);
 	typename T::algo_type e;
 	e.SetKeyWithIV(key, key.size(), initialization_vector.data(), initialization_vector.size());
 	e.SpecifyDataLengths(0, constant_size, 0);

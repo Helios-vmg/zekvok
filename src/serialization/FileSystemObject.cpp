@@ -308,11 +308,9 @@ path_t FileSystemObject::get_path_without_base() const{
 path_t FileSystemObject::path_override_base(const std::wstring *base_path_override, BasePathType override) const{
 	auto _this = this;
 	std::vector<std::wstring> path_vector;
-	size_t expected_length = 0;
 	while (1){
 		auto &name = _this->get_name();
 		path_vector.push_back(name);
-		expected_length += name.size() + 1;
 		if (!_this->get_parent())
 			break;
 		_this = _this->get_parent();
@@ -331,10 +329,8 @@ path_t FileSystemObject::path_override_base(const std::wstring *base_path_overri
 		default:
 			throw InvalidSwitchVariableException();
 	}
-	if (s){
+	if (s)
 		path_vector.push_back(*s);
-		expected_length += s->size() + 1;
-	}
 
 	path_t ret;
 	for (auto i = path_vector.rbegin(), e = path_vector.rend(); i != e; ++i)

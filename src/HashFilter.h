@@ -18,14 +18,15 @@ class HashCalculator{
 protected:
 	void update(const void *input, size_t length){
 		if (length){
-			this->hash->Update((const byte *)input, length);
+			this->hash->Update(static_cast<const byte *>(input), length);
 			this->bytes_processed += length;
 		}
 	}
 public:
 	HashCalculator(CryptoPP::HashTransformation *t)
 			: bytes_processed(0)
-			, dst(nullptr){
+			, dst(nullptr)
+			, dst_length(0){
 		this->hash.reset(t);
 	}
 	virtual ~HashCalculator();

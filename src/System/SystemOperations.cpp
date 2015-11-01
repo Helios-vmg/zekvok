@@ -78,7 +78,8 @@ VolumeInfo::VolumeInfo(const std::wstring &vp, const std::wstring &vl, DriveType
 		volume_path(vp),
 		volume_label(vl),
 		drive_type(dt){
-	this->mounted_paths = to_vector<std::wstring>(enumerate_mounted_paths(this->volume_path));
+	auto co = enumerate_mounted_paths(this->volume_path);
+	this->mounted_paths = to_vector<std::wstring>(co);
 }
 
 enumerate_mounted_paths_co_t::pull_type enumerate_mounted_paths(std::wstring volume_path){

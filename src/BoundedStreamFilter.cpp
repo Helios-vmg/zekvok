@@ -12,7 +12,6 @@ std::streamsize BoundedInputFilter::read(char *output, std::streamsize length){
 	if (this->bytes_read == this->simulated_length)
 		return -1;
 	length = std::min(length, this->simulated_length - this->bytes_read);
-	auto head = output;
 	std::streamsize ret = 0;
 	bool bad = false;
 	while (length){
@@ -22,7 +21,7 @@ std::streamsize BoundedInputFilter::read(char *output, std::streamsize length){
 			break;
 		}
 		ret += temp;
-		output = (char *)output + temp;
+		output += temp;
 		length -= temp;
 	}
 	this->bytes_read += ret;

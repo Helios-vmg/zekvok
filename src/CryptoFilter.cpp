@@ -37,6 +37,7 @@ public:
 	~GenericCryptoOutputFilter(){
 		if (*this->copies == 1){
 			this->enable_flush();
+			// ReSharper disable once CppVirtualFunctionCallInsideCtor
 			this->flush();
 		}
 	}
@@ -64,14 +65,14 @@ std::shared_ptr<std::ostream> CryptoOutputFilter::create(
 
 std::streamsize CryptoOutputFilter::write(const char *s, std::streamsize n){
 	auto filter = this->get_filter();
-	filter->Put((const byte *)s, n);
+	filter->Put(reinterpret_cast<const byte *>(s), n);
 	size_t size;
 	auto buffer = this->get_buffer(size);
 	while (1){
 		auto read = filter->Get(buffer, size);
 		if (!read)
 			break;
-		this->next_write((const char *)buffer, read);
+		this->next_write(reinterpret_cast<const char *>(buffer), read);
 	}
 	return n;
 }
@@ -88,7 +89,7 @@ bool CryptoOutputFilter::internal_flush(){
 		auto read = filter->Get(buffer, size);
 		if (!read)
 			break;
-		this->next_write((const char *)buffer, read);
+		this->next_write(reinterpret_cast<const char *>(buffer), read);
 	}
 	return OutputFilter::internal_flush();
 }
@@ -139,8 +140,6 @@ std::shared_ptr<std::istream> CryptoInputFilter::create(
 }
 
 std::streamsize CryptoInputFilter::read(char *s, std::streamsize n){
-	auto input_s = s;
-	auto input_n = n;
 	if (this->done)
 		return -1;
 	std::streamsize ret = 0;
@@ -149,7 +148,7 @@ std::streamsize CryptoInputFilter::read(char *s, std::streamsize n){
 	auto buffer = this->get_buffer(size);
 	auto filter = this->get_filter();
 	while (n){
-		auto read = this->next_read((char *)buffer, size);
+		auto read = this->next_read(reinterpret_cast<char *>(buffer), size);
 		if (read >= 0)
 			filter->Put(buffer, read);
 		else if (!bad){
@@ -159,7 +158,7 @@ std::streamsize CryptoInputFilter::read(char *s, std::streamsize n){
 			}
 			bad = true;
 		}
-		read = filter->Get((byte *)s, n);
+		read = filter->Get(reinterpret_cast<byte *>(s), n);
 		if (!read && bad)
 			break;
 		s += read;

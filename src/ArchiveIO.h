@@ -23,7 +23,7 @@ enum class KeyIndices{
 
 class ArchiveKeys{
 public:
-	static const size_t key_count = (size_t)KeyIndices::KeyCount;
+	static const size_t key_count = static_cast<size_t>(KeyIndices::KeyCount);
 private:
 	size_t size;
 	CryptoPP::SecByteBlock keys[key_count];
@@ -100,7 +100,6 @@ class ArchiveWriter{
 	std::unique_ptr<ArchiveKeys> keys;
 	size_t archive_key_index;
 
-	std::unique_ptr<ArchiveKeys> gen_and_save_keys(std::ostream &);
 public:
 	ArchiveWriter(KernelTransaction &tx, const path_t &, RsaKeyPair *keypair);
 	void process(const std::function<void()> &callback);

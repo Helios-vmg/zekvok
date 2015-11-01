@@ -159,7 +159,7 @@ void serialize_fixed_le_int(DstT *dst, const SrcT &src){
 	static_assert(CHAR_BIT == 8, "Only 8-bit byte platforms supported!");
 
 	std::uint8_t *p = (std::uint8_t *)dst;
-	std::make_unsigned<SrcT>::type copy = src;
+	typename std::make_unsigned<SrcT>::type copy = src;
 	const auto n = sizeof(src);
 	for (auto i = 0; i != n; i++){
 		p[i] = copy & 0xFF;
@@ -207,7 +207,7 @@ std::basic_string<T> ensure_last_character_is_not_backslash(std::basic_string<T>
 template <typename Dst, typename Src>
 std::vector<Dst> to_vector(Src &s){
 	std::vector<Dst> ret;
-	for (auto &x : s)
+	for (const auto &x : s)
 		ret.push_back(x);
 	return ret;
 }
