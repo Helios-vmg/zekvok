@@ -57,7 +57,10 @@ ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
 	auto &private_key = keypair.get_private_key();
 
 	CryptoPP::RSA::PrivateKey priv;
-	priv.Load(CryptoPP::ArraySource((const byte *)&private_key[0], private_key.size(), true));
+	{
+		CryptoPP::ArraySource source(static_cast<const byte *>(&private_key[0]), private_key.size(), true);
+		priv.Load(source);
+	}
 
 	CryptoPP::SecByteBlock buffer(this->size);
 	{
@@ -67,7 +70,7 @@ ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
 		typedef CryptoPP::PK_DecryptorFilter filter_t;
 		decryptor_t dec(priv);
 		CryptoPP::SecByteBlock temp(n);
-		stream.read((char *)temp.data(), temp.size());
+		stream.read(reinterpret_cast<char *>(temp.data()), temp.size());
 		auto read = stream.gcount();
 		if (read != temp.size())
 			throw RsaBlockDecryptionException("Not enough bytes read from RSA block.");
@@ -98,7 +101,10 @@ std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, 
 
 		CryptoPP::RSA::PublicKey pub;
 		auto &public_key = keypair->get_public_key();
-		pub.Load(CryptoPP::ArraySource((const byte *)&public_key[0], public_key.size(), true));
+		{
+			CryptoPP::ArraySource source((const byte *)&public_key[0], public_key.size(), true);
+			pub.Load(source);
+		}
 
 		typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA>>::Encryptor encryptor_t;
 		typedef CryptoPP::PK_EncryptorFilter filter_t;
@@ -120,9 +126,10 @@ std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, 
 }
 
 ArchiveReader::ArchiveReader(const path_t &path, const path_t *encrypted_fso, RsaKeyPair *keypair):
-		manifest_offset(-1),
 		path(path),
-		keypair(keypair){
+		manifest_offset(-1),
+		keypair(keypair),
+		manifest_size(0){
 	if (!boost::filesystem::exists(path) || !boost::filesystem::is_regular_file(path))
 		throw FileNotFoundException(path);
 }
@@ -140,7 +147,7 @@ bool ArchiveReader::get_key_iv(CryptoPP::SecByteBlock &key, CryptoPP::SecByteBlo
 }
 
 std::unique_ptr<std::istream> ArchiveReader::get_stream(){
-	auto ret = make_unique((std::istream *)new boost::filesystem::ifstream(path, std::ios::binary));
+	auto ret = make_unique(static_cast<std::istream *>(new boost::filesystem::ifstream(path, std::ios::binary)));
 	if (!*ret)
 		throw FileNotFoundException(path);
 	return ret;
@@ -189,15 +196,15 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	stream->seekg(this->base_objects_offset);
 	{
 		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_offset - this->base_objects_offset);
-		std::istream *stream = &bounded;
+		std::istream *stream2 = &bounded;
 		std::shared_ptr<std::istream> crypto;
 		if (this->keypair){
 			CryptoPP::SecByteBlock key, iv;
 			zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileObjectDataKey));
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &key, &iv);
-			stream = crypto.get();
+			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream2, &key, &iv);
+			stream2 = crypto.get();
 		}
-		boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
+		boost::iostreams::stream<LzmaInputFilter> lzma(*stream2);
 
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
 			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
@@ -248,9 +255,10 @@ ArchiveReader::read_everything_co_t::pull_type ArchiveReader::read_everything(){
 }
 
 ArchiveWriter::ArchiveWriter(KernelTransaction &tx, const path_t &path, RsaKeyPair *keypair):
-		keypair(keypair),
+		state(State::Initial),
 		tx(tx),
-		state(State::Initial){
+		keypair(keypair),
+		any_file(false){
 	this->stream.reset(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
 }
 
@@ -269,7 +277,7 @@ void ArchiveWriter::process(const std::function<void()> &callback){
 
 		overall_hash->get_result(complete_hash.data(), complete_hash.size());
 	}
-	this->stream->write((const char *)complete_hash.data(), complete_hash.size());
+	this->stream->write(reinterpret_cast<const char *>(complete_hash.data()), complete_hash.size());
 }
 
 void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
@@ -291,14 +299,14 @@ void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
 		std::uint64_t size;
 		auto fso = fqe.fso;
 		std::wcout << fso->get_unmapped_path() << std::endl;
-		auto stream = fso->open_for_exclusive_read(size);
+		auto stream2 = fso->open_for_exclusive_read(size);
 
 		this->stream_ids.push_back(fqe.stream_id);
 		this->stream_sizes.push_back(size);
 
 		sha256_digest digest;
 		{
-			boost::iostreams::stream<HashInputFilter> hash(*stream, new CryptoPP::SHA256);
+			boost::iostreams::stream<HashInputFilter> hash(*stream2, new CryptoPP::SHA256);
 			if (size)
 				lzma << hash.rdbuf();
 			hash->get_result(digest.data(), digest.size());
@@ -341,7 +349,6 @@ void ArchiveWriter::add_version_manifest(VersionManifest &manifest){
 	std::uint64_t manifest_length = 0;
 	{
 		boost::iostreams::stream<ByteCounterOutputFilter> counter(*this->nested_stream, &manifest_length);
-		std::ostream *stream = &counter;
 		
 		bool mt = true;
 
@@ -355,5 +362,5 @@ void ArchiveWriter::add_version_manifest(VersionManifest &manifest){
 		ss.begin_serialization(manifest, config::include_typehashes);
 	}
 	auto s_manifest_length = serialize_fixed_le_int(manifest_length);
-	this->nested_stream->write((const char *)s_manifest_length.data(), s_manifest_length.size());
+	this->nested_stream->write(reinterpret_cast<const char *>(s_manifest_length.data()), s_manifest_length.size());
 }

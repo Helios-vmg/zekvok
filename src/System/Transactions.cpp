@@ -9,7 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "Transactions.h"
 
 KernelTransaction::KernelTransaction(){
-	this->tx = CreateTransaction(nullptr, 0, 0, 0, 0, 0, nullptr);
+	this->tx = CreateTransaction(nullptr, nullptr, 0, 0, 0, 0, nullptr);
 	if (this->tx == INVALID_HANDLE_VALUE){
 		auto error = GetLastError();
 		throw Win32Exception(error);
@@ -63,7 +63,7 @@ TransactedFileSink::TransactedFileSink(const KernelTransaction &tx, const wchar_
 		auto error = GetLastError();
 		throw Win32Exception(error);
 	}
-	SetFilePointer(*this->handle, 0, 0, FILE_END);
+	SetFilePointer(*this->handle, 0, nullptr, FILE_END);
 }
 
 std::streamsize TransactedFileSink::write(const char *buffer, std::streamsize size){

@@ -24,7 +24,8 @@ public:
 	VSS_SNAPSHOT_STATE status;
 	VssShadow(const VSS_ID &snapshot_set_id, const VSS_ID &shadow_id):
 		snapshot_set_id(snapshot_set_id),
-		id(shadow_id){}
+		id(shadow_id),
+		snapshots_count(0){}
 	VSS_ID get_id() const{
 		return this->id;
 	}

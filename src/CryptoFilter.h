@@ -49,5 +49,5 @@ public:
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv
 	);
-	std::streamsize read(char *s, std::streamsize n);
+	std::streamsize read(char *s, std::streamsize n) override;
 };

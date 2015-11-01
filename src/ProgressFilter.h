@@ -39,7 +39,7 @@ protected:
 		while (length){
 			auto temp = cb(ud, input, length);
 			ret += temp;
-			input = (const char *)input + temp;
+			input += temp;
 			length -= temp;
 		}
 		this->update(ret);
@@ -65,7 +65,7 @@ protected:
 				break;
 			}
 			ret += temp;
-			output = (char *)output + temp;
+			output += temp;
 			length -= temp;
 		}
 		this->update(ret);

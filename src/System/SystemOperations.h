@@ -63,7 +63,7 @@ struct VolumeInfo{
 	std::wstring volume_label;
 	DriveType drive_type;
 	std::vector<std::wstring> mounted_paths;
-	VolumeInfo(){}
+	VolumeInfo(): drive_type(DriveType::Unknown){}
 	VolumeInfo(const std::wstring &, const std::wstring &, DriveType);
 };
 

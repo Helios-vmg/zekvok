@@ -23,6 +23,7 @@ const wchar_t * const system_path_prefix = L"\\\\?\\";
 
 class SimpleErrorReporter : public FileSystemObject::ErrorReporter{
 public:
+	virtual ~SimpleErrorReporter(){}
 	bool report_error(const std::exception &e, const char *context) override{
 		std::cerr << "Exception was thrown";
 		if (context)
@@ -105,7 +106,7 @@ void BackupSystem::add_ignored_name(const std::wstring &name, NameIgnoreType typ
 bool BackupSystem::version_exists(version_number_t v) const{
 	auto b = this->versions.begin(),
 		e = this->versions.end();
-	auto i = std::lower_bound(b, e, v, [](version_number_t a, version_number_t b){ return a < b; });
+	auto i = std::lower_bound(b, e, v, [](version_number_t x, version_number_t y){ return x < y; });
 	return i != e;
 }
 
@@ -419,7 +420,7 @@ void BackupSystem::archive_process_manifest(
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-	manifest.version_dependencies = to_vector<typename decltype(manifest.version_dependencies)::value_type>(version_dependencies);
+	manifest.version_dependencies = to_vector<decltype(manifest.version_dependencies)::value_type>(version_dependencies);
 	archive.add_version_manifest(manifest);
 }
 
@@ -643,7 +644,8 @@ std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(Arc
 void BackupSystem::create_new_version(const OpaqueTimestamp &start_time){
 	{
 		auto version = this->versions.back();
-		ArchiveReader archive(this->get_version_path(version), &this->get_aux_fso_path(version), this->keypair.get());
+		auto path = this->get_aux_fso_path(version);
+		ArchiveReader archive(this->get_version_path(version), &path, this->keypair.get());
 		auto manifest = archive.read_manifest();
 		this->old_objects = this->get_old_objects(archive, version);
 		this->next_stream_id = manifest->next_stream_id;
@@ -888,7 +890,8 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 		}
 		//Assume monotonicity of input stream IDs.
 		auto begin2 = begin;
-		ArchiveReader archive(This->get_version_path(version_number), &This->get_aux_fso_path(version_number), This->get_keypair().get());
+		auto path = This->get_aux_fso_path(version_number);
+		ArchiveReader archive(This->get_version_path(version_number), &path, This->get_keypair().get());
 		for (auto &pair : archive.read_everything()){
 			auto stream_id = pair.first;
 			auto it = begin2;
@@ -933,7 +936,8 @@ void BackupSystem::perform_restore(
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
-	ArchiveReader archive(this->get_version_path(version), &this->get_aux_fso_path(version), this->keypair.get());
+	auto path = this->get_aux_fso_path(version);
+	ArchiveReader archive(this->get_version_path(version), &path, this->keypair.get());
 	return archive.get_base_objects();
 }
 
@@ -947,7 +951,7 @@ bool BackupSystem::verify(version_number_t version) const{
 	std::uint64_t size = file.tellg();
 	sha256_digest digest;
 	file.seekg(-(int)digest.size(), std::ios::end);
-	file.read((char *)digest.data(), digest.size());
+	file.read(reinterpret_cast<char *>(digest.data()), digest.size());
 	if (file.gcount() != digest.size())
 		return false;
 	file.seekg(0);

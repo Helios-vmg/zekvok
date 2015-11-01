@@ -11,7 +11,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "serialization/fso.generated.h"
 #include "serialization/ImplementedDS.h"
 #include "ArchiveIO.h"
-#include "System/SystemOperations.h"
 #include <Shellapi.h>
 
 std::string format_size(double size){

@@ -7,10 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-//#include "System/SystemOperations.h"
-namespace system_ops{
-struct VolumeInfo;
-};
+#include "System/SystemOperations.h"
 class VssSnapshot;
 class FileSystemObject;
 class FilishFso;
