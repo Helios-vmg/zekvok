@@ -66,4 +66,5 @@ enum class FileSystemObjectType{
     FileHardlink,
 };
 
-typedef std::vector<std::uint8_t> buffer_t;
+typedef std::uint8_t byte_t;
+typedef std::vector<byte_t> buffer_t;
