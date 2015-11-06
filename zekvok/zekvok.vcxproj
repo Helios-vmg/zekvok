@@ -178,7 +178,6 @@
     <ClCompile Include="..\src\ArchiveIO.cpp" />
     <ClCompile Include="..\src\BackupSystem.cpp" />
     <ClCompile Include="..\src\BoundedStreamFilter.cpp" />
-    <ClCompile Include="..\src\CircularBuffer.cpp" />
     <ClCompile Include="..\src\ComposingFilter.cpp" />
     <ClCompile Include="..\src\Exception.cpp" />
     <ClCompile Include="..\src\Globals.cpp" />
@@ -188,7 +187,8 @@
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\CryptoFilter.cpp" />
     <ClCompile Include="..\src\MemoryStream.cpp" />
-    <ClCompile Include="..\src\RollingChecksum.cpp" />
+    <ClCompile Include="..\src\rdiff\CircularBuffer.cpp" />
+    <ClCompile Include="..\src\rdiff\RollingChecksum.cpp" />
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
@@ -261,7 +261,6 @@
     <ClInclude Include="..\src\AutoHandle.h" />
     <ClInclude Include="..\src\BackupSystem.h" />
     <ClInclude Include="..\src\BoundedStreamFilter.h" />
-    <ClInclude Include="..\src\CircularBuffer.h" />
     <ClInclude Include="..\src\ComposingFilter.h" />
     <ClInclude Include="..\src\Exception.h" />
     <ClInclude Include="..\src\Filters.h" />
@@ -272,7 +271,8 @@
     <ClInclude Include="..\src\NullStream.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
     <ClInclude Include="..\src\CryptoFilter.h" />
-    <ClInclude Include="..\src\RollingChecksum.h" />
+    <ClInclude Include="..\src\rdiff\CircularBuffer.h" />
+    <ClInclude Include="..\src\rdiff\RollingChecksum.h" />
     <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
     <ClInclude Include="..\src\serialization\BackupStream.h" />
     <ClInclude Include="..\src\serialization\ImplementedDS.h" />

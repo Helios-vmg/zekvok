@@ -37,6 +37,12 @@
     <Filter Include="Header Files\System">
       <UniqueIdentifier>{8544ef9e-9e08-4366-bca2-962e7d2bf2c6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\rdiff">
+      <UniqueIdentifier>{b39d7d55-05e4-4372-a273-c356768ff7e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\rdiff">
+      <UniqueIdentifier>{948a6108-8757-4c30-83ef-6da0db79df5a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -111,11 +117,11 @@
     <ClCompile Include="..\src\Utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\CircularBuffer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\src\rdiff\CircularBuffer.cpp">
+      <Filter>Source Files\rdiff</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\RollingChecksum.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="..\src\rdiff\RollingChecksum.cpp">
+      <Filter>Source Files\rdiff</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -263,11 +269,11 @@
     <ClInclude Include="..\src\MemoryStream.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\CircularBuffer.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\src\rdiff\CircularBuffer.h">
+      <Filter>Header Files\rdiff</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\RollingChecksum.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\src\rdiff\RollingChecksum.h">
+      <Filter>Header Files\rdiff</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
