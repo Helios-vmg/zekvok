@@ -188,7 +188,9 @@
     <ClCompile Include="..\src\CryptoFilter.cpp" />
     <ClCompile Include="..\src\MemoryStream.cpp" />
     <ClCompile Include="..\src\rdiff\CircularBuffer.cpp" />
+    <ClCompile Include="..\src\rdiff\FileComparer.cpp" />
     <ClCompile Include="..\src\rdiff\RollingChecksum.cpp" />
+    <ClCompile Include="..\src\rdiff\RsyncableFile.cpp" />
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
@@ -271,8 +273,11 @@
     <ClInclude Include="..\src\NullStream.h" />
     <ClInclude Include="..\src\ProgressFilter.h" />
     <ClInclude Include="..\src\CryptoFilter.h" />
+    <ClInclude Include="..\src\rdiff\BasicTypes.h" />
     <ClInclude Include="..\src\rdiff\CircularBuffer.h" />
+    <ClInclude Include="..\src\rdiff\FileComparer.h" />
     <ClInclude Include="..\src\rdiff\RollingChecksum.h" />
+    <ClInclude Include="..\src\rdiff\RsyncableFile.h" />
     <ClInclude Include="..\src\serialization\ArchiveMetadata.h" />
     <ClInclude Include="..\src\serialization\BackupStream.h" />
     <ClInclude Include="..\src\serialization\ImplementedDS.h" />

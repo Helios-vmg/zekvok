@@ -123,6 +123,12 @@
     <ClCompile Include="..\src\rdiff\RollingChecksum.cpp">
       <Filter>Source Files\rdiff</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\rdiff\FileComparer.cpp">
+      <Filter>Source Files\rdiff</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rdiff\RsyncableFile.cpp">
+      <Filter>Source Files\rdiff</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -273,6 +279,15 @@
       <Filter>Header Files\rdiff</Filter>
     </ClInclude>
     <ClInclude Include="..\src\rdiff\RollingChecksum.h">
+      <Filter>Header Files\rdiff</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rdiff\FileComparer.h">
+      <Filter>Header Files\rdiff</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rdiff\RsyncableFile.h">
+      <Filter>Header Files\rdiff</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rdiff\BasicTypes.h">
       <Filter>Header Files\rdiff</Filter>
     </ClInclude>
   </ItemGroup>
