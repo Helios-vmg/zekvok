@@ -1,0 +1,123 @@
+cpp fso{
+	struct Sha256Digest{
+		#include "Sha256Digest.h"
+		bool valid;
+		uint8_t digest[32];
+	}
+	
+	struct Guid{
+		#include "Guid.h"
+		bool valid;
+		uint8_t data[16];
+	}
+	
+	class OpaqueTimestamp{
+		uint64_t timestamp;
+		#include "OpaqueTimestamp.h"
+	}
+	
+	abstract class FileSystemObject{
+	protected:
+		uint64_t stream_id;
+		uint64_t differential_chain_id;
+		wstring name;
+		shared_ptr<wstring> mapped_base_path;
+		shared_ptr<wstring> unmapped_base_path;
+		shared_ptr<wstring> link_target;
+		uint64_t size;
+		OpaqueTimestamp modification_time;
+		vector<string> exceptions;
+		bool is_main;
+		pointer<FileSystemObject> parent;
+		int32_t latest_version;
+		bool is_encrypted;
+		#include "FileSystemObject.h"
+	}
+	
+	abstract class DirectoryishFso : FileSystemObject{
+		#include "DirectoryishFso.h"
+	}
+	class DirectoryFso : DirectoryishFso{
+		vector<shared_ptr<FileSystemObject>> children;
+		#include "DirectoryFso.h"
+	}
+	class DirectorySymlinkFso : DirectoryishFso{
+		#include "DirectorySymlinkFso.h"
+	}
+	class JunctionFso : DirectorySymlinkFso{
+		#include "JunctionFso.h"
+	}
+	
+	abstract class FilishFso : FileSystemObject{
+		Sha256Digest hash;
+		Guid file_system_guid;
+		#include "FilishFso.h"
+	}
+	class RegularFileFso : FilishFso{
+		#include "RegularFileFso.h"
+	}
+	class FileHardlinkFso : RegularFileFso{
+		vector<wstring> peers;
+		#include "FileHardlinkFso.h"
+	}
+	class FileSymlinkFso : FilishFso{
+		#include "FileSymlinkFso.h"
+	}
+	class FileReparsePointFso : FileSymlinkFso{
+		#include "FileReparsePointFso.h"
+	}
+	
+	struct ArchiveMetadata{
+		uint64_t entries_size_in_archive;
+		vector<uint64_t> entry_sizes;
+		vector<uint64_t> stream_ids;
+		vector<uint64_t> stream_sizes;
+		#include "ArchiveMetadata.h"
+	}
+	
+	struct VersionManifest{
+		OpaqueTimestamp creation_time;
+		int32_t version_number;
+		vector<int32_t> version_dependencies;
+		uint32_t entry_count;
+		uint32_t first_stream_id;
+		uint32_t next_stream_id;
+		uint32_t first_differential_chain_id;
+		uint32_t next_differential_chain_id;
+		ArchiveMetadata archive_metadata;
+		#include "VersionManifest.h"
+	}
+	
+	abstract class BackupStream{
+		uint64_t unique_id;
+		#include "BackupStream.h"
+	}
+	
+	class UnmodifiedStream : BackupStream{
+		uint64_t virtual_size;
+		int32_t containing_version;
+		#include "UnmodifiedStream.h"
+	}
+	
+	class FullStream : BackupStream{
+		uint64_t virtual_size;
+		uint64_t physical_size;
+		#include "FullStream.h"
+	}
+	
+	/*
+	class DiffStream{
+		<base base="BackupStream" />
+		<uint64_t name="virtual_size" />
+		<uint64_t name="physical_size" />
+	</<class>
+	*/
+	
+	class RsaKeyPair{
+		uint32_t priv_size;
+		vector<uint8_t> encrypted_private_key;
+		vector<uint8_t> public_key;
+		uint8_t initialization_vector[12];
+		#include "RsaKeyPair.h"
+	}
+}
