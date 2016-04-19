@@ -8,6 +8,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include "CircularBuffer.h"
+#include "../System/Threads.h"
+#include "RollingChecksum.h"
 class RsyncableFile;
 struct rsync_command;
 struct rsync_table_item;
@@ -32,7 +34,7 @@ public:
 	bool full() const{
 		return this->size == this->m_capacity;
 	}
-	void operator=(const circular_buffer &);
+	void operator=(const CircularBuffer &);
 };
 
 class AbstractFileComparer{
@@ -45,7 +47,7 @@ protected:
 	} state;
 private:
 	std::shared_ptr<std::vector<rsync_command> > result;
-	file_offset_t new_offset;
+	std::uint64_t new_offset;
 	HANDLE thread;
 
 	typedef void (AbstractFileComparer::*state_function)();
@@ -55,11 +57,11 @@ private:
 	void started();
 	void finished();
 	static DWORD WINAPI static_thread_func(void *_this){
-		((AbstractFileComparer *)_this)->thread_func();
+		static_cast<AbstractFileComparer *>(_this)->thread_func();
 		return 0;
 	}
 protected:
-	file_offset_t old_offset;
+	std::uint64_t old_offset;
 	AutoResetEvent event;
 
 	State get_state() const{
@@ -70,7 +72,7 @@ protected:
 	virtual bool non_matching_read_more_data() = 0;
 	virtual size_t matching_increment() = 0;
 	virtual size_t non_matching_increment() = 0;
-	virtual bool search(bool offset_valid = false, file_offset_t target_offset = 0) = 0;
+	virtual bool search(bool offset_valid = false, std::uint64_t target_offset = 0) = 0;
 	virtual void thread_func() = 0;
 	virtual void request_thread_stop() = 0;
 	virtual bool thread_required(){
@@ -88,11 +90,12 @@ public:
 };
 
 class FileComparer : public AbstractFileComparer{
-	std::shared_ptr<ByteByByteReader> reader;
+	std::shared_ptr<boost::filesystem::ifstream> stream;
 	std::shared_ptr<RsyncableFile> old_file;
-	circular_buffer buffer;
+	CircularBuffer buffer;
 	rolling_checksum_t checksum;
-	file_size_t new_block_size;
+	std::uint64_t old_block_size;
+	std::uint64_t new_block_size;
 	CryptoPP::SHA1 new_sha1;
 	byte_t new_digest[20];
 	simple_buffer new_buffer;
@@ -101,9 +104,9 @@ class FileComparer : public AbstractFileComparer{
 	std::deque<simple_buffer> processing_queue;
 	
 	bool read_another_byte(byte_t &);
-	bool read_another_block(circular_buffer &);
+	bool read_another_block(CircularBuffer &);
 	void add_byte(byte_t);
-	void add_block(circular_buffer &);
+	void add_block(CircularBuffer &);
 	void add_block(const byte_t *, size_t);
 	void process_new_buffer(bool force = false);
 protected:
@@ -112,7 +115,7 @@ protected:
 	bool non_matching_read_more_data() override;
 	size_t matching_increment() override;
 	size_t non_matching_increment() override;
-	bool search(bool offset_valid = false, file_offset_t target_offset = 0) override;
+	bool search(bool offset_valid = false, std::uint64_t target_offset = 0) override;
 	void thread_func() override;
 	void request_thread_stop() override;
 	bool thread_required() override{
@@ -127,7 +130,7 @@ public:
 	const byte *get_new_digest() const{
 		return this->new_digest;
 	}
-	file_size_t get_new_block_size() const{
+	std::uint64_t get_new_block_size() const{
 		return this->new_block_size;
 	}
 };

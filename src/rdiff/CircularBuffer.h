@@ -7,7 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "SimpleTypes.h"
+#include "../SimpleTypes.h"
 
 class CircularBuffer{
 	byte_t *buffer;

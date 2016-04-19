@@ -6,13 +6,13 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
+#include "../System/SystemOperations.h"
 #include "FileComparer.h"
-#include "circular_buffer.h"
+#include "CircularBuffer.h"
 #include "RollingChecksum.h"
-#include "MiscTypes.h"
-#include "StreamBlockReader.h"
 #include "RsyncableFile.h"
-#include "binary_search.h"
+#include "BinarySearch.h"
+#include "BasicTypes.h"
 
 void simple_buffer::realloc(size_t capacity){
 	if (capacity != this->m_capacity){
@@ -33,7 +33,7 @@ const byte_t *simple_buffer::data() const{
 	return this->m_buffer.get();
 }
 
-void simple_buffer::operator=(const circular_buffer &buffer){
+void simple_buffer::operator=(const CircularBuffer &buffer){
 	this->realloc(buffer.size());
 	this->size = 0;
 	buffer.process_whole([this](const byte_t *buffer, size_t size){
@@ -146,8 +146,9 @@ void AbstractFileComparer::state_NonMatching(){
 FileComparer::FileComparer(const wchar_t *new_path, std::shared_ptr<RsyncableFile> old_file):
 		old_file(old_file),
 		buffer(1){
-	this->reader.reset(new ByteByByteReader(new_path, old_file->get_block_size()));
-	auto file_size = this->reader->size();
+	auto file_size = system_ops::get_file_size(new_path);
+	this->old_block_size = old_file->get_block_size();
+	this->stream.reset(new boost::filesystem::ifstream(new_path));
 	this->new_block_size = RsyncableFile::scaler_function(file_size);
 	this->new_buffer.realloc(this->new_block_size);
 	this->new_table.reserve(blocks_per_file(file_size, this->new_buffer.capacity()));
@@ -163,7 +164,8 @@ void FileComparer::request_thread_stop(){
 }
 
 void FileComparer::reset_state(){
-	this->reader->seek(0);
+	this->stream->clear();
+	this->stream->seekg(0);
 }
 
 bool FileComparer::read_more_data(){
@@ -187,7 +189,7 @@ bool FileComparer::non_matching_read_more_data(){
 	return true;
 }
 
-bool FileComparer::search(bool offset_valid, file_offset_t target_offset){
+bool FileComparer::search(bool offset_valid, std::uint64_t target_offset){
 	if (this->old_file->does_not_contain(this->checksum))
 		return false;
 	const rsync_table_item *begin, *end,
@@ -238,14 +240,22 @@ size_t FileComparer::non_matching_increment(){
 	return 1;
 }
 
+bool read_one_byte(byte_t &dst, std::istream &stream){
+	dst = stream.get();
+	return stream.gcount() == 1;
+}
+
 bool FileComparer::read_another_byte(byte_t &dst){
-	auto ret = this->reader->next_byte(dst);
+	auto ret = read_one_byte(dst, *this->stream);
 	if (ret)
 		this->add_byte(dst);
 	return ret;
 }
 
-bool FileComparer::read_another_block(circular_buffer &buffer){
+bool FileComparer::read_another_block(CircularBuffer &buffer){
+	buffer.realloc(this->old_block_size);
+	buffer.reset_size();
+
 	auto ret = this->reader->whole_block(buffer);
 	if (ret)
 		this->add_block(buffer);

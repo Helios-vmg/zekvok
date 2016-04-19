@@ -5,7 +5,7 @@ All rights reserved.
 Distributed under a permissive license. See COPYING.txt for details.
 */
 
-#include "stdafx.h"
+#include "../stdafx.h"
 #include "CircularBuffer.h"
 
 CircularBuffer::CircularBuffer(size_t initial_size): buffer(nullptr), m_capacity(0){
