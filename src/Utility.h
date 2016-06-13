@@ -298,13 +298,13 @@ std::shared_ptr<T> easy_clone(const T &src){
 	{
 		boost::iostreams::stream<MemorySink> omem(&mem);
 		SerializerStream stream(omem);
-		stream.begin_serialization(src);
+		stream.serialize(src);
 	}
 	std::shared_ptr<T> cloned;
 	{
 		boost::iostreams::stream<MemorySource> imem(&mem);
 		ImplementedDeserializerStream stream(imem);
-		cloned.reset(stream.begin_deserialization<T>());
+		cloned.reset(stream.deserialize<T>());
 	}
 	return cloned;
 }
@@ -354,3 +354,8 @@ std::basic_string<T> get_extension(const std::basic_string<T> &s){
 }
 
 bool is_text_extension(const std::wstring &);
+
+template <typename T>
+std::shared_ptr<T> make_shared(T *p){
+	return std::shared_ptr<T>(p);
+}

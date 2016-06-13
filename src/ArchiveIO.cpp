@@ -174,7 +174,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
 
 		ImplementedDeserializerStream ds(lzma);
-		this->version_manifest.reset(ds.begin_deserialization<VersionManifest>(config::include_typehashes));
+		this->version_manifest.reset(ds.deserialize<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw ArchiveReadException("Invalid data: Error during manifest deserialization");
 	}
@@ -209,7 +209,7 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
 			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
 			ImplementedDeserializerStream ds(bounded2);
-			std::shared_ptr<FileSystemObject> fso(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
+			std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
 			if (!fso)
 				throw ArchiveReadException("Invalid data: Error during FSO deserialization");
 			ret.push_back(fso);
@@ -337,7 +337,7 @@ void ArchiveWriter::add_base_objects(const std::vector<FileSystemObject *> &base
 		{
 			boost::iostreams::stream<ByteCounterOutputFilter> counter2(lzma, &bytes_processed);
 			SerializerStream ss(counter2);
-			ss.begin_serialization(*i, config::include_typehashes);
+			ss.serialize(*i, config::include_typehashes);
 		}
 		this->base_object_entry_sizes.push_back(bytes_processed);
 	}
@@ -359,7 +359,7 @@ void ArchiveWriter::add_version_manifest(VersionManifest &manifest){
 
 		boost::iostreams::stream<LzmaOutputFilter> lzma(counter, &mt, 8);
 		SerializerStream ss(lzma);
-		ss.begin_serialization(manifest, config::include_typehashes);
+		ss.serialize(manifest, config::include_typehashes);
 	}
 	auto s_manifest_length = serialize_fixed_le_int(manifest_length);
 	this->nested_stream->write(reinterpret_cast<const char *>(s_manifest_length.data()), s_manifest_length.size());

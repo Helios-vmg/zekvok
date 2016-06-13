@@ -75,7 +75,7 @@ public:
 	DEFINE_INLINE_SETTER_GETTER(parent)
 	DEFINE_INLINE_GETTER(is_encrypted)
 	void set_link_target(const path_t &path){
-		this->set_link_target(make_shared(new std::wstring(path.wstring())));
+		this->set_link_target(std::make_shared<std::wstring>(path.wstring()));
 	}
 	path_t get_mapped_path() const;
 	path_t get_unmapped_path() const;

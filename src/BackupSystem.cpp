@@ -264,7 +264,7 @@ void BackupSystem::set_base_objects(){
 	std::shared_ptr<std::vector<std::wstring>> for_later_check(new std::vector<std::wstring>);
 	FileSystemObject::CreationSettings settings = {
 		this,
-		make_shared(new SimpleErrorReporter),
+		std::make_shared<SimpleErrorReporter>(),
 		this->make_map(for_later_check)
 	};
 	for (auto &current_source_location : this->get_current_source_locations()){
@@ -453,7 +453,7 @@ void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_nu
 		{
 			boost::iostreams::stream<MemorySink> omem(&mem);
 			SerializerStream stream(omem);
-			stream.begin_serialization(*cloned, config::include_typehashes);
+			stream.serialize(*cloned, config::include_typehashes);
 		}
 
 		simple_buffer_serialization(lzma, mem);
@@ -466,7 +466,7 @@ std::shared_ptr<BackupStream> BackupSystem::generate_initial_stream(FileSystemOb
 		return std::shared_ptr<BackupStream>();
 	}
 	auto &filish = static_cast<FilishFso &>(fso);
-	auto ret = make_shared(new FullStream);
+	auto ret = std::make_shared<FullStream>();
 	ret->set_unique_id(filish.get_stream_id());
 	ret->set_physical_size(filish.get_size());
 	ret->set_virtual_size(filish.get_size());
@@ -630,13 +630,13 @@ std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(Arc
 	while (simple_buffer_deserialization(mem, lzma)){
 		boost::iostreams::stream<MemorySource> stream(&mem);
 		ImplementedDeserializerStream ds(stream);
-		auto fso = make_shared(ds.begin_deserialization<FileSystemObject>(config::include_typehashes));
+		std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
 		ret.push_back(fso);
 		auto mbp = fso->get_unmapped_base_path();
 		if (!mbp)
 			continue;
 		auto mapped = this->map_forward(*mbp).wstring();
-		fso->set_mapped_base_path(make_shared(new decltype(mapped)(mapped)));
+		fso->set_mapped_base_path(std::make_shared<decltype(mapped)>(mapped));
 	}
 	return ret;
 }
@@ -821,12 +821,12 @@ std::shared_ptr<VersionForRestore> BackupSystem::compute_latest_version(version_
 	std::vector<version_number_t> stack;
 	const auto &latest_version_number = version_number;
 	{
-		auto version = make_shared(new VersionForRestore(latest_version_number, *this, this->keypair.get()));
+		std::shared_ptr<VersionForRestore> version(new VersionForRestore(latest_version_number, *this, this->keypair.get()));
 		versions[latest_version_number] = version;
 		for (auto &object : version->get_base_objects())
 			this->old_objects.push_back(object);
 		for (auto &dep : version->get_manifest()->version_dependencies)
-			versions[dep] = make_shared(new VersionForRestore(dep, *this, this->keypair.get()));
+			versions[dep] = std::make_shared<VersionForRestore>(dep, *this, this->keypair.get());
 	}
 	latest_version = versions[latest_version_number];
 	latest_version->fill_dependencies(versions);
@@ -928,7 +928,7 @@ void BackupSystem::perform_restore(
 	auto begin = restore_later.begin();
 	auto end = restore_later.end();
 	while (threads.size() < threads.capacity())
-		threads.push_back(make_shared(new std::thread(restore_thread, this, &begin, &end, &mutex)));
+		threads.push_back(std::make_shared<std::thread>(restore_thread, this, &begin, &end, &mutex));
 	while (threads.size()){
 		threads.back()->join();
 		threads.pop_back();
@@ -1009,7 +1009,7 @@ void BackupSystem::generate_keypair(const std::wstring &recipient, const std::ws
 		RsaKeyPair pair(pri, pub, symmetric_key);
 		boost::filesystem::ofstream file(filename, std::ios::binary);
 		SerializerStream ss(file);
-		ss.begin_serialization(pair, false);
+		ss.serialize(pair, false);
 		break;
 	}
 }

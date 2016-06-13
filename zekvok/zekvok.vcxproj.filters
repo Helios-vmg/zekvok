@@ -259,7 +259,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\src\serialization\fso.xml">
+    <CustomBuild Include="..\src\serialization\fso.txt">
       <Filter>Source Files</Filter>
     </CustomBuild>
   </ItemGroup>

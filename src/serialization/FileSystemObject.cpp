@@ -11,6 +11,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../BackupSystem.h"
 #include "../NullStream.h"
 #include "../HashFilter.h"
+#include "../Utility.h"
 
 //------------------------------------------------------------------------------
 // default_values()
