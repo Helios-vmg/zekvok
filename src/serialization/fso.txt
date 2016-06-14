@@ -137,7 +137,7 @@ cpp fso{
 		uint32_t rolling_checksum;
 		uint64_t md5_digest[2];
 		uint64_t file_offset;
-	};
+	}
 	
 	class RsyncTable{
 		vector<RsyncTableItem> table;
