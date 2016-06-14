@@ -30,6 +30,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <tuple>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <condition_variable>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
