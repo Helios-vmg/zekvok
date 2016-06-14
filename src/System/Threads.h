@@ -99,6 +99,6 @@ protected:
 public:
 	FiberJob();
 	virtual ~FiberJob() = 0;
-	virtual void do_work() override;
+	void do_work() override;
 	virtual void set_owner(ThreadPool *pool) override;
 };

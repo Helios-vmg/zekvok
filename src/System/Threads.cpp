@@ -203,6 +203,7 @@ FiberJob::FiberJob(){
 }
 
 FiberJob::~FiberJob(){
+	this->stop();
 	DeleteFiber(this->fiber);
 }
 
