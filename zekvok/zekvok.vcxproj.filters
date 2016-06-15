@@ -114,6 +114,9 @@
     <ClCompile Include="..\src\System\Threads.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\ParallelStreams.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -262,6 +265,9 @@
     </ClInclude>
     <ClInclude Include="..\src\System\Threads.h">
       <Filter>Header Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ParallelStreams.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

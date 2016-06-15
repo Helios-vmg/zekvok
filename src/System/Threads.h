@@ -7,12 +7,105 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#define LOCK_MUTEX(x) std::lock_guard<decltype(x)> LOCK_MUTEX_lock(x)
+
+class QueueBeingDestructed : public std::exception{
+public:
+	const char *what() const{
+		return "An attempt to pop a thread-safe queue could not be completed because the queue is being destructed.";
+	}
+};
+
+template <typename T>
+class ItcQueue{
+	std::deque<T> queue;
+	std::mutex mutex,
+		cv_mutex;
+	std::condition_variable cv;
+	std::atomic<bool> releasing = false;
+	const size_t max_size;
+public:
+	ItcQueue(size_t max_size = std::numeric_limits<size_t>::max()): max_size(max_size){}
+	void enter_release_mode(){
+		this->releasing = true;
+	}
+	bool empty(){
+		LOCK_MUTEX(this->mutex);
+		return !this->queue.size();
+	}
+	bool full(){
+		LOCK_MUTEX(this->mutex);
+		return this->queue.size() >= this->max_size;
+	}
+	void push(const T &i){
+		if (!this->releasing){
+			LOCK_MUTEX(this->mutex);
+			this->queue.push_back(i);
+		}
+		this->cv.notify_one();
+	}
+	T pop(){
+		while (true){
+			T ret;
+			if (this->pop_single_try(ret))
+				return ret;
+
+			if (this->releasing)
+				throw QueueBeingDestructed();
+			std::unique_lock<std::mutex> lock(this->cv_mutex);
+			this->cv.wait(lock);
+		}
+	}
+	void put_back(const T &i){
+		LOCK_MUTEX(this->mutex);
+		this->queue.push_front(i);
+	}
+	bool pop_single_try(T &ret){
+		LOCK_MUTEX(this->mutex);
+		if (!this->queue.size())
+			return false;
+		ret = this->queue.front();
+		this->queue.pop_front();
+		return true;
+	}
+	std::unique_lock<decltype(mutex)> acquire_lock(){
+		std::unique_lock<decltype(mutex)> ret(this->mutex);
+		ret.lock();
+		return ret;
+	}
+
+	// f is a predicate over T.
+	// Returns false if no element in the queue matches the predicate.
+	// If the return value is true, dst is set to the first element that matches the predicate.
+	// The elements that come before that one are popped and pushed back at the end of the queue.
+	//
+	// ret = queue.test_pop_and_requeue(dst, f)
+	// !ret iff (for all x in queue, !f(x))
+	// if ret then let queue@before = part_a ++ k ++ part_b, such that (for all x in part_a, !f(x)),
+	// and f(k), then dst = k and queue@after = part_b ++ part_a
+	template <typename F>
+	bool test_pop_and_requeue(T &dst, const F &f){
+		LOCK_MUTEX(this->mutex);
+		auto n = this->queue.size();
+		for (auto i = n; i--;){
+			auto x = this->queue.front();
+			this->queue.pop_front();
+			if (f(x)){
+				dst = x;
+				return true;
+			}
+			this->queue.push_back(x);
+		}
+		return false;
+	}
+};
+
 class ThreadPool;
 
 class ThreadJob{
 protected:
-	ThreadPool *owner;
-	bool done;
+	ThreadPool *owner = nullptr;
+	bool done = false;
 public:
 	virtual ~ThreadJob(){}
 	bool is_done(){
@@ -26,6 +119,7 @@ public:
 };
 
 enum class ThreadPoolState{
+	Uninitialized,
 	Stopped,
 	Running,
 	Paused,
@@ -35,23 +129,19 @@ class ThreadPool{
 protected:
 	std::vector<std::shared_ptr<std::thread>> threads;
 	std::vector<std::shared_ptr<ThreadJob>> owned_jobs;
-	std::deque<ThreadJob *> job_queue;
+	ItcQueue<ThreadJob *> job_queue;
 	std::mutex owned_jobs_mutex,
-		queue_mutex,
-		queue_cv_mutex,
 		slice_finished_cv_mutex,
 		no_jobs_cv_mutex;
-	std::condition_variable queue_cv,
-		slice_finished_cv,
+	std::condition_variable slice_finished_cv,
 		no_jobs_cv;
-	std::atomic<int> running_jobs;
-	std::atomic<bool> stop_signal,
-		scheduling_disabled;
+	std::atomic<int> running_jobs = 0;
+	std::atomic<bool> stop_signal = false,
+		scheduling_disabled = false;
 	ThreadPoolState state;
 
 	ThreadJob *pop_queue();
 	void push_queue(ThreadJob *);
-	void wait_on_cv();
 	virtual void thread_func();
 	void release_job(ThreadJob *);
 	void reschedule();
@@ -68,13 +158,12 @@ public:
 
 class FiberThreadPool : public ThreadPool{
 protected:
-	void *fiber_addr;
+	std::unordered_map<std::thread::id, void *> fiber_addrs;
 
 	void thread_func() override;
+	void set_fiber_addr(void *);
 public:
-	void *get_fiber_addr() const{
-		return this->fiber_addr;
-	}
+	void *get_fiber_addr() const;
 };
 
 class ExceptionThrownInFiberException : public std::exception{
@@ -84,7 +173,7 @@ public:
 	}
 };
 
-class FiberJob : ThreadJob{
+class FiberJob : public ThreadJob{
 protected:
 	void *fiber;
 	FiberThreadPool *fiber_thread_pool;

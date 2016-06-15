@@ -21,6 +21,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <cstdint>
 #include <exception>
 #include <sstream>
+#include <unordered_map>
 #include <map>
 #include <deque>
 #include <algorithm>

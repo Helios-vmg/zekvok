@@ -14,44 +14,25 @@ class ThreadExitException : public std::exception{
 class FiberExitException{
 };
 
-typedef std::lock_guard<std::mutex> lock_t;
-
 ThreadJob *ThreadPool::pop_queue(){
+	ThreadJob *ret;
 	while (true){
-		{
-			lock_t lock(this->queue_mutex);
-			auto n = this->job_queue.size();
-			if (n){
-				for (auto i = n; i--;){
-					auto j = this->job_queue.front();
-					this->job_queue.pop_front();
-					return j;
-				}
-				this->no_jobs_cv.notify_all();
-			}
-		}
-		this->wait_on_cv();
+		if (this->stop_signal)
+			throw ThreadExitException();
+		if (this->job_queue.test_pop_and_requeue(ret, [](ThreadJob *x){ return x->ready(); }))
+			return ret;
+		this->no_jobs_cv.notify_all();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 }
 
 void ThreadPool::push_queue(ThreadJob *j){
-	lock_t lock(this->queue_mutex);
-	this->job_queue.push_back(j);
-	this->queue_cv.notify_one();
-}
-
-void ThreadPool::wait_on_cv(){
-	std::unique_lock<std::mutex> lock(this->queue_cv_mutex);
-	this->queue_cv.wait(lock);
-	if (this->stop_signal)
-		throw ThreadExitException();
+	this->job_queue.push(j);
 }
 
 ThreadPool::ThreadPool():
 		threads(std::thread::hardware_concurrency()),
-		state(ThreadPoolState::Stopped){
-	for (auto &t : this->threads)
-		t.reset(new std::thread([this](){ this->thread_func(); }));
+		state(ThreadPoolState::Uninitialized){
 }
 
 ThreadPool::~ThreadPool(){
@@ -92,36 +73,40 @@ void ThreadPool::thread_func(){
 }
 
 void ThreadPool::release_job(ThreadJob *j){
-	lock_t lock(this->owned_jobs_mutex);
+	LOCK_MUTEX(this->owned_jobs_mutex);
 	for (size_t i = 0; i < this->owned_jobs.size(); i++){
 		if (this->owned_jobs[i].get() == j){
 			this->owned_jobs.erase(this->owned_jobs.begin() + i);
 			return;
 		}
 	}
-	assert(false);
+	zekvok_assert(false);
 }
 
 void ThreadPool::add(const std::shared_ptr<ThreadJob> &j){
 	j->set_owner(this);
 	switch (this->state){
+		case ThreadPoolState::Uninitialized:
 		case ThreadPoolState::Stopped:
 		case ThreadPoolState::Paused:
 			this->owned_jobs.push_back(j);
 			break;
 		case ThreadPoolState::Running:
 			{
-				lock_t lock(this->owned_jobs_mutex);
+				LOCK_MUTEX(this->owned_jobs_mutex);
 				this->owned_jobs.push_back(j);
 			}
 			break;
 		default:
-			assert(false);
+			zekvok_assert(false);
 	}
 }
 
 void ThreadPool::start(){
 	switch (this->state){
+		case ThreadPoolState::Uninitialized:
+			for (auto &t : this->threads)
+				t.reset(new std::thread([this](){ this->thread_func(); }));
 		case ThreadPoolState::Stopped:
 		case ThreadPoolState::Paused:
 			this->scheduling_disabled = false;
@@ -131,7 +116,7 @@ void ThreadPool::start(){
 		case ThreadPoolState::Running:
 			break;
 		default:
-			assert(false);
+			zekvok_assert(false);
 	}
 }
 
@@ -149,7 +134,7 @@ void ThreadPool::pause(){
 			}
 			break;
 		default:
-			assert(false);
+			zekvok_assert(false);
 	}
 }
 
@@ -161,13 +146,14 @@ void ThreadPool::sync(){
 		case ThreadPoolState::Running:
 			{
 				std::unique_lock<std::mutex> lock(this->no_jobs_cv_mutex);
-				while (this->running_jobs)
+				do
 					this->no_jobs_cv.wait(lock);
+				while (this->running_jobs);
 			}
 			this->state = ThreadPoolState::Paused;
 			break;
 		default:
-			assert(false);
+			zekvok_assert(false);
 	}
 }
 
@@ -178,28 +164,38 @@ void ThreadPool::stop(){
 		case ThreadPoolState::Running:
 		case ThreadPoolState::Paused:
 			this->stop_signal = true;
-			this->queue_cv.notify_all();
 			break;
 		default:
-			assert(false);
+			zekvok_assert(false);
 	}
 }
 
 void ThreadPool::reschedule(){
 	for (auto &j : this->owned_jobs)
-		this->job_queue.push_back(j.get());
+		this->job_queue.push(j.get());
+}
+
+void FiberThreadPool::set_fiber_addr(void *fiber){
+	this->fiber_addrs[std::this_thread::get_id()] = fiber;
 }
 
 void FiberThreadPool::thread_func(){
-	this->fiber_addr = ConvertThreadToFiber(nullptr);
-	if (!this->fiber_addr)
+	auto fiber = ConvertThreadToFiber(nullptr);
+	if (!fiber)
 		return;
+	this->set_fiber_addr(fiber);
 	ThreadPool::thread_func();
 	ConvertFiberToThread();
 }
 
+void *FiberThreadPool::get_fiber_addr() const{
+	auto it = this->fiber_addrs.find(std::this_thread::get_id());
+	zekvok_assert(it != this->fiber_addrs.end());
+	return it->second;
+}
+
 FiberJob::FiberJob(){
-	this->fiber = CreateFiber(0, static_fiber_func, this);
+	this->fiber = CreateFiber(1024*1024, static_fiber_func, this);
 }
 
 FiberJob::~FiberJob(){
