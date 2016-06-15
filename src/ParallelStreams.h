@@ -41,28 +41,32 @@ class ParallelSink;
 
 class ParallelSource{
 protected:
-	ItcQueue<StreamSegment> *output = nullptr;
+	std::shared_ptr<ItcQueue<StreamSegment>> output;
 
 	void write(const StreamSegment &);
 	virtual void yield() = 0;
 public:
+	ParallelSource(): output(std::make_shared<ItcQueue<StreamSegment>>(16)){}
 	virtual ~ParallelSource(){}
 	void set_output(ParallelSink &);
+	const std::shared_ptr<ItcQueue<StreamSegment>> &get_output(){
+		return this->output;
+	}
 };
 
 class ParallelSink{
 protected:
-	ItcQueue<StreamSegment> input;
+	std::shared_ptr<ItcQueue<StreamSegment>> input;
 
 	StreamSegment take_input();
 	StreamSegment read();
 	virtual void yield() = 0;
 public:
-	ParallelSink(): input(16){}
+	ParallelSink(): input(std::make_shared<ItcQueue<StreamSegment>>(16)){}
 	virtual ~ParallelSink(){}
 	void set_input(ParallelSource &);
-	ItcQueue<StreamSegment> *get_input(){
-		return &this->input;
+	const std::shared_ptr<ItcQueue<StreamSegment>> &get_input(){
+		return this->input;
 	}
 };
 

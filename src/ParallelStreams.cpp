@@ -14,7 +14,7 @@ ParallelFilter::ParallelFilter(){
 }
 
 bool ParallelFilter::ready(){
-	return !this->input.empty() && !this->output->full();
+	return !this->input->empty() && !this->output->full();
 }
 
 bool ParallelStreamSource::ready(){
@@ -22,7 +22,7 @@ bool ParallelStreamSource::ready(){
 }
 
 bool ParallelStreamSink::ready(){
-	return !this->input.empty();
+	return !this->input->empty();
 }
 
 void ParallelSource::write(const StreamSegment &segment){
@@ -34,13 +34,13 @@ void ParallelSource::write(const StreamSegment &segment){
 StreamSegment ParallelSink::read(){
 	auto ret = this->take_input();
 	if (ret.get_type() == SegmentType::Eof)
-		this->input.put_back(ret);
+		this->input->put_back(ret);
 	return ret;
 }
 
 StreamSegment ParallelSink::take_input(){
 	StreamSegment ret;
-	while (!this->input.pop_single_try(ret))
+	while (!this->input->pop_single_try(ret))
 		this->yield();
 	return ret;
 }
@@ -56,11 +56,13 @@ void ParallelFilter::set_pass_eof(bool pass){
 }
 
 void ParallelSource::set_output(ParallelSink &sink){
+	sink.get_input()->prepend(*this->output);
 	this->output = sink.get_input();
 }
 
 void ParallelSink::set_input(ParallelSource &source){
-	source.set_output(*this);
+	source.get_output()->append(*this->input);
+	this->input = source.get_output();
 }
 
 void ParallelStreamSource::fiber_func(){

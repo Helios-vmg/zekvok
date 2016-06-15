@@ -7,7 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#define LOCK_MUTEX(x) std::lock_guard<decltype(x)> LOCK_MUTEX_lock(x)
+#define LOCK_MUTEX(x) std::lock_guard<decltype(x)> _CONCAT(LOCK_MUTEX_lock, __COUNTER__)(x)
 
 class QueueBeingDestructed : public std::exception{
 public:
@@ -97,6 +97,19 @@ public:
 			this->queue.push_back(x);
 		}
 		return false;
+	}
+
+	void append(ItcQueue<T> &queue){
+		LOCK_MUTEX(this->mutex);
+		LOCK_MUTEX(queue.mutex);
+		for (auto &i : queue.queue)
+			this->queue.push_back(i);
+	}
+	void prepend(ItcQueue<T> &queue){
+		LOCK_MUTEX(this->mutex);
+		LOCK_MUTEX(queue.mutex);
+		for (auto i = queue.queue.rbegin(), e = queue.queue.rend(); i != e; ++i)
+			this->queue.push_front(*i);
 	}
 };
 
