@@ -84,6 +84,8 @@ public:
 	bool ready() override;
 	void set_pass_eof(bool);
 	virtual void process() = 0;
+	void insert_after(ParallelSource &source);
+	void insert_before(ParallelSink &sink);
 };
 
 class ParallelStreamSource : public FiberJob, public ParallelSource{
@@ -134,4 +136,62 @@ public:
 class ParallelNullSink : public ParallelStreamSink{
 public:
 	void process() override;
+};
+
+class AbstractSourceAnchor{
+protected:
+	FiberThreadPool *pool;
+	ParallelSource *source;
+
+	void join();
+public:
+	AbstractSourceAnchor(FiberThreadPool *pool, ParallelSource *source): pool(pool), source(source){}
+	virtual ~AbstractSourceAnchor() = 0;
+	ParallelSource &get_source(){
+		return *this->source;
+	}
+};
+
+class AbstractSinkAnchor{
+protected:
+	FiberThreadPool *pool;
+	ParallelSink *sink;
+
+	void join();
+public:
+	AbstractSinkAnchor(FiberThreadPool *pool, ParallelSink *sink): pool(pool), sink(sink){}
+	virtual ~AbstractSinkAnchor() = 0;
+	ParallelSink &get_sink(){
+		return *this->sink;
+	}
+};
+
+class SourceAnchor : public AbstractSourceAnchor{
+public:
+	SourceAnchor(FiberThreadPool *pool, ParallelSource *source): AbstractSourceAnchor(pool, source){
+		this->join();
+	}
+	~SourceAnchor(){}
+};
+
+class SinkAnchor : public AbstractSinkAnchor{
+public:
+	SinkAnchor(FiberThreadPool *pool, ParallelStreamSink *sink): AbstractSinkAnchor(pool, sink){
+		this->join();
+	}
+	~SinkAnchor(){}
+};
+
+class FilterAnchor : public AbstractSourceAnchor, public AbstractSinkAnchor{
+protected:
+	ParallelFilter *filter;
+public:
+	FilterAnchor(FiberThreadPool *pool, ParallelFilter *filter, AbstractSourceAnchor &source): AbstractSourceAnchor(pool, filter), AbstractSinkAnchor(pool, filter){
+		AbstractSourceAnchor::join();
+		this->filter->insert_after(source.get_source());
+	}
+	FilterAnchor(FiberThreadPool *pool, ParallelFilter *filter, AbstractSinkAnchor &sink): AbstractSourceAnchor(pool, filter), AbstractSinkAnchor(pool, filter){
+		AbstractSourceAnchor::join();
+		this->filter->insert_before(sink.get_sink());
+	}
 };
