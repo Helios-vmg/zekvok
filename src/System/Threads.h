@@ -203,4 +203,5 @@ public:
 	virtual ~FiberJob() = 0;
 	void do_work() override;
 	virtual void set_owner(ThreadPool *pool) override;
+	virtual void set_owner(FiberThreadPool *pool);
 };

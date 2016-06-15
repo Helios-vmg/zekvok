@@ -203,6 +203,11 @@ FiberJob::~FiberJob(){
 	DeleteFiber(this->fiber);
 }
 
+void FiberJob::set_owner(FiberThreadPool *pool){
+	this->fiber_thread_pool = pool;
+	ThreadJob::set_owner(pool);
+}
+
 void FiberJob::set_owner(ThreadPool *pool){
 	this->fiber_thread_pool = dynamic_cast<FiberThreadPool *>(pool);
 	if (!this->fiber_thread_pool)
