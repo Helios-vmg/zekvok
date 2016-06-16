@@ -85,10 +85,6 @@ void StreamProcessor::thread_func(){
 		this->work();
 	}catch (StreamProcessorStoppingException &){
 	}
-	if (this->sink_queue){
-		StreamSegment s(SegmentType::Eof);
-		this->write(s);
-	}
 	this->parent->notify_thread_end(this);
 }
 
@@ -160,11 +156,11 @@ void StreamPipeline::start(){
 		((StreamProcessor *)p)->start();
 }
 
-void StreamPipeline::sync(){
-	//TODO: improve
-	while (this->busy_threads)
-		std::this_thread::sleep_for(std::chrono::milliseconds(250));
-}
+//void StreamPipeline::sync(){
+//	//TODO: improve
+//	while (this->busy_threads)
+//		std::this_thread::sleep_for(std::chrono::milliseconds(250));
+//}
 
 ParallelFileSource::ParallelFileSource(const path_t &path, StreamPipeline &parent):
 		ParallelSizedStreamSource(parent),
@@ -177,6 +173,7 @@ ParallelFileSource::ParallelFileSource(const path_t &path, StreamPipeline &paren
 }
 
 void ParallelFileSource::work(){
+	std::uint64_t bytes = 0;
 	while (this->stream){
 		auto segment = StreamSegment::alloc();
 		auto data = segment.get_data();
@@ -185,18 +182,29 @@ void ParallelFileSource::work(){
 		if (!read)
 			break;
 		data->resize(read);
+		bytes += read;
 		this->write(segment);
 	}
+	StreamSegment s(SegmentType::Eof);
+	this->write(s);
+	std::cout << "ParallelFileSource::work() returning\n"
+		<< "bytes read: " << bytes << std::endl;
 }
 
 void ParallelSha256Filter::work(){
+	std::uint64_t bytes = 0;
 	while (true){
 		auto segment = this->read();
 		if (segment.get_type() == SegmentType::Eof)
 			break;
+		bytes += segment.get_data()->size();
 		this->hash.Update(&(*segment.get_data())[0], segment.get_data()->size());
 		this->write(segment);
 	}
+	StreamSegment s(SegmentType::Eof);
+	this->write(s);
+	std::cout << "ParallelSha256Filter::work() returning\n"
+		<< "bytes read: " << bytes << std::endl;
 }
 
 void ParallelSha256Filter::write_digest(byte *digest){
@@ -205,4 +213,5 @@ void ParallelSha256Filter::write_digest(byte *digest){
 
 void ParallelNullSink::work(){
 	while (this->read().get_type() != SegmentType::Eof);
+	std::cout << "ParallelNullSink::work() returning\n";
 }

@@ -102,7 +102,7 @@ public:
 	StreamPipeline();
 	~StreamPipeline();
 	void start();
-	void sync();
+	//void sync();
 };
 
 class ParallelSizedStreamSource : public StreamProcessor{
