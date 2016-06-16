@@ -5,12 +5,15 @@ All rights reserved.
 Distributed under a permissive license. See COPYING.txt for details.
 */
 
+#pragma once
+
 #include "System/Threads.h"
 #include "SimpleTypes.h"
 
 extern const size_t default_buffer_size;
 
 enum class SegmentType{
+	Undefined,
 	Eof,
 	Data,
 	Flush,

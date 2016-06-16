@@ -117,6 +117,9 @@
     <ClCompile Include="..\src\ParallelStreams.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\StreamProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -267,6 +270,9 @@
       <Filter>Header Files\System</Filter>
     </ClInclude>
     <ClInclude Include="..\src\ParallelStreams.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StreamProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

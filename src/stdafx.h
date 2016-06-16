@@ -22,6 +22,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <exception>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <deque>
 #include <algorithm>

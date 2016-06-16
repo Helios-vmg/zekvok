@@ -6,6 +6,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 */
 
 #include "../stdafx.h"
+#include "../Utility.h"
 #include "Threads.h"
 
 class ThreadExitException : public std::exception{
@@ -39,17 +40,6 @@ ThreadPool::~ThreadPool(){
 	this->stop();
 }
 
-template <typename T>
-struct ScopedIncrement{
-	T &data;
-	ScopedIncrement(T &data): data(data){
-		++this->data;
-	}
-	~ScopedIncrement(){
-		--this->data;
-	}
-};
-
 void ThreadPool::switch_to_job(ThreadJob *j){
 	ScopedIncrement<decltype(this->running_jobs)> inc(this->running_jobs);
 	j->do_work();
@@ -69,7 +59,9 @@ void ThreadPool::thread_func(){
 		}
 	}catch (ThreadExitException &){
 	}catch (std::exception &){
+	}catch (...){
 	}
+	__debugbreak();
 }
 
 void ThreadPool::release_job(ThreadJob *j){
@@ -227,6 +219,7 @@ void CALLBACK FiberJob::static_fiber_func(void *p){
 	}catch (...){
 		This->exception_thrown = true;
 	}
+	This->yield();
 }
 
 void FiberJob::resume(){

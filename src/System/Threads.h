@@ -113,6 +113,102 @@ public:
 	}
 };
 
+template <typename T>
+class CircularQueue{
+	std::vector<T> data;
+	size_t head, tail;
+	const size_t m_capacity;
+	std::mutex mutex;
+	std::mutex pop_notification_mutex,
+		push_notification_mutex;
+	std::condition_variable pop_notification,
+		push_notification;
+
+	size_t size_no_lock() const{
+		auto n = this->m_capacity;
+		return (this->tail + n - this->head) % n;
+	}
+public:
+	CircularQueue(size_t max_size): data(size), head(0), tail(0), m_capacity(max_size){}
+	size_t capacity() const{
+		return this->m_capacity;
+	}
+	size_t size(){
+		LOCK_MUTEX(this->mutex);
+		return this->size_no_lock();
+	}
+	bool full(){
+		return this->size() == this->capacity();
+	}
+	bool empty(){
+		return !this->size();
+	}
+	void push(const T &i){
+		const auto n = this->capacity();
+		while (true){
+			{
+				LOCK_MUTEX(this->mutex);
+				if (this->size_no_lock() < n){
+					this->data[this->tail++ % n] = i;
+					this->push_notification.notify_all();
+					return;
+				}
+			}
+			std::unique_lock<std::mutex> lock(this->pop_notification_mutex);
+			this->pop_notification.wait(lock);
+		}
+	}
+	T pop(){
+		const auto n = this->capacity();
+		while (true){
+			{
+				LOCK_MUTEX(this->mutex);
+				if (!!this->size_no_lock()){
+					auto ret = this->data[this->head++];
+					this->head %= n;
+					this->pop_notification.notify_all();
+					return ret;
+				}
+			}
+			std::unique_lock<std::mutex> lock(this->push_notification_mutex);
+			this->push_notification.wait(lock);
+		}
+	}
+	bool try_push(const T &i, unsigned timeout_ms = 100){
+		const auto n = this->capacity();
+		for (int j = 2; j--;){
+			{
+				LOCK_MUTEX(this->mutex);
+				if (this->size_no_lock() < n){
+					this->data[this->tail++ % n] = i;
+					this->push_notification.notify_all();
+					return true;
+				}
+			}
+			std::unique_lock<std::mutex> lock(this->pop_notification_mutex);
+			this->pop_notification.wait_for(lock, std::chrono::milliseconds(timeout_ms));
+		}
+		return false;
+	}
+	bool try_pop(T &dst, unsigned timeout_ms = 100){
+		const auto n = this->capacity();
+		for (int j = 2; j--;){
+			{
+				LOCK_MUTEX(this->mutex);
+				if (!!this->size_no_lock()){
+					dst = this->data[this->head++];
+					this->head %= n;
+					this->pop_notification.notify_all();
+					return true;
+				}
+			}
+			std::unique_lock<std::mutex> lock(this->push_notification_mutex);
+			this->push_notification.wait_for(lock, std::chrono::milliseconds(timeout_ms));
+		}
+		return false;
+	}
+};
+
 class ThreadPool;
 
 class ThreadJob{
