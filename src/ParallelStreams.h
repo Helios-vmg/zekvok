@@ -114,33 +114,6 @@ public:
 	virtual void process() = 0;
 };
 
-class ParallelSizedStreamSource : public ParallelStreamSource{
-protected:
-	std::uint64_t stream_size = 0;
-public:
-	const decltype(stream_size) &get_stream_size() const{
-		return this->stream_size;
-	}
-};
-
-class ParallelFileSource : public ParallelSizedStreamSource{
-	boost::filesystem::ifstream stream;
-public:
-	ParallelFileSource(const path_t &path);
-	void process() override;
-};
-
-class ParallelSha256Filter : public ParallelFilter{
-	CryptoPP::SHA256 hash;
-public:
-	void process() override;
-};
-
-class ParallelNullSink : public ParallelStreamSink{
-public:
-	void process() override;
-};
-
 class AbstractSourceAnchor{
 protected:
 	FiberThreadPool *pool;

@@ -75,38 +75,3 @@ void ParallelStreamSink::fiber_func(){
 	this->process();
 	this->done = true;
 }
-
-ParallelFileSource::ParallelFileSource(const path_t &path): stream(path, std::ios::binary){
-	if (!this->stream)
-		throw std::exception("File not found!");
-	this->stream.seekg(0, std::ios::end);
-	this->stream_size = this->stream.tellg();
-	this->stream.seekg(0);
-}
-
-void ParallelFileSource::process(){
-	while (true){
-		auto segment = StreamSegment::alloc();
-		auto data = segment.get_data();
-		this->stream.read((char *)&(*data)[0], data->size());
-		if (!this->stream)
-			break;
-		auto read = this->stream.gcount();
-		data->resize(read);
-		this->write(segment);
-	}
-}
-
-void ParallelSha256Filter::process(){
-	while (true){
-		auto segment = this->read();
-		if (segment.get_type() == SegmentType::Eof)
-			break;
-		this->hash.Update(&(*segment.get_data())[0], segment.get_data()->size());
-		this->write(segment);
-	}
-}
-
-void ParallelNullSink::process(){
-	while (this->read().get_type() != SegmentType::Eof);
-}

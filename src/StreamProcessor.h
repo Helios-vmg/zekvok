@@ -24,11 +24,20 @@ public:
 	StreamProcessor *get_sink() const{
 		return this->sink;
 	}
-	bool try_push(StreamSegment &src){
-		return this->queue.try_push(src);
+	enum class Result{
+		Ok,
+		Timeout,
+		Disconnected,
+	};
+	Result try_push(StreamSegment &src){
+		//if (!this->sink)
+		//	return Result::Disconnected;
+		return this->queue.try_push(src) ? Result::Ok : Result::Timeout;
 	}
-	bool try_pop(StreamSegment &dst){
-		return this->queue.try_pop(dst);
+	Result try_pop(StreamSegment &dst){
+		//if (!this->source)
+		//	return Result::Disconnected;
+		return this->queue.try_pop(dst) ? Result::Ok : Result::Timeout;
 	}
 	void connect(StreamProcessor &source, StreamProcessor &sink){
 		this->source = &source;
@@ -92,4 +101,39 @@ class StreamPipeline{
 public:
 	StreamPipeline();
 	~StreamPipeline();
+	void start();
+	void sync();
+};
+
+class ParallelSizedStreamSource : public StreamProcessor{
+protected:
+	std::uint64_t stream_size = 0;
+public:
+	ParallelSizedStreamSource(StreamPipeline &parent): StreamProcessor(parent){}
+	const decltype(stream_size) &get_stream_size() const{
+		return this->stream_size;
+	}
+};
+
+class ParallelFileSource : public ParallelSizedStreamSource{
+	boost::filesystem::ifstream stream;
+
+	void work() override;
+public:
+	ParallelFileSource(const path_t &path, StreamPipeline &parent);
+};
+
+class ParallelSha256Filter : public StreamProcessor{
+	CryptoPP::SHA256 hash;
+
+	void work() override;
+public:
+	ParallelSha256Filter(StreamPipeline &parent): StreamProcessor(parent){}
+	void write_digest(byte *);
+};
+
+class ParallelNullSink : public StreamProcessor{
+	void work() override;
+public:
+	ParallelNullSink(StreamPipeline &parent): StreamProcessor(parent){}
 };

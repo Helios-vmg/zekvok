@@ -11,7 +11,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 struct StreamProcessorStoppingException{};
 
-StreamProcessor::StreamProcessor(StreamPipeline &parent): parent(&parent), state(State::Uninitialized){}
+StreamProcessor::StreamProcessor(StreamPipeline &parent): parent(&parent), state(State::Uninitialized){
+	this->parent->notify_thread_creation(this);
+}
 
 StreamProcessor::~StreamProcessor(){
 	this->join();
@@ -27,8 +29,19 @@ StreamSegment StreamProcessor::read(){
 	ScopedDecrement<decltype(running)> inc(running);
 	while (true){
 		StreamSegment ret;
-		if (this->sink_queue->try_pop(ret))
+		auto result = this->source_queue->try_pop(ret);
+		switch (result){
+			case StreamCommunicationQueue::Result::Ok:
+				return ret;
+			case StreamCommunicationQueue::Result::Timeout:
+			case StreamCommunicationQueue::Result::Disconnected:
+				break;
+			default:
+				zekvok_assert(false);
+		}
+		if (result == StreamCommunicationQueue::Result::Ok)
 			return ret;
+		if (result == StreamCommunicationQueue::Result::Disconnected)
 		if (this->state == State::Stopping){
 			scope.cancel();
 			throw StreamProcessorStoppingException();
@@ -41,8 +54,16 @@ void StreamProcessor::write(StreamSegment &segment){
 	ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding);
 	ScopedDecrement<decltype(running)> inc(running);
 	while (true){
-		if (this->sink_queue->try_push(segment))
-			return;
+		auto result = this->sink_queue->try_push(segment);
+		switch (result){
+			case StreamCommunicationQueue::Result::Ok:
+				return;
+			case StreamCommunicationQueue::Result::Timeout:
+			case StreamCommunicationQueue::Result::Disconnected:
+				break;
+			default:
+				zekvok_assert(false);
+		}
 		if (this->state == State::Stopping){
 			scope.cancel();
 			throw StreamProcessorStoppingException();
@@ -64,8 +85,11 @@ void StreamProcessor::thread_func(){
 		this->work();
 	}catch (StreamProcessorStoppingException &){
 	}
-	StreamSegment s(SegmentType::Eof);
-	this->write(s);
+	if (this->sink_queue){
+		StreamSegment s(SegmentType::Eof);
+		this->write(s);
+	}
+	this->parent->notify_thread_end(this);
 }
 
 void StreamProcessor::join(){
@@ -129,4 +153,56 @@ StreamPipeline::StreamPipeline(){
 }
 
 StreamPipeline::~StreamPipeline(){
+}
+
+void StreamPipeline::start(){
+	for (auto &p : this->processors)
+		((StreamProcessor *)p)->start();
+}
+
+void StreamPipeline::sync(){
+	//TODO: improve
+	while (this->busy_threads)
+		std::this_thread::sleep_for(std::chrono::milliseconds(250));
+}
+
+ParallelFileSource::ParallelFileSource(const path_t &path, StreamPipeline &parent):
+		ParallelSizedStreamSource(parent),
+		stream(path, std::ios::binary){
+	if (!this->stream)
+		throw std::exception("File not found!");
+	this->stream.seekg(0, std::ios::end);
+	this->stream_size = this->stream.tellg();
+	this->stream.seekg(0);
+}
+
+void ParallelFileSource::work(){
+	while (this->stream){
+		auto segment = StreamSegment::alloc();
+		auto data = segment.get_data();
+		this->stream.read(reinterpret_cast<char *>(&(*data)[0]), data->size());
+		auto read = this->stream.gcount();
+		if (!read)
+			break;
+		data->resize(read);
+		this->write(segment);
+	}
+}
+
+void ParallelSha256Filter::work(){
+	while (true){
+		auto segment = this->read();
+		if (segment.get_type() == SegmentType::Eof)
+			break;
+		this->hash.Update(&(*segment.get_data())[0], segment.get_data()->size());
+		this->write(segment);
+	}
+}
+
+void ParallelSha256Filter::write_digest(byte *digest){
+	this->hash.Final(digest);
+}
+
+void ParallelNullSink::work(){
+	while (this->read().get_type() != SegmentType::Eof);
 }

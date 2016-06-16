@@ -129,7 +129,7 @@ class CircularQueue{
 		return (this->tail + n - this->head) % n;
 	}
 public:
-	CircularQueue(size_t max_size): data(size), head(0), tail(0), m_capacity(max_size){}
+	CircularQueue(size_t max_size): data(max_size), head(0), tail(0), m_capacity(max_size){}
 	size_t capacity() const{
 		return this->m_capacity;
 	}
@@ -181,6 +181,7 @@ public:
 				LOCK_MUTEX(this->mutex);
 				if (this->size_no_lock() < n){
 					this->data[this->tail++ % n] = i;
+					this->tail %= n;
 					this->push_notification.notify_all();
 					return true;
 				}
