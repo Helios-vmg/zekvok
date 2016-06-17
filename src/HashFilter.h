@@ -113,7 +113,6 @@ class HashOutputFilter : public HashFilter<HashT>, public OutputStream{
 	void write(Segment &s) override{
 		OutputStream::write(s);
 	}
-	IGNORE_FLUSH_COMMAND
 public:
 	HashOutputFilter(Pipeline &parent): OutputStream(parent){}
 	HashOutputFilter(OutputStream &sink): OutputStream(sink){}
