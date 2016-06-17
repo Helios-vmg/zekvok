@@ -39,6 +39,24 @@ void Segment::trim_to_size(size_t n){
 		this->subsegment_override.size = n;
 }
 
+Segment Segment::clone_and_trim(size_t max_size){
+	if (this->type == SegmentType::Flush || this->type == SegmentType::FullFlush)
+		throw std::exception("Attempt to clone a flush signal.");
+	Segment ret;
+	auto &old = *this;
+	ret.allocator = old.allocator;
+	ret.type = old.type;
+	if (ret.allocator){
+		max_size = std::min(max_size, old.subsegment_override.size);
+		ret.data = ret.allocator->allocate_buffer();
+		ret.default_subsegment = ret.construct_default_subsegment();
+		ret.subsegment_override.data = ret.default_subsegment.data;
+		ret.subsegment_override.size = max_size;
+		memcpy(ret.default_subsegment.data, old.default_subsegment.data + old.get_offset(), max_size);
+	}
+	return ret;
+}
+
 Segment Segment::clone(){
 	if (this->type == SegmentType::Flush || this->type == SegmentType::FullFlush)
 		throw std::exception("Attempt to clone a flush signal.");

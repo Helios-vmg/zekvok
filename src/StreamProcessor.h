@@ -12,6 +12,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 namespace zstreams{
 
+typedef std::uint64_t streamsize_t;
+
 class Pipeline;
 class Processor;
 
@@ -58,6 +60,7 @@ public:
 	void operator=(const Segment &) = delete;
 	const Segment &operator=(Segment &&);
 	Segment clone();
+	Segment clone_and_trim(size_t size = std::numeric_limits<size_t>::max());
 	SegmentType get_type() const{
 		return this->type;
 	}
@@ -178,10 +181,10 @@ public:
 
 class SizedSource{
 protected:
-	std::uint64_t stream_size = 0;
+	streamsize_t stream_size = 0;
 public:
 	virtual ~SizedSource() = 0;
-	const std::uint64_t &get_stream_size() const{
+	const streamsize_t &get_stream_size() const{
 		return this->stream_size;
 	}
 };
@@ -194,6 +197,7 @@ public:
 	void flush();
 };
 
+// Warning: only use for input streams and FINAL output streams, NOT for output filters!
 #define IGNORE_FLUSH_COMMAND bool pass_flush() override{ return false; }
 
 class InputStream : public Processor{
