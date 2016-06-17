@@ -361,6 +361,11 @@ std::shared_ptr<T> make_shared(T *p){
 }
 
 template <typename T>
+std::unique_ptr<T> copy_and_make_unique(T &p){
+	return std::unique_ptr<T>(new T(p));
+}
+
+template <typename T>
 class ScopedIncrement{
 	T &data;
 public:
@@ -395,15 +400,22 @@ class ScopedAtomicReversibleSet{
 	std::atomic<T> &data;
 	T old_value;
 	bool cancelled;
+	bool cancel_on_exception;
 public:
-	ScopedAtomicReversibleSet(std::atomic<T> &data, T new_value): data(data), cancelled(false){
+	ScopedAtomicReversibleSet(std::atomic<T> &data, T new_value, bool cancel_on_exception = false):
+			data(data),
+			cancelled(false),
+			cancel_on_exception(cancel_on_exception){
 		this->old_value = this->data.exchange(new_value);
 	}
 	ScopedAtomicReversibleSet(const ScopedAtomicReversibleSet<T> &) = delete;
 	ScopedAtomicReversibleSet(ScopedAtomicReversibleSet<T> &&) = delete;
 	~ScopedAtomicReversibleSet(){
-		if (!this->cancelled)
-			this->data = this->old_value;
+		if (this->cancelled)
+			return;
+		if (this->cancel_on_exception && std::uncaught_exception())
+			return;
+		this->data = this->old_value;
 	}
 	void cancel(){
 		this->cancelled = true;

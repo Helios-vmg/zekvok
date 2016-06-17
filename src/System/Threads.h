@@ -37,13 +37,13 @@ public:
 		tail(0),
 		size(0),
 		capacity(max_size){}
-	bool try_push(const T &i, unsigned timeout_ms = 100){
+	bool try_push(T &i, unsigned timeout_ms = 100){
 		const auto n = this->capacity;
 		for (int j = 0; ;){
 			{
 				LOCK_MUTEX(this->mutex);
 				if (this->size < n){
-					this->data[this->tail++ % n] = i;
+					this->data[this->tail++ % n] = std::move(i);
 					this->tail %= n;
 					this->size++;
 					this->push_notification.notify_all();
@@ -63,7 +63,7 @@ public:
 			{
 				LOCK_MUTEX(this->mutex);
 				if (this->size){
-					dst = this->data[this->head++];
+					dst = std::move(this->data[this->head++]);
 					this->head %= n;
 					this->size--;
 					this->pop_notification.notify_all();
