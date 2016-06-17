@@ -39,8 +39,6 @@ class Segment{
 	SubSegment subsegment_override = { nullptr, 0 };
 	flush_callback_ptr_t flush_callback;
 
-	//Segment(SegmentType type, const std::unique_ptr<buffer_t> &data): type(type), data(data){}
-	//Segment(const std::unique_ptr<buffer_t> &data): type(SegmentType::Data), data(data){}
 	SubSegment construct_default_subsegment() const{
 		return SubSegment{ &(*this->data)[0], this->data->size() };
 	}
@@ -75,7 +73,6 @@ class Queue{
 		*sink = nullptr;
 	CircularQueue<Segment> queue;
 	std::vector<Segment> putback;
-	std::mutex putback_mutex;
 public:
 	Queue(): queue(16){}
 	Processor *get_source() const{
@@ -91,18 +88,14 @@ public:
 		return this->queue.try_push(src);
 	}
 	bool try_pop(Segment &dst){
-		{
-			LOCK_MUTEX(this->putback_mutex);
-			if (this->putback.size()){
-				dst = std::move(this->putback.back());
-				this->putback.pop_back();
-				return true;
-			}
+		if (this->putback.size()){
+			dst = std::move(this->putback.back());
+			this->putback.pop_back();
+			return true;
 		}
 		return this->queue.try_pop(dst);
 	}
 	void put_back(Segment &s){
-		LOCK_MUTEX(this->putback_mutex);
 		this->putback.emplace_back(std::move(s));
 	}
 	void connect(Processor &source, Processor &sink){
