@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include "Filters.h"
+#include "StreamProcessor.h"
 
 class NullOutputStream{
 public:
@@ -34,3 +35,20 @@ public:
 		return n;
 	}
 };
+
+namespace zstreams{
+
+class NullSource : public InputStream{
+	void work() override;
+public:
+	NullSource(Pipeline &parent): InputStream(parent){}
+};
+
+class NullSink : public OutputStream{
+	void work() override;
+	IGNORE_FLUSH_COMMAND
+public:
+	NullSink(Pipeline &parent): OutputStream(parent){}
+};
+
+}

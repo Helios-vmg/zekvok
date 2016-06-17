@@ -187,6 +187,7 @@
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\CryptoFilter.cpp" />
     <ClCompile Include="..\src\MemoryStream.cpp" />
+    <ClCompile Include="..\src\NullStream.cpp" />
     <ClCompile Include="..\src\serialization\BackupStream.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\stdafx.h</PrecompiledHeaderFile>
