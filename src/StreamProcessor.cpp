@@ -86,7 +86,7 @@ Segment::Segment(Pipeline &pipeline){
 }
 
 Segment Segment::construct_flush(flush_callback_ptr_t &callback){
-	Segment ret(SegmentType::Flush);
+	Segment ret(SegmentType::FullFlush);
 	ret.flush_callback = std::move(callback);
 	return ret;
 }
@@ -122,12 +122,15 @@ Segment Processor::read(){
 		}
 		if (ret.get_type() == SegmentType::Flush){
 			this->flush_impl();
+			ret.get_flush_callback()();
 			continue;
 		}
 		if (ret.get_type() == SegmentType::FullFlush){
 			this->flush_impl();
 			if (this->pass_flush())
 				this->sink_queue->push(ret);
+			else
+				ret.get_flush_callback()();
 			continue;
 		}
 		return ret;
@@ -159,7 +162,7 @@ void Processor::thread_func(){
 	ScopedIncrement<decltype(running)> inc(running);
 	try{
 		this->work();
-	} catch (StreamProcessorStoppingException &){
+	}catch (StreamProcessorStoppingException &){
 	}
 	this->parent->notify_thread_end(this);
 }
@@ -304,6 +307,8 @@ void OutputStream::flush(){
 	std::unique_lock<std::mutex> lock(flush_mutex);
 	while (!ready && this->state != State::Completed)
 		cv.wait_for(lock, std::chrono::milliseconds(250));
+	if (!ready)
+		this->flush_impl();
 }
 
 InputStream::InputStream(InputStream &source) : Processor(source.get_pipeline()){

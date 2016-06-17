@@ -69,6 +69,9 @@ public:
 	}
 	void skip_bytes(size_t);
 	void trim_to_size(size_t);
+	flush_callback_t &get_flush_callback(){
+		return *this->flush_callback;
+	}
 };
 
 class Queue{
