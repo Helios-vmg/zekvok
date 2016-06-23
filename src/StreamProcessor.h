@@ -161,6 +161,7 @@ public:
 	Pipeline &get_pipeline() const{
 		return *this->parent;
 	}
+	virtual const char *class_name() const = 0;
 };
 
 class Pipeline{
@@ -172,6 +173,9 @@ class Pipeline{
 
 	void notify_thread_creation(Processor *);
 	void notify_thread_end(Processor *);
+	boost::optional<std::string> exception_message;
+	std::mutex exception_message_mutex;
+	void set_exception_message(const std::string &);
 public:
 	Pipeline();
 	~Pipeline();
@@ -180,6 +184,7 @@ public:
 	std::unique_ptr<buffer_t> allocate_buffer();
 	void release_buffer(std::unique_ptr<buffer_t> &);
 	Segment allocate_segment();
+	void check_exceptions();
 };
 
 class SizedSource{
@@ -217,6 +222,45 @@ class FileSource : public InputStream, public SizedSource{
 	void work() override;
 public:
 	FileSource(const path_t &path, Pipeline &parent);
+	const char *class_name() const override{
+		return "FileSource";
+	}
+};
+
+class FileSink : public OutputStream{
+	boost::filesystem::ofstream stream;
+
+	void work() override;
+	IGNORE_FLUSH_COMMAND
+public:
+	FileSink(const path_t &path, Pipeline &parent);
+	const char *class_name() const override{
+		return "FileSink";
+	}
+};
+
+template <typename T>
+class Stream{
+	std::unique_ptr<T> stream;
+	template <typename T1>
+	typename std::enable_if<std::is_base_of<OutputStream, T1>::value, void>::type flush_stream(){
+		this->stream->flush();
+	}
+	template <typename T1>
+	typename std::enable_if<!std::is_base_of<OutputStream, T1>::value, void>::type flush_stream(){
+	}
+public:
+	template <typename ... Args>
+	Stream(Args && ... args): stream(std::make_unique<T, Args...>(std::forward<Args>(args)...)){}
+	~Stream(){
+		this->flush_stream<T>();
+	}
+	T &operator*(){
+		return *this->stream;
+	}
+	T *operator->(){
+		return this->stream.get();
+	}
 };
 
 }

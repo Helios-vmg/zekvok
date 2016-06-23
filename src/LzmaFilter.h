@@ -105,6 +105,9 @@ public:
 	std::uint64_t get_bytes_written() const{
 		return this->bytes_written;
 	}
+	const char *class_name() const override{
+		return "LzmaOutputStream";
+	}
 };
 
 }

@@ -42,6 +42,9 @@ class NullSource : public InputStream{
 	void work() override;
 public:
 	NullSource(Pipeline &parent): InputStream(parent){}
+	const char *class_name() const override{
+		return "NullSource";
+	}
 };
 
 class NullSink : public OutputStream{
@@ -49,6 +52,9 @@ class NullSink : public OutputStream{
 	IGNORE_FLUSH_COMMAND
 public:
 	NullSink(Pipeline &parent): OutputStream(parent){}
+	const char *class_name() const override{
+		return "NullSink";
+	}
 };
 
 }

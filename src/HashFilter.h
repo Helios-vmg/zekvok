@@ -100,6 +100,9 @@ class HashInputFilter : public HashFilter<HashT>, public InputStream{
 public:
 	HashInputFilter(Pipeline &parent): InputStream(parent){}
 	HashInputFilter(InputStream &source): InputStream(source){}
+	const char *class_name() const override{
+		return "HashInputFilter";
+	}
 };
 
 template <typename HashT>
@@ -116,6 +119,9 @@ class HashOutputFilter : public HashFilter<HashT>, public OutputStream{
 public:
 	HashOutputFilter(Pipeline &parent): OutputStream(parent){}
 	HashOutputFilter(OutputStream &sink): OutputStream(sink){}
+	const char *class_name() const override{
+		return "HashOutputFilter";
+	}
 };
 
 }

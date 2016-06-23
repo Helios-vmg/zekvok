@@ -163,6 +163,8 @@ void Processor::thread_func(){
 	try{
 		this->work();
 	}catch (StreamProcessorStoppingException &){
+	}catch (std::exception &e){
+		this->parent->set_exception_message((std::string)this->class_name() + ": " + e.what());
 	}
 	this->parent->notify_thread_end(this);
 }
@@ -194,24 +196,28 @@ void Processor::stop(){
 	}
 }
 
-#define CONNECT_SOURCE_SINK(x, y)								\
-	zekvok_assert(!this->x##_queue);							\
-	if (p.y##_queue){											\
-		p.y##_queue->attach_sink(*this);						\
-		this->x##_queue = p.y##_queue;							\
-	}else{														\
-		this->x##_queue.reset(new Queue);	\
-		this->x##_queue->connect(p, *this);						\
-		this->x##_queue->attach_##x(*this);						\
-		this->x##_queue->attach_##y(p);							\
-		p.y##_queue = this->x##_queue;							\
+#define CONNECT_SOURCE_SINK(x, y)		\
+	zekvok_assert(!y.x##_queue);		\
+	if (x.y##_queue){					\
+		x.y##_queue->attach_##y(y);		\
+		y.x##_queue = x.y##_queue;		\
+	}else{								\
+		y.x##_queue.reset(new Queue);	\
+		y.x##_queue->connect(x, y);		\
+		y.x##_queue->attach_##x(y);		\
+		y.x##_queue->attach_##y(x);		\
+		x.y##_queue = y.x##_queue;		\
 	}
 
 void Processor::connect_to_source(Processor &p){
+	Processor &source = p;
+	Processor &sink = *this;
 	CONNECT_SOURCE_SINK(source, sink);
 }
 
 void Processor::connect_to_sink(Processor &p){
+	Processor &sink = p;
+	Processor &source = *this;
 	CONNECT_SOURCE_SINK(sink, source);
 }
 
@@ -231,8 +237,19 @@ Pipeline::~Pipeline(){
 }
 
 void Pipeline::start(){
+	this->check_exceptions();
 	for (auto &p : this->processors)
 		((Processor *)p)->start();
+}
+
+void Pipeline::check_exceptions(){
+	decltype(this->exception_message) ex;
+	{
+		LOCK_MUTEX(this->exception_message_mutex);
+		ex = std::move(this->exception_message);
+	}
+	if (ex.is_initialized())
+		throw StdStringException(ex.value());
 }
 
 std::unique_ptr<buffer_t> Pipeline::allocate_buffer(){
@@ -254,6 +271,11 @@ void Pipeline::release_buffer(std::unique_ptr<buffer_t> &buffer){
 
 Segment Pipeline::allocate_segment(){
 	return Segment(*this);
+}
+
+void Pipeline::set_exception_message(const std::string &s){
+	LOCK_MUTEX(this->exception_message_mutex);
+	this->exception_message = s;
 }
 
 //void Pipeline::sync(){
@@ -290,7 +312,6 @@ void FileSource::work(){
 }
 
 OutputStream::~OutputStream(){
-	this->flush();
 }
 
 OutputStream::OutputStream(OutputStream &sink): Processor(sink.get_pipeline()){
@@ -322,5 +343,22 @@ void InputStream::copy_to(OutputStream &sink){
 }
 
 SizedSource::~SizedSource(){}
+
+FileSink::FileSink(const path_t &path, Pipeline &parent):
+		OutputStream(parent),
+		stream(path, std::ios::binary){
+	if (!this->stream)
+		throw std::exception("Error opening file!");
+}
+
+void FileSink::work(){
+	while (true){
+		auto segment = this->read();
+		if (segment.get_type() == SegmentType::Eof)
+			break;
+		auto data = segment.get_data();
+		this->stream.write(reinterpret_cast<const char *>(data.data), data.size);
+	}
+}
 
 }

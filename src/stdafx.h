@@ -34,6 +34,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <type_traits>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
