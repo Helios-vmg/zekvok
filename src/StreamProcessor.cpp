@@ -87,7 +87,7 @@ Segment::Segment(Pipeline &pipeline){
 }
 
 Segment Segment::construct_flush(flush_callback_ptr_t &callback){
-	Segment ret(SegmentType::FullFlush);
+	Segment ret(SegmentType::Flush);
 	ret.flush_callback = std::move(callback);
 	return ret;
 }
@@ -109,6 +109,10 @@ Processor::~Processor(){
 		this->sink_queue->detach_source();
 	if (this->source_queue)
 		this->source_queue->detach_sink();
+	if (this->bytes_written_dst)
+		*this->bytes_written_dst = this->bytes_written;
+	if (this->bytes_read_dst)
+		*this->bytes_read_dst = this->bytes_read;
 }
 
 Segment Processor::read(){
@@ -116,7 +120,7 @@ Segment Processor::read(){
 		Segment ret;
 		{
 			auto &running = this->parent->busy_threads;
-			ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, true);
+			ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
 			ScopedDecrement<decltype(running)> inc(running);
 			while (!this->source_queue->try_pop(ret))
 				this->check_termination();
@@ -134,6 +138,8 @@ Segment Processor::read(){
 				ret.get_flush_callback()();
 			continue;
 		}
+		if (ret.get_type() == SegmentType::Data)
+			this->bytes_read += ret.get_data().size;
 		return ret;
 	}
 }
@@ -143,14 +149,27 @@ void Processor::check_termination(){
 		throw StreamProcessorStoppingException();
 }
 
+void Processor::put_back(Segment &segment){
+	size_t size = 0;
+	if (segment.get_type() == SegmentType::Data)
+		size = segment.get_data().size;
+	this->source_queue->put_back(segment);
+	this->bytes_read -= size;
+}
+
 void Processor::write(Segment &segment){
 	if (!this->pass_eof && segment.get_type() == SegmentType::Eof)
 		return;
 	auto &running = this->parent->busy_threads;
-	ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, true);
+	ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
 	ScopedDecrement<decltype(running)> inc(running);
+	size_t size = 0;
+	if (segment.get_type() == SegmentType::Data)
+		size = segment.get_data().size;
 	while (!this->sink_queue->try_push(segment))
 		this->check_termination();
+	// Note: If we get to this point, the segment was definitely pushed. check_termination() throws.
+	this->bytes_written += size;
 }
 
 void Processor::start(){
@@ -287,12 +306,6 @@ void Pipeline::set_exception_message(const std::string &s){
 	this->exception_message = s;
 }
 
-//void Pipeline::sync(){
-//	//TODO: improve
-//	while (this->busy_threads)
-//		std::this_thread::sleep_for(std::chrono::milliseconds(250));
-//}
-
 FileSource::FileSource(const path_t &path, Pipeline &parent):
 		InputStream(parent),
 		stream(path, std::ios::binary){
@@ -304,16 +317,15 @@ FileSource::FileSource(const path_t &path, Pipeline &parent):
 }
 
 void FileSource::work(){
-	std::uint64_t bytes = 0;
 	while (this->stream){
 		auto segment = this->parent->allocate_segment();
 		auto data = segment.get_data();
 		this->stream.read(reinterpret_cast<char *>(data.data), data.size);
-		auto read = this->stream.gcount();
-		if (!read)
+		auto bytes_read = this->stream.gcount();
+		if (!bytes_read)
 			break;
-		segment.trim_to_size(read);
-		bytes += read;
+		this->report_bytes_read(bytes_read);
+		segment.trim_to_size(bytes_read);
 		this->write(segment);
 	}
 	Segment s(SegmentType::Eof);
@@ -373,7 +385,9 @@ void FileSink::work(){
 		if (segment.get_type() == SegmentType::Eof)
 			break;
 		auto data = segment.get_data();
+		auto bytes_written = data.size;
 		this->stream.write(reinterpret_cast<const char *>(data.data), data.size);
+		this->report_bytes_written(bytes_written);
 	}
 }
 

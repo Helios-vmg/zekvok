@@ -189,8 +189,6 @@ LzmaInputFilter::LzmaInputFilter(std::istream &stream, size_t buffer_size): Inpu
 	}
 	d->action = LZMA_RUN;
 	d->input_buffer.resize(buffer_size);
-	d->bytes_read = 0;
-	d->bytes_written = 0;
 	d->queued_buffer = &d->input_buffer[0];
 	d->queued_bytes = 0;
 }
@@ -206,7 +204,6 @@ std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
 			d->lstream.next_in = &d->input_buffer[0];
 			auto r = this->next_read(reinterpret_cast<char *>(&d->input_buffer[0]), d->input_buffer.size());
 			d->lstream.avail_in = r < 0 ? 0 : r;
-			d->bytes_read += d->lstream.avail_in;
 		}
 		if (d->lstream.avail_in == 0)
 			d->action = LZMA_FINISH;
@@ -239,7 +236,6 @@ std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
 		}
 	}
 	size_t ret = size - d->lstream.avail_out;
-	d->bytes_written += ret;
 	d->at_eof = !ret && size;
 	return ret;
 }
@@ -256,8 +252,6 @@ LzmaOutputStream::LzmaOutputStream(OutputStream &stream, bool *multithreaded, in
 
 	this->action = LZMA_RUN;
 	this->reset_segment();
-	this->bytes_read = 0;
-	this->bytes_written = 0;
 }
 
 LzmaOutputStream::~LzmaOutputStream(){
@@ -388,7 +382,6 @@ void LzmaOutputStream::work(){
 			auto data = segment.get_data();
 			if (!data.size)
 				continue;
-			this->bytes_read += data.size;
 			this->lstream.next_in = static_cast<const uint8_t *>(data.data);
 			this->lstream.avail_in = data.size;
 		}

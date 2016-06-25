@@ -402,10 +402,14 @@ class ScopedAtomicReversibleSet{
 	bool cancelled;
 	bool cancel_on_exception;
 public:
-	ScopedAtomicReversibleSet(std::atomic<T> &data, T new_value, bool cancel_on_exception = false):
+	enum CancellationBehavior{
+		NoCancellation,
+		CancelOnException,
+	};
+	ScopedAtomicReversibleSet(std::atomic<T> &data, T new_value, CancellationBehavior behavior):
 			data(data),
 			cancelled(false),
-			cancel_on_exception(cancel_on_exception){
+			cancel_on_exception(behavior == CancelOnException){
 		this->old_value = this->data.exchange(new_value);
 	}
 	ScopedAtomicReversibleSet(const ScopedAtomicReversibleSet<T> &) = delete;

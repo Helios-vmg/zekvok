@@ -135,12 +135,18 @@ public:
 		Stopping,
 		Completed,
 	};
+private:
+	std::uint64_t bytes_read = 0,
+		bytes_written = 0;
 protected:
 	Pipeline *parent;
 	std::atomic<State> state;
 	std::unique_ptr<std::thread> thread;
-	std::shared_ptr<Queue> sink_queue, source_queue;
+	std::shared_ptr<Queue> sink_queue,
+		source_queue;
 	bool pass_eof = true;
+	std:: uint64_t *bytes_read_dst = nullptr,
+		*bytes_written_dst = nullptr;
 
 	void thread_func();
 	virtual void work() = 0;
@@ -151,6 +157,13 @@ protected:
 	virtual bool pass_flush(){
 		return true;
 	}
+	void report_bytes_read(size_t n){
+		this->bytes_read += n;
+	}
+	void report_bytes_written(size_t n){
+		this->bytes_written += n;
+	}
+	void put_back(Segment &segment);
 public:
 	Processor(Pipeline &parent);
 	virtual ~Processor();
@@ -166,6 +179,12 @@ public:
 		return *this->parent;
 	}
 	virtual const char *class_name() const = 0;
+	void set_bytes_written_dst(std::uint64_t &dst){
+		this->bytes_written_dst = &dst;
+	}
+	void set_bytes_read_dst(std::uint64_t &dst){
+		this->bytes_read_dst = &dst;
+	}
 };
 
 class Pipeline{

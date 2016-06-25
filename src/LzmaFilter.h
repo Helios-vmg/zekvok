@@ -57,15 +57,11 @@ class LzmaInputFilter : public InputFilter{
 		std::vector<uint8_t> input_buffer;
 		const uint8_t *queued_buffer;
 		size_t queued_bytes;
-		uint64_t bytes_read,
-			bytes_written;
 		bool at_eof;
 		impl()
 			: action(LZMA_RUN)
 			, queued_buffer(nullptr)
 			, queued_bytes(0)
-			, bytes_read(0)
-			, bytes_written(0)
 			, at_eof(false)
 		{
 			zero_struct(this->lstream);
@@ -90,8 +86,6 @@ class LzmaOutputStream : public OutputStream{
 	lzma_stream lstream;
 	lzma_action action = LZMA_RUN;
 	Segment output_segment;
-	uint64_t bytes_read = 0,
-		bytes_written = 0;
 
 	void reset_segment();
 	bool initialize_single_threaded(int, size_t, bool);
@@ -102,9 +96,6 @@ class LzmaOutputStream : public OutputStream{
 public:
 	LzmaOutputStream(OutputStream &stream, bool *multithreaded, int compression_level = 7, size_t buffer_size = default_buffer_size, bool extreme_mode = false);
 	~LzmaOutputStream();
-	std::uint64_t get_bytes_written() const{
-		return this->bytes_written;
-	}
 	const char *class_name() const override{
 		return "LzmaOutputStream";
 	}
