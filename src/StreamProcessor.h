@@ -250,11 +250,25 @@ public:
 	}
 };
 
-class FileSink : public OutputStream{
-	boost::filesystem::ofstream stream;
+class StdStreamSink : public OutputStream{
+	std::unique_ptr<std::ostream> stream;
 
 	void work() override;
 	IGNORE_FLUSH_COMMAND
+protected:
+	void set_stream(std::unique_ptr<std::ostream> &);
+public:
+	StdStreamSink(std::unique_ptr<std::ostream> &stream, Pipeline &parent): OutputStream(parent){
+		this->set_stream(stream);
+	}
+	StdStreamSink(Pipeline &parent): OutputStream(parent){}
+	virtual ~StdStreamSink(){}
+	virtual const char *class_name() const override{
+		return "StdStreamSink";
+	}
+};
+
+class FileSink : public StdStreamSink{
 public:
 	FileSink(const path_t &path, Pipeline &parent);
 	const char *class_name() const override{

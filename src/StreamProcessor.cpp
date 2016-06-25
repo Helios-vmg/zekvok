@@ -372,23 +372,27 @@ void InputStream::copy_to(OutputStream &sink){
 
 SizedSource::~SizedSource(){}
 
-FileSink::FileSink(const path_t &path, Pipeline &parent):
-		OutputStream(parent),
-		stream(path, std::ios::binary){
-	if (!this->stream)
-		throw std::exception("Error opening file!");
-}
-
-void FileSink::work(){
+void StdStreamSink::work(){
 	while (true){
 		auto segment = this->read();
 		if (segment.get_type() == SegmentType::Eof)
 			break;
 		auto data = segment.get_data();
 		auto bytes_written = data.size;
-		this->stream.write(reinterpret_cast<const char *>(data.data), data.size);
+		this->stream->write(reinterpret_cast<const char *>(data.data), data.size);
 		this->report_bytes_written(bytes_written);
 	}
+}
+
+void StdStreamSink::set_stream(std::unique_ptr<std::ostream> &stream){
+	this->stream = std::move(stream);
+}
+
+FileSink::FileSink(const path_t &path, Pipeline &parent): StdStreamSink(parent){
+	std::unique_ptr<std::ostream> stream(new boost::filesystem::ofstream(path, std::ios::binary));
+	if (!*stream)
+		throw std::exception("Error opening file!");
+	this->set_stream(stream);
 }
 
 }
