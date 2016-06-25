@@ -278,17 +278,27 @@ public:
 
 template <typename T>
 class Stream{
+public:
 	std::unique_ptr<T> stream;
 	template <typename T1>
 	typename std::enable_if<std::is_base_of<OutputStream, T1>::value, void>::type flush_stream(){
-		this->stream->flush();
+		if (this->stream)
+			this->stream->flush();
 	}
 	template <typename T1>
 	typename std::enable_if<!std::is_base_of<OutputStream, T1>::value, void>::type flush_stream(){
 	}
-public:
+	Stream(){}
 	template <typename ... Args>
 	Stream(Args && ... args): stream(std::make_unique<T, Args...>(std::forward<Args>(args)...)){}
+	template <typename T2>
+	Stream(Stream<T2> &&old){
+		this->stream = std::move(old.stream);
+	}
+	template <typename T2>
+	const Stream &operator=(Stream<T2> &&old){
+		this->stream = std::move(old.stream);
+	}
 	~Stream(){
 		this->flush_stream<T>();
 	}
