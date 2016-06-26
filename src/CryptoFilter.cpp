@@ -214,18 +214,23 @@ void CryptoOutputStream::work(){
 
 		this->flush_filter(filter);
 	}
+	this->flush_impl();
 }
 
-void CryptoOutputStream::flush_filter(CryptoPP::StreamTransformationFilter *filter){
+static void flush_filter(Processor *p, CryptoPP::StreamTransformationFilter *filter){
 	while (true){
-		auto segment = this->parent->allocate_segment();
+		auto segment = p->allocate_segment();
 		auto data = segment.get_data();
 		auto read = filter->Get(data.data, data.size);
 		if (!read)
 			return;
 		segment.trim_to_size(read);
-		this->write(segment);
+		p->write(segment);
 	}
+}
+
+void CryptoOutputStream::flush_filter(CryptoPP::StreamTransformationFilter *filter){
+	zstreams::flush_filter(this, filter);
 }
 
 void CryptoOutputStream::flush_impl(){
@@ -235,6 +240,60 @@ void CryptoOutputStream::flush_impl(){
 		this->flushed = true;
 	}
 	this->flush_filter(filter);
+}
+
+template <typename T>
+class GenericCryptoInputStream : public CryptoInputStream{
+	typename CryptoPP::CBC_Mode<T>::Decryption d;
+	std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
+
+protected:
+	CryptoPP::StreamTransformationFilter *get_filter() override{
+		return this->filter.get();
+	}
+public:
+	GenericCryptoInputStream(InputStream &stream, const CryptoPP::SecByteBlock &key, const CryptoPP::SecByteBlock &iv): CryptoInputStream(stream){
+		this->d.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
+		this->filter.reset(new CryptoPP::StreamTransformationFilter(this->d));
+	}
+};
+
+Stream<CryptoInputStream> CryptoInputStream::create(
+		Algorithm algo,
+		InputStream &stream,
+		const CryptoPP::SecByteBlock *key,
+		const CryptoPP::SecByteBlock *iv){
+	switch (algo){
+		case Algorithm::Rijndael:
+			return Stream<GenericCryptoInputStream<CryptoPP::Rijndael>>(stream, *key, *iv);
+		case Algorithm::Serpent:
+			return Stream<GenericCryptoInputStream<CryptoPP::Serpent>>(stream, *key, *iv);
+		case Algorithm::Twofish:
+			return Stream<GenericCryptoInputStream<CryptoPP::Twofish>>(stream, *key, *iv);
+	}
+	zekvok_assert(false);
+}
+
+void CryptoInputStream::work(){
+	auto filter = this->get_filter();
+	bool done = false;
+
+	while (!done){
+		{
+			auto segment = this->read();
+			if (segment.get_type() == SegmentType::Eof){
+				filter->MessageEnd();
+				done = true;
+			}else{
+				auto data = segment.get_data();
+				filter->Put(data.data, data.size);
+			}
+		}
+
+		zstreams::flush_filter(this, filter);
+	}
+	Segment eof(SegmentType::Eof);
+	this->write(eof);
 }
 
 }

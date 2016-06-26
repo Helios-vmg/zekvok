@@ -413,8 +413,6 @@ LzmaInputStream::LzmaInputStream(InputStream &stream, size_t buffer_size):
 		throw LzmaInitializationException(msg);
 	}
 	this->action = LZMA_RUN;
-	this->bytes_read = 0;
-	this->bytes_written = 0;
 }
 
 LzmaInputStream::~LzmaInputStream(){
@@ -434,7 +432,6 @@ void LzmaInputStream::work(){
 				auto data = in_segment.get_data();
 				if (!data.size)
 					continue;
-				this->bytes_read += data.size;
 				this->lstream.next_in = static_cast<const uint8_t *>(data.data);
 				this->lstream.avail_in = data.size;
 			}

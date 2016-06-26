@@ -104,8 +104,6 @@ public:
 class LzmaInputStream : public InputStream{
 	lzma_stream lstream;
 	lzma_action action = LZMA_RUN;
-	uint64_t bytes_read = 0,
-		bytes_written = 0;
 	bool at_eof = false;
 
 	void work() override;

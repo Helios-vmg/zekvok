@@ -151,7 +151,6 @@ protected:
 	void thread_func();
 	virtual void work() = 0;
 	Segment read();
-	void write(Segment &);
 	void check_termination();
 	virtual void flush_impl(){}
 	virtual bool pass_flush(){
@@ -185,12 +184,15 @@ public:
 	void set_bytes_read_dst(std::uint64_t &dst){
 		this->bytes_read_dst = &dst;
 	}
+	Segment allocate_segment() const;
+	void write(Segment &);
 };
 
 class Pipeline{
 	friend class Processor;
 	std::atomic<int> busy_threads;
 	std::unordered_set<uintptr_t> processors;
+	std::mutex processors_mutex;
 	std::vector<std::unique_ptr<buffer_t>> allocated_buffers;
 	std::mutex allocated_buffers_mutex;
 

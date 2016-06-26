@@ -78,4 +78,23 @@ public:
 	}
 };
 
+class CryptoInputStream : public InputStream{
+protected:
+	virtual CryptoPP::StreamTransformationFilter *get_filter() = 0;
+	CryptoInputStream(InputStream &stream): InputStream(stream){}
+	void work() override;
+	IGNORE_FLUSH_COMMAND
+public:
+	virtual ~CryptoInputStream(){}
+	static Stream<CryptoInputStream> create(
+		Algorithm algo,
+		InputStream &stream,
+		const CryptoPP::SecByteBlock *key,
+		const CryptoPP::SecByteBlock *iv
+	);
+	const char *class_name() const override{
+		return "CryptoInputStream";
+	}
+};
+
 }

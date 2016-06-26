@@ -247,11 +247,17 @@ void Processor::connect_to_sink(Processor &p){
 	CONNECT_SOURCE_SINK(sink, source);
 }
 
+Segment Processor::allocate_segment() const{
+	return this->parent->allocate_segment();
+}
+
 void Pipeline::notify_thread_creation(Processor *p){
+	LOCK_MUTEX(this->processors_mutex);
 	this->processors.insert((uintptr_t)p);
 }
 
 void Pipeline::notify_thread_end(Processor *p){
+	LOCK_MUTEX(this->processors_mutex);
 	this->processors.erase((uintptr_t)p);
 }
 
@@ -264,6 +270,7 @@ Pipeline::~Pipeline(){
 
 void Pipeline::start(){
 	this->check_exceptions();
+	LOCK_MUTEX(this->processors_mutex);
 	for (auto &p : this->processors)
 		((Processor *)p)->start();
 }
