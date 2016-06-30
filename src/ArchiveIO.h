@@ -42,7 +42,7 @@ public:
 
 class ArchiveReader{
 public:
-	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, std::istream *>> read_everything_co_t;
+	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, zstreams::Source *>> read_everything_co_t;
 private:
 	//std::deque<input_filter_generator_t> filters;
 	path_t path;

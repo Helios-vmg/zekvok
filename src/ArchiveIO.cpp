@@ -174,10 +174,11 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	{
 		zstreams::StreamPipeline pipeline;
 		Stream<zstreams::StdStreamSource> source(stream, pipeline);
-		Stream<zstreams::BoundedSource> bounded(source, this->manifest_size);
-		Stream<zstreams::LzmaSource> lzma(bounded);
+		Stream<zstreams::BoundedSource> bounded(*source, this->manifest_size);
+		Stream<zstreams::LzmaSource> lzma(*bounded);
+		boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*lzma);
 
-		ImplementedDeserializerStream ds(lzma);
+		ImplementedDeserializerStream ds(sync_source);
 		this->version_manifest.reset(ds.deserialize<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw ArchiveReadException("Invalid data: Error during manifest deserialization");
@@ -199,20 +200,23 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	auto stream = this->get_stream();
 	stream->seekg(this->base_objects_offset);
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_offset - this->base_objects_offset);
-		std::istream *stream2 = &bounded;
-		std::shared_ptr<std::istream> crypto;
+		zstreams::StreamPipeline pipeline;
+		Stream<zstreams::StdStreamSource> source(stream, pipeline);
+		Stream<zstreams::BoundedSource> bounded(*source, this->manifest_offset - this->base_objects_offset);
+		zstreams::Source *stream2 = &*bounded;
+		Stream<zstreams::CryptoSource> crypto;
 		if (this->keypair){
 			CryptoPP::SecByteBlock key, iv;
 			zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileObjectDataKey));
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream2, &key, &iv);
-			stream2 = crypto.get();
+			crypto = zstreams::CryptoSource::create(default_crypto_algorithm, *stream2, &key, &iv);
+			stream2 = &*crypto;
 		}
-		boost::iostreams::stream<LzmaInputFilter> lzma(*stream2);
+		Stream<zstreams::LzmaSource> lzma(*stream2);
 
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
-			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
-			ImplementedDeserializerStream ds(bounded2);
+			Stream<zstreams::BoundedSource> bounded2(*lzma, s);
+			boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*bounded2);
+			ImplementedDeserializerStream ds(sync_source);
 			std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
 			if (!fso)
 				throw ArchiveReadException("Invalid data: Error during FSO deserialization");
@@ -230,25 +234,27 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	auto file_data_start = this->keypair ? 4096 / 8 : 0;
 	ptr->seekg(file_data_start);
 
-	boost::iostreams::stream<BoundedInputFilter> bounded(*ptr, this->base_objects_offset - file_data_start);
-	std::istream *stream = &bounded;
+	zstreams::StreamPipeline pipeline;
+	Stream<zstreams::StdStreamSource> source(*ptr, pipeline);
+	Stream<zstreams::BoundedSource> bounded(*source, this->base_objects_offset - file_data_start);
+	zstreams::Source *stream = &*bounded;
 
-	std::shared_ptr<std::istream> crypto;
+	Stream<zstreams::CryptoSource> crypto;
 	if (this->keypair){
 		CryptoPP::SecByteBlock key, iv;
 		zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileDataKey));
-		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &key, &iv);
-		stream = crypto.get();
+		crypto = zstreams::CryptoSource::create(default_crypto_algorithm, *stream, &key, &iv);
+		stream = &*crypto;
 	}
-	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
+	Stream<zstreams::LzmaSource> lzma(*stream);
 
 	zekvok_assert(this->stream_ids.size() == this->stream_sizes.size());
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
-		boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, this->stream_sizes[i]);
-		sink(std::make_pair(this->stream_ids[i], &bounded2));
+		Stream<zstreams::BoundedSource> bounded2(*lzma, this->stream_sizes[i]);
+		sink(std::make_pair(this->stream_ids[i], &*bounded2));
 		//Discard left over bytes.
-		boost::iostreams::stream<NullOutputStream> null(0);
-		null << bounded2.rdbuf();
+		Stream<zstreams::NullSink> null(pipeline);
+		bounded2->copy_to(*null);
 	}
 }
 
