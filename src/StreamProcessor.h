@@ -241,10 +241,25 @@ public:
 	void copy_to(OutputStream &);
 };
 
-class FileSource : public InputStream, public SizedSource{
-	boost::filesystem::ifstream stream;
+class StdStreamSource : public InputStream{
+	std::unique_ptr<std::istream> stream;
 
 	void work() override;
+	IGNORE_FLUSH_COMMAND
+protected:
+	void set_stream(std::unique_ptr<std::istream> &);
+public:
+	StdStreamSource(std::unique_ptr<std::istream> &stream, Pipeline &parent): InputStream(parent){
+		this->set_stream(stream);
+	}
+	StdStreamSource(Pipeline &parent): InputStream(parent){}
+	virtual ~StdStreamSource(){}
+	virtual const char *class_name() const override{
+		return "StdStreamSource";
+	}
+};
+
+class FileSource : public StdStreamSource, public SizedSource{
 public:
 	FileSource(const path_t &path, Pipeline &parent);
 	const char *class_name() const override{
@@ -256,6 +271,7 @@ class StdStreamSink : public OutputStream{
 	std::unique_ptr<std::ostream> stream;
 
 	void work() override;
+	void flush_impl() override;
 	IGNORE_FLUSH_COMMAND
 protected:
 	void set_stream(std::unique_ptr<std::ostream> &);

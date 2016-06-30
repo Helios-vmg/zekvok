@@ -313,30 +313,14 @@ void Pipeline::set_exception_message(const std::string &s){
 	this->exception_message = s;
 }
 
-FileSource::FileSource(const path_t &path, Pipeline &parent):
-		InputStream(parent),
-		stream(path, std::ios::binary){
-	if (!this->stream)
+FileSource::FileSource(const path_t &path, Pipeline &parent): StdStreamSource(parent){
+	std::unique_ptr<std::istream> stream(new boost::filesystem::ifstream(path, std::ios::binary));
+	if (!*stream)
 		throw std::exception("File not found!");
-	this->stream.seekg(0, std::ios::end);
-	this->stream_size = this->stream.tellg();
-	this->stream.seekg(0);
-}
-
-void FileSource::work(){
-	while (this->stream){
-		auto segment = this->parent->allocate_segment();
-		auto data = segment.get_data();
-		this->stream.read(reinterpret_cast<char *>(data.data), data.size);
-		auto bytes_read = this->stream.gcount();
-		if (!bytes_read)
-			break;
-		this->report_bytes_read(bytes_read);
-		segment.trim_to_size(bytes_read);
-		this->write(segment);
-	}
-	Segment s(SegmentType::Eof);
-	this->write(s);
+	stream->seekg(0, std::ios::end);
+	this->stream_size = stream->tellg();
+	stream->seekg(0);
+	this->set_stream(stream);
 }
 
 OutputStream::~OutputStream(){
@@ -391,6 +375,11 @@ void StdStreamSink::work(){
 	}
 }
 
+void StdStreamSink::flush_impl(){
+	if (this->stream)
+		this->stream->flush();
+}
+
 void StdStreamSink::set_stream(std::unique_ptr<std::ostream> &stream){
 	this->stream = std::move(stream);
 }
@@ -400,6 +389,26 @@ FileSink::FileSink(const path_t &path, Pipeline &parent): StdStreamSink(parent){
 	if (!*stream)
 		throw std::exception("Error opening file!");
 	this->set_stream(stream);
+}
+
+void StdStreamSource::work(){
+	while (this->stream){
+		auto segment = this->parent->allocate_segment();
+		auto data = segment.get_data();
+		this->stream->read(reinterpret_cast<char *>(data.data), data.size);
+		auto bytes_read = this->stream->gcount();
+		if (!bytes_read)
+			break;
+		this->report_bytes_read(bytes_read);
+		segment.trim_to_size(bytes_read);
+		this->write(segment);
+	}
+	Segment s(SegmentType::Eof);
+	this->write(s);
+}
+
+void StdStreamSource::set_stream(std::unique_ptr<std::istream> &stream){
+	this->stream = std::move(stream);
 }
 
 }

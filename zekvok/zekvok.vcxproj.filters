@@ -57,9 +57,6 @@
     <ClCompile Include="..\src\LzmaFilter.cpp">
       <Filter>Source Files\Stream filters</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\HashFilter.cpp">
-      <Filter>Source Files\Stream filters</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\BoundedStreamFilter.cpp">
       <Filter>Source Files\Stream filters</Filter>
     </ClCompile>
@@ -180,9 +177,6 @@
       <Filter>Header Files\Serialization\Generated</Filter>
     </ClInclude>
     <ClInclude Include="..\src\LzmaFilter.h">
-      <Filter>Header Files\Stream filters</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Filters.h">
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
     <ClInclude Include="..\src\HashFilter.h">

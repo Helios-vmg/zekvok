@@ -15,8 +15,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "NullStream.h"
 #include "System/Transactions.h"
 #include "HashFilter.h"
+#include "StreamProcessor.h"
 
 const Algorithm default_crypto_algorithm = Algorithm::Twofish;
+using zstreams::Stream;
 
 ArchiveKeys::ArchiveKeys(size_t key_size, size_t iv_size){
 	this->init(key_size, iv_size);
@@ -170,8 +172,10 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	}else
 		stream->seekg(this->manifest_offset);
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_size);
-		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
+		zstreams::Pipeline pipeline;
+		Stream<zstreams::StdStreamSource> source(stream, pipeline);
+		Stream<zstreams::BoundedInputFilter> bounded(source, this->manifest_size);
+		Stream<zstreams::LzmaInputStream> lzma(bounded);
 
 		ImplementedDeserializerStream ds(lzma);
 		this->version_manifest.reset(ds.deserialize<VersionManifest>(config::include_typehashes));
