@@ -82,6 +82,7 @@ void Segment::release(){
 Segment::Segment(Pipeline &pipeline){
 	this->allocator = &pipeline;
 	this->data = pipeline.allocate_buffer();
+	this->type = SegmentType::Data;
 	this->subsegment_override = this->default_subsegment = this->construct_default_subsegment();
 }
 
@@ -196,6 +197,8 @@ void Processor::stop(){
 	}
 }
 
+#define USE_MACRO
+
 #define CONNECT_SOURCE_SINK(x, y)		\
 	zekvok_assert(!y.x##_queue);		\
 	if (x.y##_queue){					\
@@ -203,9 +206,8 @@ void Processor::stop(){
 		y.x##_queue = x.y##_queue;		\
 	}else{								\
 		y.x##_queue.reset(new Queue);	\
-		y.x##_queue->connect(x, y);		\
-		y.x##_queue->attach_##x(y);		\
-		y.x##_queue->attach_##y(x);		\
+		y.x##_queue->attach_##x(x);		\
+		y.x##_queue->attach_##y(y);		\
 		x.y##_queue = y.x##_queue;		\
 	}
 

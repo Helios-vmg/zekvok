@@ -63,9 +63,12 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include <Windows.h>
 #include <ktmw32.h>
+#pragma warning(push)
+#pragma warning(disable: 4091)
 #include <vss.h>
 #include <vswriter.h>
 #include <vsbackup.h>
+#pragma warning(pop)
 #include <comdef.h>
 
 #ifdef max

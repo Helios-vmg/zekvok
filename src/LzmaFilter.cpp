@@ -247,7 +247,7 @@ std::streamsize LzmaInputFilter::read(char *buffer, std::streamsize size){
 namespace zstreams{
 
 LzmaOutputStream::LzmaOutputStream(OutputStream &stream, bool *multithreaded, int compression_level, size_t buffer_size, bool extreme_mode):
-		OutputStream(stream){
+	OutputStream(stream){
 	zero_struct(this->lstream);
 	this->lstream = LZMA_STREAM_INIT;
 
@@ -393,8 +393,102 @@ void LzmaOutputStream::work(){
 			this->lstream.avail_in = data.size;
 		}
 		lret = lzma_code(&this->lstream, this->action);
-			
+
 	}while (this->pass_data_to_stream(lret));
+}
+
+LzmaInputStream::LzmaInputStream(InputStream &stream, size_t buffer_size):
+		InputStream(stream){
+	zero_struct(this->lstream);
+
+	this->lstream = LZMA_STREAM_INIT;
+	lzma_ret ret = lzma_stream_decoder(&this->lstream, UINT64_MAX, LZMA_IGNORE_CHECK);
+	if (ret != LZMA_OK){
+		const char *msg;
+		switch (ret) {
+			case LZMA_MEM_ERROR:
+				msg = "Memory allocation failed.\n";
+				break;
+			case LZMA_OPTIONS_ERROR:
+				msg = "Unsupported decompressor flags.\n";
+				break;
+			default:
+				msg = "Unknown error.\n";
+				break;
+		}
+		throw LzmaInitializationException(msg);
+	}
+	this->action = LZMA_RUN;
+	this->bytes_read = 0;
+	this->bytes_written = 0;
+}
+
+LzmaInputStream::~LzmaInputStream(){
+	lzma_end(&this->lstream);
+}
+
+void LzmaInputStream::work(){
+	Segment in_segment;
+	Segment out_segment;
+	while (true){
+		if (this->lstream.avail_in == 0 && !this->at_eof){
+			in_segment = this->read();
+			if (in_segment.get_type() == SegmentType::Eof){
+				this->at_eof = true;
+				this->action = LZMA_FINISH;
+			}else{
+				auto data = in_segment.get_data();
+				if (!data.size)
+					continue;
+				this->bytes_read += data.size;
+				this->lstream.next_in = static_cast<const uint8_t *>(data.data);
+				this->lstream.avail_in = data.size;
+			}
+		}
+
+		if (!this->lstream.avail_out){
+			if (!!out_segment)
+				this->write(out_segment);
+			out_segment = this->parent->allocate_segment();
+			auto data = out_segment.get_data();
+			this->lstream.next_out = data.data;
+			this->lstream.avail_out = data.size;
+		}
+
+		auto ret_code = lzma_code(&this->lstream, this->action);
+
+		if (ret_code != LZMA_OK){
+			if (ret_code == LZMA_STREAM_END)
+				break;
+			const char *msg;
+			switch (ret_code){
+				case LZMA_MEM_ERROR:
+					msg = "Memory allocation failed.";
+					break;
+				case LZMA_FORMAT_ERROR:
+					msg = "The input is not in the .xz format.";
+					break;
+				case LZMA_OPTIONS_ERROR:
+					msg = "Unsupported compression options.";
+					break;
+				case LZMA_DATA_ERROR:
+					msg = "Compressed file is corrupt.";
+					break;
+				case LZMA_BUF_ERROR:
+					msg = "Compressed file is truncated or otherwise corrupt.";
+					break;
+				default:
+					msg = "Unknown error.";
+					break;
+			}
+			throw LzmaOperationException(msg);
+		}
+	}
+	if (!!out_segment){
+		auto data = out_segment.get_data();
+		out_segment.trim_to_size(data.size - this->lstream.avail_out);
+		this->write(out_segment);
+	}
 }
 
 }

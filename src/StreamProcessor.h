@@ -72,6 +72,9 @@ public:
 	flush_callback_t &get_flush_callback(){
 		return *this->flush_callback;
 	}
+	bool operator!() const{
+		return this->type == SegmentType::Undefined;
+	}
 };
 
 class Queue{

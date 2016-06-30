@@ -110,4 +110,20 @@ public:
 	}
 };
 
+class LzmaInputStream : public InputStream{
+	lzma_stream lstream;
+	lzma_action action = LZMA_RUN;
+	uint64_t bytes_read = 0,
+		bytes_written = 0;
+	bool at_eof = false;
+
+	void work() override;
+public:
+	LzmaInputStream(InputStream &wrapped_stream, size_t buffer_size = default_buffer_size);
+	~LzmaInputStream();
+	const char *class_name() const override{
+		return "LzmaInputStream";
+	}
+};
+
 }
