@@ -411,13 +411,13 @@ void StdStreamSource::set_stream(std::unique_ptr<std::istream> &stream){
 	this->stream = std::move(stream);
 }
 
-SynchronousSource::SynchronousSource(Source &source): Source(source){
+SynchronousSourceImpl::SynchronousSourceImpl(Source &source): Source(source){
 }
 
-SynchronousSource::~SynchronousSource(){
+SynchronousSourceImpl::~SynchronousSourceImpl(){
 }
 
-std::streamsize SynchronousSource::read(char *s, std::streamsize n){
+std::streamsize SynchronousSourceImpl::read(char *s, std::streamsize n){
 	if (this->at_eof)
 		return -1;
 	std::streamsize ret = 0;
@@ -445,14 +445,14 @@ std::streamsize SynchronousSource::read(char *s, std::streamsize n){
 	return ret;
 }
 
-SynchronousSink::SynchronousSink(Sink &sink): Sink(sink){	
+SynchronousSinkImpl::SynchronousSinkImpl(Sink &sink): Sink(sink){
 }
 
-SynchronousSink::~SynchronousSink(){
+SynchronousSinkImpl::~SynchronousSinkImpl(){
 	this->try_write(true);
 }
 
-std::streamsize SynchronousSink::write(const char *s, std::streamsize n){
+std::streamsize SynchronousSinkImpl::write(const char *s, std::streamsize n){
 	std::streamsize ret = 0;
 	while (n){
 		this->ensure_valid_segment();
@@ -468,7 +468,7 @@ std::streamsize SynchronousSink::write(const char *s, std::streamsize n){
 	return ret;
 }
 
-void SynchronousSink::ensure_valid_segment(){
+void SynchronousSinkImpl::ensure_valid_segment(){
 	if (!!this->current_segment)
 		return;
 
@@ -476,7 +476,7 @@ void SynchronousSink::ensure_valid_segment(){
 	this->offset = 0;
 }
 
-void SynchronousSink::try_write(bool force){
+void SynchronousSinkImpl::try_write(bool force){
 	if (!this->current_segment)
 		return;
 	auto data = this->current_segment.get_data();

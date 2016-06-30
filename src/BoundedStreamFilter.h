@@ -19,7 +19,7 @@ public:
 	ByteCounterSink(Sink &wrapped, streamsize_t &dst): Sink(wrapped), bytes_processed(dst){
 		this->bytes_processed = 0;
 	}
-	const char *class_name() const{
+	const char *class_name() const override{
 		return "ByteCounterSink";
 	}
 };
@@ -33,7 +33,7 @@ public:
 		Source(stream),
 		bytes_read(0),
 		simulated_length(length){}
-	const char *class_name() const{
+	const char *class_name() const override{
 		return "BoundedSource";
 	}
 };

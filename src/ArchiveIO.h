@@ -91,13 +91,14 @@ class ArchiveWriter{
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
 	bool any_file;
-	std::uint64_t initial_fso_offset;
+	zstreams::streamsize_t initial_fso_offset;
 	std::uint64_t entries_size_in_archive;
 	std::vector<std::uint64_t> base_object_entry_sizes;
 	RsaKeyPair *keypair;
 	zstreams::Sink *nested_stream;
 	std::unique_ptr<ArchiveKeys> keys;
 	size_t archive_key_index;
+	zstreams::StreamPipeline pipeline;
 
 public:
 	ArchiveWriter(KernelTransaction &tx, const path_t &, RsaKeyPair *keypair);

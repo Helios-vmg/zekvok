@@ -294,23 +294,32 @@ public:
 	}
 };
 
-class SynchronousSource : public Source, public boost::iostreams::source{
+class SynchronousSourceImpl : public Source{
 	Segment current_segment;
 	bool at_eof = false;
 	void work() override{}
 public:
-	SynchronousSource(Source &);
-	virtual ~SynchronousSource();
+	SynchronousSourceImpl(Source &);
+	virtual ~SynchronousSourceImpl();
 	void start() override{}
 	void join() override{}
 	void stop() override{}
 	std::streamsize read(char *s, std::streamsize n);
 	virtual const char *class_name() const override{
-		return "SynchronousSource";
+		return "SynchronousSourceImpl";
 	}
 };
 
-class SynchronousSink : public Sink, public boost::iostreams::sink{
+class SynchronousSource : public boost::iostreams::source{
+	std::shared_ptr<SynchronousSourceImpl> impl;
+public:
+	SynchronousSource(Source &source): impl(new SynchronousSourceImpl(source)){}
+	std::streamsize read(char *s, std::streamsize n){
+		return this->impl->read(s, n);
+	}
+};
+
+class SynchronousSinkImpl : public Sink{
 	Segment current_segment;
 	size_t offset;
 	IGNORE_FLUSH_COMMAND
@@ -318,14 +327,23 @@ class SynchronousSink : public Sink, public boost::iostreams::sink{
 	void try_write(bool force = false);
 	void work() override{}
 public:
-	SynchronousSink(Sink &);
-	virtual ~SynchronousSink();
+	SynchronousSinkImpl(Sink &);
+	virtual ~SynchronousSinkImpl();
 	void start() override{}
 	void join() override{}
 	void stop() override{}
 	std::streamsize write(const char *s, std::streamsize n);
 	virtual const char *class_name() const override{
 		return "SynchronousSink";
+	}
+};
+
+class SynchronousSink : public boost::iostreams::sink{
+	std::shared_ptr<SynchronousSinkImpl> impl;
+public:
+	SynchronousSink(Sink &sink): impl(new SynchronousSinkImpl(sink)){}
+	std::streamsize write(const char *s, std::streamsize n){
+		return this->impl->write(s, n);
 	}
 };
 
@@ -351,6 +369,7 @@ public:
 	template <typename T2>
 	const Stream &operator=(Stream<T2> &&old){
 		this->stream = std::move(old.stream);
+		return *this;
 	}
 	~Stream(){
 		this->flush_stream<T>();

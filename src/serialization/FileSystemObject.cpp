@@ -13,6 +13,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../HashFilter.h"
 #include "../Utility.h"
 
+using zstreams::Stream;
+
 //------------------------------------------------------------------------------
 // default_values()
 //------------------------------------------------------------------------------
@@ -556,15 +558,19 @@ bool FilishFso::compute_hash(sha256_digest &dst){
 bool FilishFso::compute_hash(){
 	if (this->hash.valid)
 		return true;
-	boost::filesystem::ifstream file(this->get_mapped_path(), std::ios::binary);
-	if (!file)
+	std::unique_ptr<std::istream> file(new boost::filesystem::ifstream(this->get_mapped_path(), std::ios::binary));
+	if (!*file)
 		return false;
-	boost::iostreams::stream<NullOutputStream> null_stream(0);
+	zstreams::StreamPipeline pipeline;
+	Stream<zstreams::NullSink> null(pipeline);
+	Stream<zstreams::StdStreamSource> stdstream(file, pipeline);
+	std::shared_ptr<zstreams::HashSink<CryptoPP::SHA256>::digest_t> digest;
 	{
-		boost::iostreams::stream<HashOutputFilter> hash_filter(null_stream, new CryptoPP::SHA256);
-		hash_filter << file.rdbuf();
-		hash_filter->get_result(this->hash.digest.data(), this->hash.digest.size());
+		Stream<zstreams::HashSink<CryptoPP::SHA256>> hash(*null);
+		stdstream->copy_to(*hash);
+		digest = hash->get_digest();
 	}
+	this->hash.digest = *digest;
 	this->hash.valid = true;
 	return true;
 }

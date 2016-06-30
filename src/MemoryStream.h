@@ -35,14 +35,20 @@ public:
 		Source(parent),
 		buffer(static_cast<const std::uint8_t *>(buffer)),
 		size(size){}
+	const char *class_name() const override{
+		return "MemorySource";
+	}
 };
 
 class MemorySink : public Sink{
-	std::vector<std::uint8_t> buffer;
+	buffer_t &buffer;
 	void work() override;
 	IGNORE_FLUSH_COMMAND
 public:
-	MemorySink(StreamPipeline &parent): Sink(parent){}
+	MemorySink(buffer_t &buffer, StreamPipeline &parent): Sink(parent), buffer(buffer){}
+	const char *class_name() const override{
+		return "MemorySink";
+	}
 };
 
 

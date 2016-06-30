@@ -72,7 +72,7 @@ class HashSink : public HashFilter<HashT>, public Sink{
 		HashFilter<HashT>::HashFilter_work();
 	}
 	Segment read() override{
-		Sink::read();
+		return Sink::read();
 	}
 	void write(Segment &s) override{
 		Sink::write(s);
