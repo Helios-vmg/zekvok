@@ -411,4 +411,79 @@ void StdStreamSource::set_stream(std::unique_ptr<std::istream> &stream){
 	this->stream = std::move(stream);
 }
 
+SynchronousSource::SynchronousSource(Source &source): Source(source){
+}
+
+SynchronousSource::~SynchronousSource(){
+}
+
+std::streamsize SynchronousSource::read(char *s, std::streamsize n){
+	if (this->at_eof)
+		return -1;
+	std::streamsize ret = 0;
+	while (n){
+		if (!this->current_segment){
+			this->current_segment = Source::read();
+			if (this->current_segment.get_type() == SegmentType::Eof){
+				if (!ret)
+					return -1;
+				this->at_eof = true;
+				break;
+			}
+		}
+		auto data = this->current_segment.get_data();
+		auto read_size = std::min<size_t>(n, data.size);
+		memcpy(s, data.data, read_size);
+		n -= read_size;
+		s += read_size;
+		ret += read_size;
+		this->current_segment.skip_bytes(read_size);
+		data = this->current_segment.get_data();
+		if (!data.size)
+			this->current_segment = Segment();
+	}
+	return ret;
+}
+
+SynchronousSink::SynchronousSink(Sink &sink): Sink(sink){	
+}
+
+SynchronousSink::~SynchronousSink(){
+	this->try_write(true);
+}
+
+std::streamsize SynchronousSink::write(const char *s, std::streamsize n){
+	std::streamsize ret = 0;
+	while (n){
+		this->ensure_valid_segment();
+		auto data = this->current_segment.get_data();
+		auto write_size = std::min<size_t>(n, data.size - this->offset);
+		memcpy(data.data + this->offset, s, write_size);
+		this->offset += write_size;
+		n -= write_size;
+		s += write_size;
+		ret += write_size;
+		this->try_write();
+	}
+	return ret;
+}
+
+void SynchronousSink::ensure_valid_segment(){
+	if (!!this->current_segment)
+		return;
+
+	this->current_segment = this->parent->allocate_segment();
+	this->offset = 0;
+}
+
+void SynchronousSink::try_write(bool force){
+	if (!this->current_segment)
+		return;
+	auto data = this->current_segment.get_data();
+	if (!(force || this->offset == data.size))
+		return;
+	this->current_segment.trim_to_size(this->offset);
+	Sink::write(this->current_segment);
+}
+
 }

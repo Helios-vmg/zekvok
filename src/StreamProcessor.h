@@ -166,9 +166,9 @@ protected:
 public:
 	StreamProcessor(StreamPipeline &parent);
 	virtual ~StreamProcessor();
-	void start();
-	void join();
-	void stop();
+	virtual void start();
+	virtual void join();
+	virtual void stop();
 	State get_state() const{
 		return this->state;
 	}
@@ -291,6 +291,41 @@ public:
 	FileSink(const path_t &path, StreamPipeline &parent);
 	const char *class_name() const override{
 		return "FileSink";
+	}
+};
+
+class SynchronousSource : public Source, public boost::iostreams::source{
+	Segment current_segment;
+	bool at_eof = false;
+	void work() override{}
+public:
+	SynchronousSource(Source &);
+	virtual ~SynchronousSource();
+	void start() override{}
+	void join() override{}
+	void stop() override{}
+	std::streamsize read(char *s, std::streamsize n);
+	virtual const char *class_name() const override{
+		return "SynchronousSource";
+	}
+};
+
+class SynchronousSink : public Sink, public boost::iostreams::sink{
+	Segment current_segment;
+	size_t offset;
+	IGNORE_FLUSH_COMMAND
+	void ensure_valid_segment();
+	void try_write(bool force = false);
+	void work() override{}
+public:
+	SynchronousSink(Sink &);
+	virtual ~SynchronousSink();
+	void start() override{}
+	void join() override{}
+	void stop() override{}
+	std::streamsize write(const char *s, std::streamsize n);
+	virtual const char *class_name() const override{
+		return "SynchronousSink";
 	}
 };
 
