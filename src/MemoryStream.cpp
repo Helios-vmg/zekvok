@@ -44,6 +44,8 @@ void MemorySource::work(){
 void MemorySink::work(){
 	while (true){
 		auto segment = this->read();
+		if (segment.get_type() == SegmentType::Eof)
+			break;
 		auto data = segment.get_data();
 		auto n = this->buffer.size();
 		this->buffer.resize(n + data.size);

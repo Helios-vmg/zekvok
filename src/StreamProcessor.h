@@ -134,6 +134,7 @@ public:
 		Yielding,
 		Stopping,
 		Completed,
+		Ignore,
 	};
 private:
 	std::uint64_t bytes_read = 0,

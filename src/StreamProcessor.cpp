@@ -215,6 +215,8 @@ void StreamProcessor::stop(){
 			case State::Completed:
 				this->join();
 				return;
+			case State::Ignore:
+				return;
 			default:
 				zekvok_assert(false);
 		}
@@ -415,11 +417,13 @@ SynchronousSourceImpl::SynchronousSourceImpl(Source &source): Source(source){
 }
 
 SynchronousSourceImpl::~SynchronousSourceImpl(){
+	this->state = State::Ignore;
 }
 
 std::streamsize SynchronousSourceImpl::read(char *s, std::streamsize n){
 	if (this->at_eof)
 		return -1;
+	this->parent->start();
 	std::streamsize ret = 0;
 	while (n){
 		if (!this->current_segment){
@@ -450,9 +454,11 @@ SynchronousSinkImpl::SynchronousSinkImpl(Sink &sink): Sink(sink){
 
 SynchronousSinkImpl::~SynchronousSinkImpl(){
 	this->try_write(true);
+	this->state = State::Ignore;
 }
 
 std::streamsize SynchronousSinkImpl::write(const char *s, std::streamsize n){
+	this->parent->start();
 	std::streamsize ret = 0;
 	while (n){
 		this->ensure_valid_segment();
