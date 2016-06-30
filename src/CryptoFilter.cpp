@@ -11,7 +11,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 namespace zstreams{
 
 template <typename T>
-class GenericCryptoOutputStream : public CryptoOutputStream{
+class GenericCryptoOutputStream : public CryptoSink{
 	typename CryptoPP::CBC_Mode<T>::Encryption e;
 	std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
 
@@ -21,15 +21,15 @@ protected:
 	}
 public:
 	GenericCryptoOutputStream(
-			OutputStream &stream,
+			Sink &stream,
 			const CryptoPP::SecByteBlock &key,
-			const CryptoPP::SecByteBlock &iv): CryptoOutputStream(stream){
+			const CryptoPP::SecByteBlock &iv): CryptoSink(stream){
 		this->e.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
 		this->filter.reset(new CryptoPP::StreamTransformationFilter(this->e));
 	}
 };
 
-Stream<CryptoOutputStream> CryptoOutputStream::create(Algorithm algo, OutputStream &stream, const CryptoPP::SecByteBlock *key, const CryptoPP::SecByteBlock *iv){
+Stream<CryptoSink> CryptoSink::create(Algorithm algo, Sink &stream, const CryptoPP::SecByteBlock *key, const CryptoPP::SecByteBlock *iv){
 	switch (algo){
 		case Algorithm::Rijndael:
 			return Stream<GenericCryptoOutputStream<CryptoPP::Rijndael>>(stream, *key, *iv);
@@ -41,7 +41,7 @@ Stream<CryptoOutputStream> CryptoOutputStream::create(Algorithm algo, OutputStre
 	zekvok_assert(false);
 }
 
-void CryptoOutputStream::work(){
+void CryptoSink::work(){
 	auto filter = this->get_filter();
 	while (true){
 		{
@@ -57,7 +57,7 @@ void CryptoOutputStream::work(){
 	this->flush_impl();
 }
 
-static void flush_filter(Processor *p, CryptoPP::StreamTransformationFilter *filter){
+static void flush_filter(StreamProcessor *p, CryptoPP::StreamTransformationFilter *filter){
 	while (true){
 		auto segment = p->allocate_segment();
 		auto data = segment.get_data();
@@ -69,11 +69,11 @@ static void flush_filter(Processor *p, CryptoPP::StreamTransformationFilter *fil
 	}
 }
 
-void CryptoOutputStream::flush_filter(CryptoPP::StreamTransformationFilter *filter){
+void CryptoSink::flush_filter(CryptoPP::StreamTransformationFilter *filter){
 	zstreams::flush_filter(this, filter);
 }
 
-void CryptoOutputStream::flush_impl(){
+void CryptoSink::flush_impl(){
 	auto filter = this->get_filter();
 	if (!this->flushed){
 		filter->MessageEnd();
@@ -83,7 +83,7 @@ void CryptoOutputStream::flush_impl(){
 }
 
 template <typename T>
-class GenericCryptoInputStream : public CryptoInputStream{
+class GenericCryptoInputStream : public CryptoSource{
 	typename CryptoPP::CBC_Mode<T>::Decryption d;
 	std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
 
@@ -92,15 +92,15 @@ protected:
 		return this->filter.get();
 	}
 public:
-	GenericCryptoInputStream(InputStream &stream, const CryptoPP::SecByteBlock &key, const CryptoPP::SecByteBlock &iv): CryptoInputStream(stream){
+	GenericCryptoInputStream(Source &stream, const CryptoPP::SecByteBlock &key, const CryptoPP::SecByteBlock &iv): CryptoSource(stream){
 		this->d.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
 		this->filter.reset(new CryptoPP::StreamTransformationFilter(this->d));
 	}
 };
 
-Stream<CryptoInputStream> CryptoInputStream::create(
+Stream<CryptoSource> CryptoSource::create(
 		Algorithm algo,
-		InputStream &stream,
+		Source &stream,
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv){
 	switch (algo){
@@ -114,7 +114,7 @@ Stream<CryptoInputStream> CryptoInputStream::create(
 	zekvok_assert(false);
 }
 
-void CryptoInputStream::work(){
+void CryptoSource::work(){
 	auto filter = this->get_filter();
 	bool done = false;
 

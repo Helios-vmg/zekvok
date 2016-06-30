@@ -9,7 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "BoundedStreamFilter.h"
 
 namespace zstreams{
-void ByteCounterOutputFilter::work(){
+void ByteCounterSink::work(){
 	while (true){
 		auto segment = this->read();
 		if (segment.get_type() == SegmentType::Eof){
@@ -21,7 +21,7 @@ void ByteCounterOutputFilter::work(){
 	}
 }
 
-void BoundedInputFilter::work(){
+void BoundedSource::work(){
 	while (true){
 		auto segment = this->read();
 		if (segment.get_type() == SegmentType::Eof){

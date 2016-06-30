@@ -10,30 +10,30 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 namespace zstreams{
 
-LzmaOutputStream::LzmaOutputStream(OutputStream &stream, bool *multithreaded, int compression_level, bool extreme_mode):
-	OutputStream(stream){
+LzmaSink::LzmaSink(Sink &stream, bool *multithreaded, int compression_level, bool extreme_mode):
+	Sink(stream){
 	zero_struct(this->lstream);
 	this->lstream = LZMA_STREAM_INIT;
 
-	auto f = !*multithreaded ? &LzmaOutputStream::initialize_single_threaded : &LzmaOutputStream::initialize_multithreaded;
+	auto f = !*multithreaded ? &LzmaSink::initialize_single_threaded : &LzmaSink::initialize_multithreaded;
 	*multithreaded = (this->*f)(compression_level, extreme_mode);
 
 	this->action = LZMA_RUN;
 	this->reset_segment();
 }
 
-LzmaOutputStream::~LzmaOutputStream(){
+LzmaSink::~LzmaSink(){
 	lzma_end(&this->lstream);
 }
 
-void LzmaOutputStream::reset_segment(){
+void LzmaSink::reset_segment(){
 	this->output_segment = this->parent->allocate_segment();
 	auto data = this->output_segment.get_data();
 	this->lstream.next_out = data.data;
 	this->lstream.avail_out = data.size;
 }
 
-bool LzmaOutputStream::initialize_single_threaded(int compression_level, bool extreme_mode){
+bool LzmaSink::initialize_single_threaded(int compression_level, bool extreme_mode){
 	uint32_t preset = compression_level;
 	if (extreme_mode)
 		preset |= LZMA_PRESET_EXTREME;
@@ -59,7 +59,7 @@ bool LzmaOutputStream::initialize_single_threaded(int compression_level, bool ex
 	return false;
 }
 
-bool LzmaOutputStream::initialize_multithreaded(int compression_level, bool extreme_mode){
+bool LzmaSink::initialize_multithreaded(int compression_level, bool extreme_mode){
 	lzma_mt mt;
 	zero_struct(mt);
 	mt.flags = 0;
@@ -101,7 +101,7 @@ bool LzmaOutputStream::initialize_multithreaded(int compression_level, bool extr
 	return true;
 }
 
-bool LzmaOutputStream::pass_data_to_stream(lzma_ret ret){
+bool LzmaSink::pass_data_to_stream(lzma_ret ret){
 	if (!this->lstream.avail_out || ret == LZMA_STREAM_END) {
 		size_t write_size = this->output_segment.get_data().size - this->lstream.avail_out;
 		this->output_segment.trim_to_size(write_size);
@@ -130,7 +130,7 @@ bool LzmaOutputStream::pass_data_to_stream(lzma_ret ret){
 	return true;
 }
 
-void LzmaOutputStream::flush_impl(){
+void LzmaSink::flush_impl(){
 	if (this->action != LZMA_RUN)
 		return;
 	this->action = LZMA_FINISH;
@@ -139,7 +139,7 @@ void LzmaOutputStream::flush_impl(){
 	this->write(eof);
 }
 
-void LzmaOutputStream::work(){
+void LzmaSink::work(){
 	lzma_ret lret = LZMA_OK;
 	Segment segment;
 	do{
@@ -159,8 +159,8 @@ void LzmaOutputStream::work(){
 	this->flush_impl();
 }
 
-LzmaInputStream::LzmaInputStream(InputStream &stream):
-		InputStream(stream){
+LzmaSource::LzmaSource(Source &stream):
+		Source(stream){
 	zero_struct(this->lstream);
 
 	this->lstream = LZMA_STREAM_INIT;
@@ -183,11 +183,11 @@ LzmaInputStream::LzmaInputStream(InputStream &stream):
 	this->action = LZMA_RUN;
 }
 
-LzmaInputStream::~LzmaInputStream(){
+LzmaSource::~LzmaSource(){
 	lzma_end(&this->lstream);
 }
 
-void LzmaInputStream::work(){
+void LzmaSource::work(){
 	Segment in_segment;
 	Segment out_segment;
 	while (true){

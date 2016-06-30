@@ -38,20 +38,20 @@ public:
 
 namespace zstreams{
 
-class NullSource : public InputStream{
+class NullSource : public Source{
 	void work() override;
 public:
-	NullSource(Pipeline &parent): InputStream(parent){}
+	NullSource(StreamPipeline &parent): Source(parent){}
 	const char *class_name() const override{
 		return "NullSource";
 	}
 };
 
-class NullSink : public OutputStream{
+class NullSink : public Sink{
 	void work() override;
 	IGNORE_FLUSH_COMMAND
 public:
-	NullSink(Pipeline &parent): OutputStream(parent){}
+	NullSink(StreamPipeline &parent): Sink(parent){}
 	const char *class_name() const override{
 		return "NullSink";
 	}

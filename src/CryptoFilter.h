@@ -18,21 +18,21 @@ enum class Algorithm{
 
 namespace zstreams{
 
-class CryptoOutputStream : public OutputStream{
+class CryptoSink : public Sink{
 protected:
 	bool flushed;
 	virtual CryptoPP::StreamTransformationFilter *get_filter() = 0;
-	CryptoOutputStream(OutputStream &stream):
-		OutputStream(stream),
+	CryptoSink(Sink &stream):
+		Sink(stream),
 		flushed(false){}
 	void work() override;
 	void flush_impl() override;
 	void flush_filter(CryptoPP::StreamTransformationFilter *);
 public:
-	virtual ~CryptoOutputStream(){}
-	static Stream<CryptoOutputStream> create(
+	virtual ~CryptoSink(){}
+	static Stream<CryptoSink> create(
 		Algorithm algo,
-		OutputStream &stream,
+		Sink &stream,
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv
 	);
@@ -41,17 +41,17 @@ public:
 	}
 };
 
-class CryptoInputStream : public InputStream{
+class CryptoSource : public Source{
 protected:
 	virtual CryptoPP::StreamTransformationFilter *get_filter() = 0;
-	CryptoInputStream(InputStream &stream): InputStream(stream){}
+	CryptoSource(Source &stream): Source(stream){}
 	void work() override;
 	IGNORE_FLUSH_COMMAND
 public:
-	virtual ~CryptoInputStream(){}
-	static Stream<CryptoInputStream> create(
+	virtual ~CryptoSource(){}
+	static Stream<CryptoSource> create(
 		Algorithm algo,
-		InputStream &stream,
+		Source &stream,
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv
 	);

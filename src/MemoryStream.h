@@ -26,23 +26,23 @@ public:
 
 namespace zstreams{
 
-class MemorySource : public InputStream{
+class MemorySource : public Source{
 	const std::uint8_t *buffer;
 	size_t size;
 	void work() override;
 public:
-	MemorySource(const void *buffer, size_t size, Pipeline &parent):
-		InputStream(parent),
+	MemorySource(const void *buffer, size_t size, StreamPipeline &parent):
+		Source(parent),
 		buffer(static_cast<const std::uint8_t *>(buffer)),
 		size(size){}
 };
 
-class MemorySink : public OutputStream{
+class MemorySink : public Sink{
 	std::vector<std::uint8_t> buffer;
 	void work() override;
 	IGNORE_FLUSH_COMMAND
 public:
-	MemorySink(Pipeline &parent): OutputStream(parent){}
+	MemorySink(StreamPipeline &parent): Sink(parent){}
 };
 
 

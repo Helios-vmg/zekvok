@@ -11,23 +11,23 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 namespace zstreams{
 
-class ByteCounterOutputFilter : public OutputStream{
+class ByteCounterSink : public Sink{
 	streamsize_t &bytes_processed;
 	void work() override;
 	IGNORE_FLUSH_COMMAND
 public:
-	ByteCounterOutputFilter(OutputStream &wrapped, streamsize_t &dst): OutputStream(wrapped), bytes_processed(dst){
+	ByteCounterSink(Sink &wrapped, streamsize_t &dst): Sink(wrapped), bytes_processed(dst){
 		this->bytes_processed = 0;
 	}
 };
 
-class BoundedInputFilter : public InputStream{
+class BoundedSource : public Source{
 	streamsize_t bytes_read,
 		simulated_length;
 	void work() override;
 public:
-	BoundedInputFilter(InputStream &stream, streamsize_t length):
-		InputStream(stream),
+	BoundedSource(Source &stream, streamsize_t length):
+		Source(stream),
 		bytes_read(0),
 		simulated_length(length){}
 };

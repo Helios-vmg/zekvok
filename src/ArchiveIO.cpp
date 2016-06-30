@@ -172,10 +172,10 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	}else
 		stream->seekg(this->manifest_offset);
 	{
-		zstreams::Pipeline pipeline;
+		zstreams::StreamPipeline pipeline;
 		Stream<zstreams::StdStreamSource> source(stream, pipeline);
-		Stream<zstreams::BoundedInputFilter> bounded(source, this->manifest_size);
-		Stream<zstreams::LzmaInputStream> lzma(bounded);
+		Stream<zstreams::BoundedSource> bounded(source, this->manifest_size);
+		Stream<zstreams::LzmaSource> lzma(bounded);
 
 		ImplementedDeserializerStream ds(lzma);
 		this->version_manifest.reset(ds.deserialize<VersionManifest>(config::include_typehashes));

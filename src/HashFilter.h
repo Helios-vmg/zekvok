@@ -44,38 +44,38 @@ public:
 };
 
 template <typename HashT>
-class HashInputFilter : public HashFilter<HashT>, public InputStream{
+class HashInputFilter : public HashFilter<HashT>, public Source{
 	void work() override{
 		HashFilter<HashT>::HashFilter_work();
 	}
 	Segment read() override{
-		return InputStream::read();
+		return Source::read();
 	}
 	void write(Segment &s) override{
-		InputStream::write(s);
+		Source::write(s);
 	}
 public:
-	HashInputFilter(Pipeline &parent): InputStream(parent){}
-	HashInputFilter(InputStream &source): InputStream(source){}
+	HashInputFilter(StreamPipeline &parent): Source(parent){}
+	HashInputFilter(Source &source): Source(source){}
 	const char *class_name() const override{
 		return "HashInputFilter";
 	}
 };
 
 template <typename HashT>
-class HashOutputFilter : public HashFilter<HashT>, public OutputStream{
+class HashOutputFilter : public HashFilter<HashT>, public Sink{
 	void work() override{
 		HashFilter<HashT>::HashFilter_work();
 	}
 	Segment read() override{
-		OutputStream::read();
+		Sink::read();
 	}
 	void write(Segment &s) override{
-		OutputStream::write(s);
+		Sink::write(s);
 	}
 public:
-	HashOutputFilter(Pipeline &parent): OutputStream(parent){}
-	HashOutputFilter(OutputStream &sink): OutputStream(sink){}
+	HashOutputFilter(StreamPipeline &parent): Sink(parent){}
+	HashOutputFilter(Sink &sink): Sink(sink){}
 	const char *class_name() const override{
 		return "HashOutputFilter";
 	}

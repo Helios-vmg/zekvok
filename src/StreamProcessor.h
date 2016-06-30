@@ -14,8 +14,8 @@ namespace zstreams{
 
 typedef std::uint64_t streamsize_t;
 
-class Pipeline;
-class Processor;
+class StreamPipeline;
+class StreamProcessor;
 
 enum class SegmentType{
 	Undefined,
@@ -34,7 +34,7 @@ typedef std::function<void()> flush_callback_t;
 typedef std::unique_ptr<flush_callback_t> flush_callback_ptr_t;
 
 class Segment{
-	Pipeline *allocator = nullptr;
+	StreamPipeline *allocator = nullptr;
 	SegmentType type = SegmentType::Undefined;
 	std::unique_ptr<buffer_t> data;
 	SubSegment default_subsegment = { nullptr, 0 };
@@ -49,7 +49,7 @@ class Segment{
 	}
 	void release();
 public:
-	Segment(Pipeline &pipeline);
+	Segment(StreamPipeline &pipeline);
 	Segment(SegmentType type = SegmentType::Undefined): type(type){}
 	static Segment construct_flush(flush_callback_ptr_t &callback);
 	Segment(Segment &&old){
@@ -78,16 +78,16 @@ public:
 };
 
 class Queue{
-	Processor *source = nullptr,
+	StreamProcessor *source = nullptr,
 		*sink = nullptr;
 	CircularQueue<Segment> queue;
 	std::vector<Segment> putback;
 public:
 	Queue(): queue(16){}
-	Processor *get_source() const{
+	StreamProcessor *get_source() const{
 		return this->source;
 	}
-	Processor *get_sink() const{
+	StreamProcessor *get_sink() const{
 		return this->sink;
 	}
 	void push(Segment &src){
@@ -107,14 +107,14 @@ public:
 	void put_back(Segment &s){
 		this->putback.emplace_back(std::move(s));
 	}
-	void connect(Processor &source, Processor &sink){
+	void connect(StreamProcessor &source, StreamProcessor &sink){
 		this->source = &source;
 		this->sink = &sink;
 	}
-	void attach_source(Processor &source){
+	void attach_source(StreamProcessor &source){
 		this->source = &source;
 	}
-	void attach_sink(Processor &sink){
+	void attach_sink(StreamProcessor &sink){
 		this->sink = &sink;
 	}
 	void detach_source(){
@@ -125,7 +125,7 @@ public:
 	}
 };
 
-class Processor{
+class StreamProcessor{
 public:
 	enum class State{
 		Uninitialized,
@@ -139,7 +139,7 @@ private:
 	std::uint64_t bytes_read = 0,
 		bytes_written = 0;
 protected:
-	Pipeline *parent;
+	StreamPipeline *parent;
 	std::atomic<State> state;
 	std::unique_ptr<std::thread> thread;
 	std::shared_ptr<Queue> sink_queue,
@@ -164,17 +164,17 @@ protected:
 	}
 	void put_back(Segment &segment);
 public:
-	Processor(Pipeline &parent);
-	virtual ~Processor();
+	StreamProcessor(StreamPipeline &parent);
+	virtual ~StreamProcessor();
 	void start();
 	void join();
 	void stop();
 	State get_state() const{
 		return this->state;
 	}
-	void connect_to_source(Processor &);
-	void connect_to_sink(Processor &p);
-	Pipeline &get_pipeline() const{
+	void connect_to_source(StreamProcessor &);
+	void connect_to_sink(StreamProcessor &p);
+	StreamPipeline &get_pipeline() const{
 		return *this->parent;
 	}
 	virtual const char *class_name() const = 0;
@@ -188,22 +188,22 @@ public:
 	void write(Segment &);
 };
 
-class Pipeline{
-	friend class Processor;
+class StreamPipeline{
+	friend class StreamProcessor;
 	std::atomic<int> busy_threads;
 	std::unordered_set<uintptr_t> processors;
 	std::mutex processors_mutex;
 	std::vector<std::unique_ptr<buffer_t>> allocated_buffers;
 	std::mutex allocated_buffers_mutex;
 
-	void notify_thread_creation(Processor *);
-	void notify_thread_end(Processor *);
+	void notify_thread_creation(StreamProcessor *);
+	void notify_thread_end(StreamProcessor *);
 	boost::optional<std::string> exception_message;
 	std::mutex exception_message_mutex;
 	void set_exception_message(const std::string &);
 public:
-	Pipeline();
-	~Pipeline();
+	StreamPipeline();
+	~StreamPipeline();
 	void start();
 	//void sync();
 	std::unique_ptr<buffer_t> allocate_buffer();
@@ -222,26 +222,26 @@ public:
 	}
 };
 
-class OutputStream : public Processor{
+class Sink : public StreamProcessor{
 public:
-	OutputStream(Pipeline &parent): Processor(parent){}
-	OutputStream(OutputStream &sink);
-	virtual ~OutputStream() = 0;
+	Sink(StreamPipeline &parent): StreamProcessor(parent){}
+	Sink(Sink &sink);
+	virtual ~Sink() = 0;
 	void flush();
 };
 
 // Warning: only use for input streams and FINAL output streams, NOT for output filters!
 #define IGNORE_FLUSH_COMMAND bool pass_flush() override{ return false; }
 
-class InputStream : public Processor{
+class Source : public StreamProcessor{
 	IGNORE_FLUSH_COMMAND
 public:
-	InputStream(Pipeline &parent): Processor(parent){}
-	InputStream(InputStream &source);
-	void copy_to(OutputStream &);
+	Source(StreamPipeline &parent): StreamProcessor(parent){}
+	Source(Source &source);
+	void copy_to(Sink &);
 };
 
-class StdStreamSource : public InputStream{
+class StdStreamSource : public Source{
 	std::unique_ptr<std::istream> stream;
 
 	void work() override;
@@ -249,10 +249,10 @@ class StdStreamSource : public InputStream{
 protected:
 	void set_stream(std::unique_ptr<std::istream> &);
 public:
-	StdStreamSource(std::unique_ptr<std::istream> &stream, Pipeline &parent): InputStream(parent){
+	StdStreamSource(std::unique_ptr<std::istream> &stream, StreamPipeline &parent): Source(parent){
 		this->set_stream(stream);
 	}
-	StdStreamSource(Pipeline &parent): InputStream(parent){}
+	StdStreamSource(StreamPipeline &parent): Source(parent){}
 	virtual ~StdStreamSource(){}
 	virtual const char *class_name() const override{
 		return "StdStreamSource";
@@ -261,13 +261,13 @@ public:
 
 class FileSource : public StdStreamSource, public SizedSource{
 public:
-	FileSource(const path_t &path, Pipeline &parent);
+	FileSource(const path_t &path, StreamPipeline &parent);
 	const char *class_name() const override{
 		return "FileSource";
 	}
 };
 
-class StdStreamSink : public OutputStream{
+class StdStreamSink : public Sink{
 	std::unique_ptr<std::ostream> stream;
 
 	void work() override;
@@ -276,10 +276,10 @@ class StdStreamSink : public OutputStream{
 protected:
 	void set_stream(std::unique_ptr<std::ostream> &);
 public:
-	StdStreamSink(std::unique_ptr<std::ostream> &stream, Pipeline &parent): OutputStream(parent){
+	StdStreamSink(std::unique_ptr<std::ostream> &stream, StreamPipeline &parent): Sink(parent){
 		this->set_stream(stream);
 	}
-	StdStreamSink(Pipeline &parent): OutputStream(parent){}
+	StdStreamSink(StreamPipeline &parent): Sink(parent){}
 	virtual ~StdStreamSink(){}
 	virtual const char *class_name() const override{
 		return "StdStreamSink";
@@ -288,7 +288,7 @@ public:
 
 class FileSink : public StdStreamSink{
 public:
-	FileSink(const path_t &path, Pipeline &parent);
+	FileSink(const path_t &path, StreamPipeline &parent);
 	const char *class_name() const override{
 		return "FileSink";
 	}
@@ -299,12 +299,12 @@ class Stream{
 public:
 	std::unique_ptr<T> stream;
 	template <typename T1>
-	typename std::enable_if<std::is_base_of<OutputStream, T1>::value, void>::type flush_stream(){
+	typename std::enable_if<std::is_base_of<Sink, T1>::value, void>::type flush_stream(){
 		if (this->stream)
 			this->stream->flush();
 	}
 	template <typename T1>
-	typename std::enable_if<!std::is_base_of<OutputStream, T1>::value, void>::type flush_stream(){
+	typename std::enable_if<!std::is_base_of<Sink, T1>::value, void>::type flush_stream(){
 	}
 	Stream(){}
 	template <typename ... Args>

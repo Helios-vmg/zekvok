@@ -79,7 +79,7 @@ void Segment::release(){
 		this->allocator->release_buffer(this->data);
 }
 
-Segment::Segment(Pipeline &pipeline){
+Segment::Segment(StreamPipeline &pipeline){
 	this->allocator = &pipeline;
 	this->data = pipeline.allocate_buffer();
 	this->type = SegmentType::Data;
@@ -98,11 +98,11 @@ Segment::~Segment(){
 
 struct StreamProcessorStoppingException{};
 
-Processor::Processor(Pipeline &parent): parent(&parent), state(State::Uninitialized){
+StreamProcessor::StreamProcessor(StreamPipeline &parent): parent(&parent), state(State::Uninitialized){
 	this->parent->notify_thread_creation(this);
 }
 
-Processor::~Processor(){
+StreamProcessor::~StreamProcessor(){
 	this->stop();
 	this->join();
 	if (this->sink_queue)
@@ -115,7 +115,7 @@ Processor::~Processor(){
 		*this->bytes_read_dst = this->bytes_read;
 }
 
-Segment Processor::read(){
+Segment StreamProcessor::read(){
 	while (true){
 		Segment ret;
 		{
@@ -144,12 +144,12 @@ Segment Processor::read(){
 	}
 }
 
-void Processor::check_termination(){
+void StreamProcessor::check_termination(){
 	if (this->state == State::Stopping)
 		throw StreamProcessorStoppingException();
 }
 
-void Processor::put_back(Segment &segment){
+void StreamProcessor::put_back(Segment &segment){
 	size_t size = 0;
 	if (segment.get_type() == SegmentType::Data)
 		size = segment.get_data().size;
@@ -157,7 +157,7 @@ void Processor::put_back(Segment &segment){
 	this->bytes_read -= size;
 }
 
-void Processor::write(Segment &segment){
+void StreamProcessor::write(Segment &segment){
 	if (!this->pass_eof && segment.get_type() == SegmentType::Eof)
 		return;
 	auto &running = this->parent->busy_threads;
@@ -172,7 +172,7 @@ void Processor::write(Segment &segment){
 	this->bytes_written += size;
 }
 
-void Processor::start(){
+void StreamProcessor::start(){
 	auto expected = State::Uninitialized;
 	if (!this->state.compare_exchange_strong(expected, State::Starting))
 		return;
@@ -180,7 +180,7 @@ void Processor::start(){
 	this->thread.reset(new std::thread([this](){ this->thread_func(); }));
 }
 
-void Processor::thread_func(){
+void StreamProcessor::thread_func(){
 	this->state = State::Running;
 	ScopedAtomicPostSet<State> scope(this->state, State::Completed);
 	auto &running = this->parent->busy_threads;
@@ -194,7 +194,7 @@ void Processor::thread_func(){
 	this->parent->notify_thread_end(this);
 }
 
-void Processor::join(){
+void StreamProcessor::join(){
 	if (this->thread){
 		this->thread->join();
 		this->thread.reset();
@@ -202,7 +202,7 @@ void Processor::join(){
 	this->state = State::Completed;
 }
 
-void Processor::stop(){
+void StreamProcessor::stop(){
 	while (true){
 		switch (this->state){
 			case State::Uninitialized:
@@ -235,47 +235,47 @@ void Processor::stop(){
 		x.y##_queue = y.x##_queue;		\
 	}
 
-void Processor::connect_to_source(Processor &p){
-	Processor &source = p;
-	Processor &sink = *this;
+void StreamProcessor::connect_to_source(StreamProcessor &p){
+	StreamProcessor &source = p;
+	StreamProcessor &sink = *this;
 	CONNECT_SOURCE_SINK(source, sink);
 }
 
-void Processor::connect_to_sink(Processor &p){
-	Processor &sink = p;
-	Processor &source = *this;
+void StreamProcessor::connect_to_sink(StreamProcessor &p){
+	StreamProcessor &sink = p;
+	StreamProcessor &source = *this;
 	CONNECT_SOURCE_SINK(sink, source);
 }
 
-Segment Processor::allocate_segment() const{
+Segment StreamProcessor::allocate_segment() const{
 	return this->parent->allocate_segment();
 }
 
-void Pipeline::notify_thread_creation(Processor *p){
+void StreamPipeline::notify_thread_creation(StreamProcessor *p){
 	LOCK_MUTEX(this->processors_mutex);
 	this->processors.insert((uintptr_t)p);
 }
 
-void Pipeline::notify_thread_end(Processor *p){
+void StreamPipeline::notify_thread_end(StreamProcessor *p){
 	LOCK_MUTEX(this->processors_mutex);
 	this->processors.erase((uintptr_t)p);
 }
 
-Pipeline::Pipeline(){
+StreamPipeline::StreamPipeline(){
 	this->busy_threads = 0;
 }
 
-Pipeline::~Pipeline(){
+StreamPipeline::~StreamPipeline(){
 }
 
-void Pipeline::start(){
+void StreamPipeline::start(){
 	this->check_exceptions();
 	LOCK_MUTEX(this->processors_mutex);
 	for (auto &p : this->processors)
-		((Processor *)p)->start();
+		((StreamProcessor *)p)->start();
 }
 
-void Pipeline::check_exceptions(){
+void StreamPipeline::check_exceptions(){
 	decltype(this->exception_message) ex;
 	{
 		LOCK_MUTEX(this->exception_message_mutex);
@@ -287,7 +287,7 @@ void Pipeline::check_exceptions(){
 	}
 }
 
-std::unique_ptr<buffer_t> Pipeline::allocate_buffer(){
+std::unique_ptr<buffer_t> StreamPipeline::allocate_buffer(){
 	{
 		LOCK_MUTEX(this->allocated_buffers_mutex);
 		if (this->allocated_buffers.size()){
@@ -299,21 +299,21 @@ std::unique_ptr<buffer_t> Pipeline::allocate_buffer(){
 	return std::make_unique<buffer_t>(default_buffer_size);
 }
 
-void Pipeline::release_buffer(std::unique_ptr<buffer_t> &buffer){
+void StreamPipeline::release_buffer(std::unique_ptr<buffer_t> &buffer){
 	LOCK_MUTEX(this->allocated_buffers_mutex);
 	this->allocated_buffers.emplace_back(std::move(buffer));
 }
 
-Segment Pipeline::allocate_segment(){
+Segment StreamPipeline::allocate_segment(){
 	return Segment(*this);
 }
 
-void Pipeline::set_exception_message(const std::string &s){
+void StreamPipeline::set_exception_message(const std::string &s){
 	LOCK_MUTEX(this->exception_message_mutex);
 	this->exception_message = s;
 }
 
-FileSource::FileSource(const path_t &path, Pipeline &parent): StdStreamSource(parent){
+FileSource::FileSource(const path_t &path, StreamPipeline &parent): StdStreamSource(parent){
 	std::unique_ptr<std::istream> stream(new boost::filesystem::ifstream(path, std::ios::binary));
 	if (!*stream)
 		throw std::exception("File not found!");
@@ -323,14 +323,14 @@ FileSource::FileSource(const path_t &path, Pipeline &parent): StdStreamSource(pa
 	this->set_stream(stream);
 }
 
-OutputStream::~OutputStream(){
+Sink::~Sink(){
 }
 
-OutputStream::OutputStream(OutputStream &sink): Processor(sink.get_pipeline()){
+Sink::Sink(Sink &sink): StreamProcessor(sink.get_pipeline()){
 	this->connect_to_sink(sink);
 }
 
-void OutputStream::flush(){
+void Sink::flush(){
 	if (!this->source_queue->get_source()){
 		Segment eof(SegmentType::Eof);
 		this->source_queue->push(eof);
@@ -350,11 +350,11 @@ void OutputStream::flush(){
 		this->flush_impl();
 }
 
-InputStream::InputStream(InputStream &source) : Processor(source.get_pipeline()){
+Source::Source(Source &source) : StreamProcessor(source.get_pipeline()){
 	this->connect_to_source(source);
 }
 
-void InputStream::copy_to(OutputStream &sink){
+void Source::copy_to(Sink &sink){
 	this->pass_eof = false;
 	this->connect_to_sink(sink);
 	this->parent->start();
@@ -384,7 +384,7 @@ void StdStreamSink::set_stream(std::unique_ptr<std::ostream> &stream){
 	this->stream = std::move(stream);
 }
 
-FileSink::FileSink(const path_t &path, Pipeline &parent): StdStreamSink(parent){
+FileSink::FileSink(const path_t &path, StreamPipeline &parent): StdStreamSink(parent){
 	std::unique_ptr<std::ostream> stream(new boost::filesystem::ofstream(path, std::ios::binary));
 	if (!*stream)
 		throw std::exception("Error opening file!");
