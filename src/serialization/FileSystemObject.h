@@ -109,7 +109,7 @@ public:
 	virtual const FileSystemObject *find(path_t::iterator begin, path_t::iterator end) const = 0;
 	virtual bool compute_hash(sha256_digest &dst) = 0;
 	virtual bool compute_hash() = 0;
-	std::shared_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
+	std::unique_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
 	bool report_error(const std::exception &, const std::string &context);
 	bool report_win32_error(std::uint32_t, const std::string &context);
 	virtual void restore(std::istream &, const path_t *base_path = nullptr);

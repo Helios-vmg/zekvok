@@ -394,13 +394,13 @@ FileSystemObject *FileSystemObject::create(const path_t &path, const path_t &unm
 	throw InvalidSwitchVariableException();
 }
 
-std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
+std::unique_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
 	path_t path = path_from_string(this->get_mapped_path().wstring());
 	auto result = system_ops::get_file_size(path.wstring());
 	if (!result.success)
 		throw Win32Exception(result.error);
 	size = result.result;
-	auto ret = make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
+	auto ret = std::make_unique<boost::filesystem::ifstream>(path, std::ios::binary);
 	if (!*ret)
 		throw FileNotFoundException(path);
 	return ret;
