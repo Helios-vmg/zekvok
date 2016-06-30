@@ -106,9 +106,9 @@ Processor::~Processor(){
 	this->stop();
 	this->join();
 	if (this->sink_queue)
-		this->sink_queue->detach_sink();
+		this->sink_queue->detach_source();
 	if (this->source_queue)
-		this->source_queue->detach_source();
+		this->source_queue->detach_sink();
 }
 
 Segment Processor::read(){
@@ -144,6 +144,8 @@ void Processor::check_termination(){
 }
 
 void Processor::write(Segment &segment){
+	if (!this->pass_eof && segment.get_type() == SegmentType::Eof)
+		return;
 	auto &running = this->parent->busy_threads;
 	ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, true);
 	ScopedDecrement<decltype(running)> inc(running);
@@ -152,6 +154,9 @@ void Processor::write(Segment &segment){
 }
 
 void Processor::start(){
+	auto expected = State::Uninitialized;
+	if (!this->state.compare_exchange_strong(expected, State::Starting))
+		return;
 	this->state = State::Starting;
 	this->thread.reset(new std::thread([this](){ this->thread_func(); }));
 }
@@ -250,8 +255,10 @@ void Pipeline::check_exceptions(){
 		LOCK_MUTEX(this->exception_message_mutex);
 		ex = std::move(this->exception_message);
 	}
-	if (ex.is_initialized())
-		throw StdStringException(ex.value());
+	if (ex.is_initialized()){
+		auto message = ex.value();
+		throw StdStringException(message);
+	}
 }
 
 std::unique_ptr<buffer_t> Pipeline::allocate_buffer(){
@@ -321,6 +328,12 @@ OutputStream::OutputStream(OutputStream &sink): Processor(sink.get_pipeline()){
 }
 
 void OutputStream::flush(){
+	if (!this->source_queue->get_source()){
+		Segment eof(SegmentType::Eof);
+		this->source_queue->push(eof);
+		this->join();
+		return;
+	}
 	std::mutex flush_mutex;
 	std::condition_variable cv;
 	bool ready = false;
@@ -339,6 +352,7 @@ InputStream::InputStream(InputStream &source) : Processor(source.get_pipeline())
 }
 
 void InputStream::copy_to(OutputStream &sink){
+	this->pass_eof = false;
 	this->connect_to_sink(sink);
 	this->parent->start();
 	this->join();

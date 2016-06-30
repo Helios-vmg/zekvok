@@ -395,6 +395,7 @@ void LzmaOutputStream::work(){
 		lret = lzma_code(&this->lstream, this->action);
 
 	}while (this->pass_data_to_stream(lret));
+	this->flush_impl();
 }
 
 LzmaInputStream::LzmaInputStream(InputStream &stream, size_t buffer_size):

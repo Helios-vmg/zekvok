@@ -140,6 +140,7 @@ protected:
 	std::atomic<State> state;
 	std::unique_ptr<std::thread> thread;
 	std::shared_ptr<Queue> sink_queue, source_queue;
+	bool pass_eof = true;
 
 	void thread_func();
 	virtual void work() = 0;
