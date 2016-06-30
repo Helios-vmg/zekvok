@@ -9,7 +9,6 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 class RsaKeyPair;
 class KernelTransaction;
-class HashOutputFilter;
 class VersionManifest;
 class FileSystemObject;
 class FilishFso;
@@ -37,7 +36,7 @@ public:
 	size_t get_size() const{
 		return this->size;
 	}
-	static std::unique_ptr<ArchiveKeys> create_and_save(std::ostream &, RsaKeyPair *keypair);
+	static std::unique_ptr<ArchiveKeys> create_and_save(zstreams::Sink &, RsaKeyPair *keypair);
 };
 
 class ArchiveReader{
@@ -88,7 +87,7 @@ class ArchiveWriter{
 	};
 	State state;
 	KernelTransaction &tx;
-	std::unique_ptr<std::ostream> stream;
+	zstreams::Stream<zstreams::StdStreamSink> stream;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
 	bool any_file;
@@ -96,7 +95,7 @@ class ArchiveWriter{
 	std::uint64_t entries_size_in_archive;
 	std::vector<std::uint64_t> base_object_entry_sizes;
 	RsaKeyPair *keypair;
-	std::ostream *nested_stream;
+	zstreams::Sink *nested_stream;
 	std::unique_ptr<ArchiveKeys> keys;
 	size_t archive_key_index;
 

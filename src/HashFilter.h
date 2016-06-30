@@ -14,8 +14,11 @@ namespace zstreams{
 
 template <typename HashT>
 class HashFilter{
+public:
+	typedef std::array<byte, HashT::DIGESTSIZE> digest_t;
+private:
 	HashT hash;
-	std::array<byte, HashT::DIGESTSIZE> digest;
+	std::shared_ptr<digest_t> digest;
 
 	virtual Segment read() = 0;
 	virtual void write(Segment &) = 0;
@@ -26,7 +29,7 @@ protected:
 		while (true){
 			auto segment = this->read();
 			if (segment.get_type() == SegmentType::Eof){
-				this->hash.Final(this->digest.data());
+				this->hash.Final(this->digest->data());
 				this->write(segment);
 				break;
 			}
@@ -37,14 +40,15 @@ protected:
 		}
 	}
 public:
+	HashFilter(): digest(new digest_t){}
 	virtual ~HashFilter(){}
-	const std::array<byte, HashT::DIGESTSIZE> &get_digest(){
+	std::shared_ptr<digest_t> get_digest(){
 		return this->digest;
 	}
 };
 
 template <typename HashT>
-class HashInputFilter : public HashFilter<HashT>, public Source{
+class HashSource : public HashFilter<HashT>, public Source{
 	void work() override{
 		HashFilter<HashT>::HashFilter_work();
 	}
@@ -55,15 +59,15 @@ class HashInputFilter : public HashFilter<HashT>, public Source{
 		Source::write(s);
 	}
 public:
-	HashInputFilter(StreamPipeline &parent): Source(parent){}
-	HashInputFilter(Source &source): Source(source){}
+	HashSource(StreamPipeline &parent): Source(parent){}
+	HashSource(Source &source): Source(source){}
 	const char *class_name() const override{
-		return "HashInputFilter";
+		return "HashSource";
 	}
 };
 
 template <typename HashT>
-class HashOutputFilter : public HashFilter<HashT>, public Sink{
+class HashSink : public HashFilter<HashT>, public Sink{
 	void work() override{
 		HashFilter<HashT>::HashFilter_work();
 	}
@@ -74,10 +78,10 @@ class HashOutputFilter : public HashFilter<HashT>, public Sink{
 		Sink::write(s);
 	}
 public:
-	HashOutputFilter(StreamPipeline &parent): Sink(parent){}
-	HashOutputFilter(Sink &sink): Sink(sink){}
+	HashSink(StreamPipeline &parent): Sink(parent){}
+	HashSink(Sink &sink): Sink(sink){}
 	const char *class_name() const override{
-		return "HashOutputFilter";
+		return "HashSink";
 	}
 };
 

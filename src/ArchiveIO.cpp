@@ -96,7 +96,7 @@ ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
 	}
 }
 
-std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, RsaKeyPair *keypair){
+std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(zstreams::Sink &stream, RsaKeyPair *keypair){
 	std::unique_ptr<ArchiveKeys> ret;
 	if (keypair){
 		ret = make_unique(new ArchiveKeys(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::BLOCKSIZE));
@@ -269,15 +269,16 @@ ArchiveWriter::ArchiveWriter(KernelTransaction &tx, const path_t &path, RsaKeyPa
 		tx(tx),
 		keypair(keypair),
 		any_file(false){
-	this->stream.reset(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
+	std::unique_ptr<boost::iostreams::stream<TransactedFileSink>> ptr(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
+	this->stream = decltype(this->stream)(ptr);
 }
 
 void ArchiveWriter::process(const std::function<void()> &callback){
-	sha256_digest complete_hash;
+	std::shared_ptr<zstreams::HashSink<CryptoPP::SHA256>::digest_t> complete_hash;
 	{
-		boost::iostreams::stream<HashOutputFilter> overall_hash(*this->stream, new CryptoPP::SHA256);
-		this->nested_stream = &overall_hash;
-		this->keys = ArchiveKeys::create_and_save(overall_hash, this->keypair);
+		Stream<zstreams::HashSink<CryptoPP::SHA256>> overall_hash(*this->stream);
+		this->nested_stream = &*overall_hash;
+		this->keys = ArchiveKeys::create_and_save(*overall_hash, this->keypair);
 		this->archive_key_index = 0;
 		this->initial_fso_offset = 0;
 
@@ -285,9 +286,11 @@ void ArchiveWriter::process(const std::function<void()> &callback){
 		zekvok_assert(this->state == State::ManifestWritten);
 		this->state = State::Final;
 
-		overall_hash->get_result(complete_hash.data(), complete_hash.size());
+		complete_hash = overall_hash->get_digest();
 	}
-	this->stream->write(reinterpret_cast<const char *>(complete_hash.data()), complete_hash.size());
+
+	boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*this->stream);
+	sync_sink.write(reinterpret_cast<const char *>(complete_hash->data()), complete_hash->size());
 }
 
 void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
