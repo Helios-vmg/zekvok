@@ -915,8 +915,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 				auto hardlink = static_cast<FileHardlinkFso *>(fso);
 				hardlink->set_treat_as_file(true);
 			}
-			boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*pair.second);
-			fso->restore(sync_source);
+			fso->restore(pair.second);
 			for (; begin2 != end && begin2->second->get_stream_id() == stream_id; ++begin2){
 				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << begin2->second->get_mapped_path() << "\"\n";
 				auto hardlink = static_cast<FileHardlinkFso *>(begin2->second);

@@ -575,7 +575,7 @@ bool FilishFso::compute_hash(){
 	return true;
 }
 
-void FileSystemObject::restore(std::istream &, const path_t *base_path){
+void FileSystemObject::restore(zstreams::Source *, const path_t *base_path){
 	throw IncorrectImplementationException();
 }
 
@@ -590,13 +590,14 @@ void FileSystemObject::restore_internal(const path_t *base_path){
 	throw IncorrectImplementationException();
 }
 
-void RegularFileFso::restore(std::istream &stream, const path_t *base_path){
+void RegularFileFso::restore(zstreams::Source *stream, const path_t *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
 	auto long_path = path_from_string(path.wstring());
-	boost::filesystem::ofstream file(long_path, std::ios::binary);
-	if (!file)
+	std::unique_ptr<std::ostream> file(new boost::filesystem::ofstream(long_path, std::ios::binary));
+	if (!*file)
 		throw CantOpenOutputFileException(path);
-	file << stream.rdbuf();
+	Stream<zstreams::StdStreamSink> sink(file, stream->get_pipeline());
+	stream->copy_to(*sink);
 }
 
 void DirectoryFso::restore_internal(const path_t *base_path){

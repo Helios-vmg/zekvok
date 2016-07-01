@@ -112,7 +112,7 @@ public:
 	std::unique_ptr<std::istream> open_for_exclusive_read(std::uint64_t &size) const;
 	bool report_error(const std::exception &, const std::string &context);
 	bool report_win32_error(std::uint32_t, const std::string &context);
-	virtual void restore(std::istream &, const path_t *base_path = nullptr);
+	virtual void restore(zstreams::Source *, const path_t *base_path = nullptr);
 	virtual bool restore(const path_t *base_path = nullptr);
 	void delete_existing(const std::wstring *base_path = nullptr);
 	virtual void iterate(FileSystemObject::iterate_co_t::push_type &sink) = 0;
