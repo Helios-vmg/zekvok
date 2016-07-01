@@ -22,7 +22,7 @@ void ByteCounterSink::work(){
 }
 
 void BoundedSource::work(){
-	while (true){
+	while (this->bytes_read < this->simulated_length){
 		auto segment = this->read();
 		if (segment.get_type() == SegmentType::Eof){
 			this->write(segment);
@@ -35,7 +35,6 @@ void BoundedSource::work(){
 			this->write(segment);
 			continue;
 		}
-		Segment eof(SegmentType::Eof);
 		if (data.size == bytes_read){
 			this->write(segment);
 		}else{
@@ -44,9 +43,10 @@ void BoundedSource::work(){
 			this->source_queue->put_back(segment);
 			this->write(copy);
 		}
-		this->write(eof);
 		break;
 	}
+	Segment eof(SegmentType::Eof);
+	this->write(eof);
 }
 
 }
