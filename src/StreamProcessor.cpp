@@ -116,18 +116,23 @@ StreamProcessor::~StreamProcessor(){
 }
 
 Segment StreamProcessor::read(){
+	Segment eof(SegmentType::Eof);
 	while (true){
 		Segment ret;
 		{
 			auto &running = this->pipeline->busy_threads;
 			ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
+			if (scope.get_old_value() == State::Stopping)
+				return eof;
 			ScopedDecrement<decltype(running)> inc(running);
 			while (!this->source_queue){
 				std::this_thread::sleep_for(std::chrono::milliseconds(250));
-				this->check_termination();
+				if (this->state == State::Stopping)
+					return eof;
 			}
 			while (!this->source_queue->try_pop(ret))
-				this->check_termination();
+				if (this->state == State::Stopping)
+					return eof;
 		}
 		if (ret.get_type() == SegmentType::Flush){
 			this->flush_impl();
@@ -166,15 +171,20 @@ void StreamProcessor::write(Segment &segment){
 	if (!this->pass_eof && is_eof)
 		return;
 	auto &running = this->pipeline->busy_threads;
-	ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
-	ScopedDecrement<decltype(running)> inc(running);
-	size_t size = 0;
-	if (segment.get_type() == SegmentType::Data)
-		size = segment.get_data().size;
-	while (!this->sink_queue->try_push(segment))
-		this->check_termination();
-	// Note: If we get to this point, the segment was definitely pushed. check_termination() throws.
-	this->bytes_written += size;
+	{
+		ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
+		if (scope.get_old_value() != State::Stopping){
+			ScopedDecrement<decltype(running)> inc(running);
+			size_t size = 0;
+			if (segment.get_type() == SegmentType::Data)
+				size = segment.get_data().size;
+			while (!this->sink_queue->try_push(segment))
+				this->check_termination();
+			// Note: If we get to this point, the segment was definitely pushed. check_termination() throws.
+			this->bytes_written += size;
+		}
+	}
+	this->check_termination();
 }
 
 void StreamProcessor::notify_thread_creation(){

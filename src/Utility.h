@@ -428,6 +428,9 @@ public:
 		this->cancelled = true;
 	}
 	void operator=(const ScopedAtomicReversibleSet<T> &) = delete;
+	T get_old_value() const{
+		return this->old_value;
+	}
 };
 
 template <typename T>
