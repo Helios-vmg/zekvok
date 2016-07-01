@@ -253,9 +253,7 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
 		Stream<zstreams::BoundedSource> bounded2(*lzma, this->stream_sizes[i]);
 		sink(std::make_pair(this->stream_ids[i], &*bounded2));
-		//Discard left over bytes.
-		Stream<zstreams::NullSink> null(pipeline);
-		bounded2->copy_to(*null);
+		bounded2->discard_rest();
 	}
 }
 

@@ -242,6 +242,7 @@ public:
 	Source(StreamPipeline &parent): StreamProcessor(parent){}
 	Source(Source &source);
 	void copy_to(Sink &);
+	void discard_rest();
 };
 
 class StdStreamSource : public Source{

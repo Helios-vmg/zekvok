@@ -9,6 +9,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "StreamProcessor.h"
 #include "Utility.h"
 #include "Exception.h"
+#include "NullStream.h"
 
 namespace zstreams{
 
@@ -365,6 +366,8 @@ Sink::Sink(Sink &sink): StreamProcessor(sink.get_pipeline()){
 }
 
 void Sink::flush(){
+	if (!this->source_queue)
+		return;
 	if (!this->source_queue->get_source()){
 		Segment eof(SegmentType::Eof);
 		this->source_queue->push(eof);
@@ -393,6 +396,12 @@ void Source::copy_to(Sink &sink){
 	this->connect_to_sink(sink);
 	this->pipeline->start();
 	this->join();
+}
+
+void Source::discard_rest(){
+	this->sink_queue.reset();
+	Stream<zstreams::NullSink> null(*this->pipeline);
+	this->copy_to(*null);
 }
 
 SizedSource::~SizedSource(){}
