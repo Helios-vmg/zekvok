@@ -23,3 +23,34 @@ std::streamsize MemorySink::write(const char *s, std::streamsize n){
 	memcpy(&(*this->mem)[size], s, n);
 	return n;
 }
+
+namespace zstreams{
+
+void MemorySource::work(){
+	while (this->size){
+		auto segment = this->pipeline->allocate_segment();
+		auto data = segment.get_data();
+		data.size = std::min(data.size, this->size);
+		memcpy(data.data, this->buffer, data.size);
+		segment.trim_to_size(data.size);
+		this->buffer += data.size;
+		this->size -= data.size;
+		this->write(segment);
+	}
+	Segment s(SegmentType::Eof);
+	this->write(s);
+}
+
+void MemorySink::work(){
+	while (true){
+		auto segment = this->read();
+		if (segment.get_type() == SegmentType::Eof)
+			break;
+		auto data = segment.get_data();
+		auto n = this->buffer.size();
+		this->buffer.resize(n + data.size);
+		memcpy(&this->buffer[n], data.data, data.size);
+	}
+}
+
+}

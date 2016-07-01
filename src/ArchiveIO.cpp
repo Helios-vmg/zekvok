@@ -15,8 +15,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "NullStream.h"
 #include "System/Transactions.h"
 #include "HashFilter.h"
+#include "StreamProcessor.h"
 
 const Algorithm default_crypto_algorithm = Algorithm::Twofish;
+using zstreams::Stream;
 
 ArchiveKeys::ArchiveKeys(size_t key_size, size_t iv_size){
 	this->init(key_size, iv_size);
@@ -94,7 +96,7 @@ ArchiveKeys::ArchiveKeys(std::istream &stream, RsaKeyPair &keypair){
 	}
 }
 
-std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, RsaKeyPair *keypair){
+std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(zstreams::Sink &stream, RsaKeyPair *keypair){
 	std::unique_ptr<ArchiveKeys> ret;
 	if (keypair){
 		ret = make_unique(new ArchiveKeys(CryptoPP::Twofish::MAX_KEYLENGTH, CryptoPP::Twofish::BLOCKSIZE));
@@ -120,7 +122,8 @@ std::unique_ptr<ArchiveKeys> ArchiveKeys::create_and_save(std::ostream &stream, 
 			memcpy(buffer.data() + offset, iv.data(), iv.size());
 			offset += iv.size();
 		}
-		CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(*random_number_generator, enc, new CryptoPP::FileSink(stream)));
+		boost::iostreams::stream<zstreams::SynchronousSink> sink(stream);
+		CryptoPP::ArraySource(buffer.data(), buffer.size(), true, new filter_t(*random_number_generator, enc, new CryptoPP::FileSink(sink)));
 	}
 	return ret;
 }
@@ -170,11 +173,14 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 	}else
 		stream->seekg(this->manifest_offset);
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_size);
-		boost::iostreams::stream<LzmaInputFilter> lzma(bounded);
+		zstreams::StreamPipeline pipeline;
+		Stream<zstreams::StdStreamSource> source(stream, pipeline);
+		Stream<zstreams::BoundedSource> bounded(*source, this->manifest_size);
+		Stream<zstreams::LzmaSource> lzma(*bounded);
+		boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*lzma);
 
-		ImplementedDeserializerStream ds(lzma);
-		this->version_manifest.reset(ds.deserialize<VersionManifest>(config::include_typehashes));
+		ImplementedDeserializerStream ds(sync_source);
+		this->version_manifest.reset(ds.full_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw ArchiveReadException("Invalid data: Error during manifest deserialization");
 	}
@@ -195,21 +201,24 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 	auto stream = this->get_stream();
 	stream->seekg(this->base_objects_offset);
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(*stream, this->manifest_offset - this->base_objects_offset);
-		std::istream *stream2 = &bounded;
-		std::shared_ptr<std::istream> crypto;
+		zstreams::StreamPipeline pipeline;
+		Stream<zstreams::StdStreamSource> source(stream, pipeline);
+		Stream<zstreams::BoundedSource> bounded(*source, this->manifest_offset - this->base_objects_offset);
+		zstreams::Source *stream2 = &*bounded;
+		Stream<zstreams::CryptoSource> crypto;
 		if (this->keypair){
 			CryptoPP::SecByteBlock key, iv;
 			zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileObjectDataKey));
-			crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream2, &key, &iv);
-			stream2 = crypto.get();
+			crypto = zstreams::CryptoSource::create(default_crypto_algorithm, *stream2, &key, &iv);
+			stream2 = &*crypto;
 		}
-		boost::iostreams::stream<LzmaInputFilter> lzma(*stream2);
+		Stream<zstreams::LzmaSource> lzma(*stream2);
 
 		for (const auto &s : this->version_manifest->archive_metadata.entry_sizes){
-			boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, s);
-			ImplementedDeserializerStream ds(bounded2);
-			std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
+			Stream<zstreams::BoundedSource> bounded2(*lzma, s);
+			boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*bounded2);
+			ImplementedDeserializerStream ds(sync_source);
+			std::shared_ptr<FileSystemObject> fso(ds.full_deserialization<FileSystemObject>(config::include_typehashes));
 			if (!fso)
 				throw ArchiveReadException("Invalid data: Error during FSO deserialization");
 			ret.push_back(fso);
@@ -226,25 +235,25 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	auto file_data_start = this->keypair ? 4096 / 8 : 0;
 	ptr->seekg(file_data_start);
 
-	boost::iostreams::stream<BoundedInputFilter> bounded(*ptr, this->base_objects_offset - file_data_start);
-	std::istream *stream = &bounded;
+	zstreams::StreamPipeline pipeline;
+	Stream<zstreams::StdStreamSource> source(ptr, pipeline);
+	Stream<zstreams::BoundedSource> bounded(*source, this->base_objects_offset - file_data_start);
+	zstreams::Source *stream = &*bounded;
 
-	std::shared_ptr<std::istream> crypto;
+	Stream<zstreams::CryptoSource> crypto;
 	if (this->keypair){
 		CryptoPP::SecByteBlock key, iv;
 		zekvok_assert(this->get_key_iv(key, iv, KeyIndices::FileDataKey));
-		crypto = CryptoInputFilter::create(default_crypto_algorithm, *stream, &key, &iv);
-		stream = crypto.get();
+		crypto = zstreams::CryptoSource::create(default_crypto_algorithm, *stream, &key, &iv);
+		stream = &*crypto;
 	}
-	boost::iostreams::stream<LzmaInputFilter> lzma(*stream);
+	Stream<zstreams::LzmaSource> lzma(*stream);
 
 	zekvok_assert(this->stream_ids.size() == this->stream_sizes.size());
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
-		boost::iostreams::stream<BoundedInputFilter> bounded2(lzma, this->stream_sizes[i]);
-		sink(std::make_pair(this->stream_ids[i], &bounded2));
-		//Discard left over bytes.
-		boost::iostreams::stream<NullOutputStream> null(0);
-		null << bounded2.rdbuf();
+		Stream<zstreams::BoundedSource> bounded2(*lzma, this->stream_sizes[i]);
+		sink(std::make_pair(this->stream_ids[i], &*bounded2));
+		bounded2->discard_rest();
 	}
 }
 
@@ -259,15 +268,16 @@ ArchiveWriter::ArchiveWriter(KernelTransaction &tx, const path_t &path, RsaKeyPa
 		tx(tx),
 		keypair(keypair),
 		any_file(false){
-	this->stream.reset(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
+	std::unique_ptr<std::ostream> ptr(new boost::iostreams::stream<TransactedFileSink>(this->tx, path.c_str()));
+	this->stream = Stream<zstreams::StdStreamSink>(ptr, this->pipeline);
 }
 
 void ArchiveWriter::process(const std::function<void()> &callback){
-	sha256_digest complete_hash;
+	std::shared_ptr<zstreams::HashSink<CryptoPP::SHA256>::digest_t> complete_hash;
 	{
-		boost::iostreams::stream<HashOutputFilter> overall_hash(*this->stream, new CryptoPP::SHA256);
-		this->nested_stream = &overall_hash;
-		this->keys = ArchiveKeys::create_and_save(overall_hash, this->keypair);
+		Stream<zstreams::HashSink<CryptoPP::SHA256>> overall_hash(*this->stream);
+		this->nested_stream = &*overall_hash;
+		this->keys = ArchiveKeys::create_and_save(*overall_hash, this->keypair);
 		this->archive_key_index = 0;
 		this->initial_fso_offset = 0;
 
@@ -275,25 +285,27 @@ void ArchiveWriter::process(const std::function<void()> &callback){
 		zekvok_assert(this->state == State::ManifestWritten);
 		this->state = State::Final;
 
-		overall_hash->get_result(complete_hash.data(), complete_hash.size());
+		complete_hash = overall_hash->get_digest();
 	}
-	this->stream->write(reinterpret_cast<const char *>(complete_hash.data()), complete_hash.size());
+
+	boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*this->stream);
+	sync_sink.write(reinterpret_cast<const char *>(complete_hash->data()), complete_hash->size());
 }
 
 void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
 	zekvok_assert(this->state == State::Initial);
 	this->state = State::FilesWritten;
-	boost::iostreams::stream<ByteCounterOutputFilter> counter(*this->nested_stream, &this->initial_fso_offset);
-	std::ostream *stream = &counter;
-	std::shared_ptr<std::ostream> crypto;
+	Stream<zstreams::ByteCounterSink> counter(*this->nested_stream, this->initial_fso_offset);
+	zstreams::Sink *stream = &*counter;
+	Stream<zstreams::CryptoSink> crypto;
 	if (this->keypair){
-		crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &this->keys->get_key(this->archive_key_index), &this->keys->get_iv(this->archive_key_index));
+		crypto = zstreams::CryptoSink::create(default_crypto_algorithm, *stream, &this->keys->get_key(this->archive_key_index), &this->keys->get_iv(this->archive_key_index));
 		this->archive_key_index++;
-		stream = crypto.get();
+		stream = &*crypto;
 	}
 	
 	bool mt = true;
-	boost::iostreams::stream<LzmaOutputFilter> lzma(*stream, &mt, 1);
+	Stream<zstreams::LzmaSink> lzma(*stream, &mt, 1);
 
 	for (auto &fqe : files){
 		std::uint64_t size;
@@ -304,14 +316,16 @@ void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
 		this->stream_ids.push_back(fqe.stream_id);
 		this->stream_sizes.push_back(size);
 
-		sha256_digest digest;
+		std::shared_ptr<zstreams::HashSink<CryptoPP::SHA256>::digest_t> digest;
 		{
-			boost::iostreams::stream<HashInputFilter> hash(*stream2, new CryptoPP::SHA256);
+			auto &pipeline = lzma->get_pipeline();
+			Stream<zstreams::StdStreamSource> stdstream(stream2, pipeline);
+			Stream<zstreams::HashSource<CryptoPP::SHA256>> hash(*stdstream);
 			if (size)
-				lzma << hash.rdbuf();
-			hash->get_result(digest.data(), digest.size());
+				hash->copy_to(*lzma);
+			digest = hash->get_digest();
 		}
-		fso->set_hash(digest);
+		fso->set_hash(*digest);
 		this->any_file = true;
 	}
 }
@@ -320,24 +334,26 @@ void ArchiveWriter::add_base_objects(const std::vector<FileSystemObject *> &base
 	zekvok_assert(this->state == State::FilesWritten);
 	this->state = State::FsosWritten;
 	this->entries_size_in_archive = 0;
-	boost::iostreams::stream<ByteCounterOutputFilter> counter(*this->nested_stream, &this->entries_size_in_archive);
-	std::ostream *stream = &counter;
-	std::shared_ptr<std::ostream> crypto;
+
+	Stream<zstreams::ByteCounterSink> counter(*this->nested_stream, this->entries_size_in_archive);
+	zstreams::Sink *stream = &*counter;
+	Stream<zstreams::CryptoSink> crypto;
 	if (this->keypair){
-		crypto = CryptoOutputFilter::create(default_crypto_algorithm, *stream, &keys->get_key(this->archive_key_index), &keys->get_iv(this->archive_key_index));
+		crypto = zstreams::CryptoSink::create(default_crypto_algorithm, *stream, &keys->get_key(this->archive_key_index), &keys->get_iv(this->archive_key_index));
 		this->archive_key_index++;
-		stream = crypto.get();
+		stream = &*crypto;
 	}
 		
 	bool mt = true;
-	boost::iostreams::stream<LzmaOutputFilter> lzma(*stream, &mt, 8);
+	Stream<zstreams::LzmaSink> lzma(*stream, &mt, 8);
 
 	for (auto i : base_objects){
-		std::uint64_t bytes_processed = 0;
+		zstreams::streamsize_t bytes_processed = 0;
 		{
-			boost::iostreams::stream<ByteCounterOutputFilter> counter2(lzma, &bytes_processed);
-			SerializerStream ss(counter2);
-			ss.serialize(*i, config::include_typehashes);
+			Stream<zstreams::ByteCounterSink> counter2(*lzma, bytes_processed);
+			boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*counter2);
+			SerializerStream ss(sync_sink);
+			ss.full_serialization(*i, config::include_typehashes);
 		}
 		this->base_object_entry_sizes.push_back(bytes_processed);
 	}
@@ -346,9 +362,9 @@ void ArchiveWriter::add_base_objects(const std::vector<FileSystemObject *> &base
 void ArchiveWriter::add_version_manifest(VersionManifest &manifest){
 	zekvok_assert(this->state == State::FsosWritten);
 	this->state = State::ManifestWritten;
-	std::uint64_t manifest_length = 0;
+	zstreams::streamsize_t manifest_length = 0;
 	{
-		boost::iostreams::stream<ByteCounterOutputFilter> counter(*this->nested_stream, &manifest_length);
+		Stream<zstreams::ByteCounterSink> counter(*this->nested_stream, manifest_length);
 		
 		bool mt = true;
 
@@ -357,10 +373,12 @@ void ArchiveWriter::add_version_manifest(VersionManifest &manifest){
 		manifest.archive_metadata.stream_sizes = std::move(this->stream_sizes);
 		manifest.archive_metadata.entries_size_in_archive = this->entries_size_in_archive;
 
-		boost::iostreams::stream<LzmaOutputFilter> lzma(counter, &mt, 8);
-		SerializerStream ss(lzma);
-		ss.serialize(manifest, config::include_typehashes);
+		Stream<zstreams::LzmaSink> lzma(*counter, &mt, 8);
+		boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*lzma);
+		SerializerStream ss(sync_sink);
+		ss.full_serialization(manifest, config::include_typehashes);
 	}
 	auto s_manifest_length = serialize_fixed_le_int(manifest_length);
-	this->nested_stream->write(reinterpret_cast<const char *>(s_manifest_length.data()), s_manifest_length.size());
+	boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*this->nested_stream);
+	sync_sink.write(reinterpret_cast<const char *>(s_manifest_length.data()), s_manifest_length.size());
 }

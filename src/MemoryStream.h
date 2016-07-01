@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "StreamProcessor.h"
+
 class MemorySource : public boost::iostreams::source{
 	const buffer_t *mem;
 	size_t offset;
@@ -21,3 +23,33 @@ public:
 	MemorySink(buffer_t *mem): mem(mem){}
 	std::streamsize write(const char *s, std::streamsize n);
 };
+
+namespace zstreams{
+
+class MemorySource : public Source{
+	const std::uint8_t *buffer;
+	size_t size;
+	void work() override;
+public:
+	MemorySource(const void *buffer, size_t size, StreamPipeline &parent):
+		Source(parent),
+		buffer(static_cast<const std::uint8_t *>(buffer)),
+		size(size){}
+	const char *class_name() const override{
+		return "MemorySource";
+	}
+};
+
+class MemorySink : public Sink{
+	buffer_t &buffer;
+	void work() override;
+	IGNORE_FLUSH_COMMAND
+public:
+	MemorySink(buffer_t &buffer, StreamPipeline &parent): Sink(parent), buffer(buffer){}
+	const char *class_name() const override{
+		return "MemorySink";
+	}
+};
+
+
+}

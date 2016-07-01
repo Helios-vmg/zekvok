@@ -57,3 +57,5 @@ test/002_test_crypto/backup/
 *.idb
 *.db
 *.opendb
+*.iobj
+*.ipdb

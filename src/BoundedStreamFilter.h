@@ -7,30 +7,35 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
-#include "Filters.h"
+#include "StreamProcessor.h"
 
-class ByteCounterOutputFilter : public OutputFilter{
-	std::uint64_t *bytes_processed;
+namespace zstreams{
+
+class ByteCounterSink : public Sink{
+	streamsize_t &bytes_processed;
+	void work() override;
+	IGNORE_FLUSH_COMMAND
 public:
-	ByteCounterOutputFilter(std::ostream &stream, std::uint64_t *dst):
-		OutputFilter(stream),
-		bytes_processed(dst){}
-	std::streamsize write(const char *s, std::streamsize n) override{
-		*this->bytes_processed += n;
-		return this->next_write(s, n);
+	ByteCounterSink(Sink &wrapped, streamsize_t &dst): Sink(wrapped), bytes_processed(dst){
+		this->bytes_processed = 0;
 	}
-	bool flush() override{
-		return this->internal_flush();
+	const char *class_name() const override{
+		return "ByteCounterSink";
 	}
 };
 
-class BoundedInputFilter : public InputFilter{
-	std::streamsize bytes_read,
+class BoundedSource : public Source{
+	streamsize_t bytes_read,
 		simulated_length;
+	void work() override;
 public:
-	BoundedInputFilter(std::istream &stream, std::streamsize length):
-		InputFilter(stream),
+	BoundedSource(Source &stream, streamsize_t length):
+		Source(stream),
 		bytes_read(0),
 		simulated_length(length){}
-	std::streamsize read(char *s, std::streamsize n) override;
+	const char *class_name() const override{
+		return "BoundedSource";
+	}
 };
+
+}

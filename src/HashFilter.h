@@ -8,46 +8,81 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include "Filters.h"
+#include "StreamProcessor.h"
 
-class HashCalculator{
-	std::shared_ptr<CryptoPP::HashTransformation> hash;
-	std::uint64_t bytes_processed;
-	void *dst;
-	size_t dst_length;
-	void write_result();
+namespace zstreams{
+
+template <typename HashT>
+class HashFilter{
+public:
+	typedef std::array<byte, HashT::DIGESTSIZE> digest_t;
+private:
+	HashT hash;
+	std::shared_ptr<digest_t> digest;
+
+	virtual Segment read() = 0;
+	virtual void write(Segment &) = 0;
+
 protected:
-	void update(const void *input, size_t length){
-		if (length){
-			this->hash->Update(static_cast<const byte *>(input), length);
-			this->bytes_processed += length;
+	void HashFilter_work(bool is_sink){
+		std::uint64_t bytes = 0;
+		while (true){
+			auto segment = this->read();
+			if (segment.get_type() == SegmentType::Eof){
+				this->hash.Final(this->digest->data());
+				this->write(segment);
+				break;
+			}
+			auto data = segment.get_data();
+			bytes += data.size;
+			this->hash.Update(data.data, data.size);
+			this->write(segment);
 		}
 	}
 public:
-	HashCalculator(CryptoPP::HashTransformation *t)
-			: bytes_processed(0)
-			, dst(nullptr)
-			, dst_length(0){
-		this->hash.reset(t);
-	}
-	virtual ~HashCalculator();
-	size_t get_hash_length() const;
-	void get_result(void *buffer, size_t max_length);
-	std::uint64_t get_bytes_processed() const{
-		return this->bytes_processed;
+	HashFilter(): digest(new digest_t){}
+	virtual ~HashFilter(){}
+	std::shared_ptr<digest_t> get_digest(){
+		return this->digest;
 	}
 };
 
-class HashOutputFilter : public OutputFilter, public HashCalculator{
+template <typename HashT>
+class HashSource : public HashFilter<HashT>, public Source{
+	void work() override{
+		HashFilter<HashT>::HashFilter_work(false);
+	}
+	Segment read() override{
+		return Source::read();
+	}
+	void write(Segment &s) override{
+		Source::write(s);
+	}
 public:
-	HashOutputFilter(std::ostream &stream, CryptoPP::HashTransformation *t): OutputFilter(stream), HashCalculator(t){}
-	std::streamsize write(const char *s, std::streamsize n) override;
-	bool flush() override{
-		return this->internal_flush();
+	HashSource(StreamPipeline &parent): Source(parent){}
+	HashSource(Source &source): Source(source){}
+	const char *class_name() const override{
+		return "HashSource";
 	}
 };
 
-class HashInputFilter : public InputFilter, public HashCalculator{
+template <typename HashT>
+class HashSink : public HashFilter<HashT>, public Sink{
+	void work() override{
+		HashFilter<HashT>::HashFilter_work(true);
+	}
+	Segment read() override{
+		return Sink::read();
+	}
+	void write(Segment &s) override{
+		Sink::write(s);
+	}
 public:
-	HashInputFilter(std::istream &stream, CryptoPP::HashTransformation *t): InputFilter(stream), HashCalculator(t){}
-	std::streamsize read(char *s, std::streamsize n) override;
+	HashSink(StreamPipeline &parent): Sink(parent){}
+	HashSink(Sink &sink): Sink(sink){}
+	const char *class_name() const override{
+		return "HashSink";
+	}
 };
+
+}

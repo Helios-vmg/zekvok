@@ -7,9 +7,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "StreamProcessor.h"
+
 class RsaKeyPair;
 class KernelTransaction;
-class HashOutputFilter;
 class VersionManifest;
 class FileSystemObject;
 class FilishFso;
@@ -37,12 +38,12 @@ public:
 	size_t get_size() const{
 		return this->size;
 	}
-	static std::unique_ptr<ArchiveKeys> create_and_save(std::ostream &, RsaKeyPair *keypair);
+	static std::unique_ptr<ArchiveKeys> create_and_save(zstreams::Sink &, RsaKeyPair *keypair);
 };
 
 class ArchiveReader{
 public:
-	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, std::istream *>> read_everything_co_t;
+	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, zstreams::Source *>> read_everything_co_t;
 private:
 	//std::deque<input_filter_generator_t> filters;
 	path_t path;
@@ -88,15 +89,16 @@ class ArchiveWriter{
 	};
 	State state;
 	KernelTransaction &tx;
-	std::unique_ptr<std::ostream> stream;
+	zstreams::StreamPipeline pipeline;
+	zstreams::Stream<zstreams::StdStreamSink> stream;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
 	bool any_file;
-	std::uint64_t initial_fso_offset;
+	zstreams::streamsize_t initial_fso_offset;
 	std::uint64_t entries_size_in_archive;
 	std::vector<std::uint64_t> base_object_entry_sizes;
 	RsaKeyPair *keypair;
-	std::ostream *nested_stream;
+	zstreams::Sink *nested_stream;
 	std::unique_ptr<ArchiveKeys> keys;
 	size_t archive_key_index;
 

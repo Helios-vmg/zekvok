@@ -21,6 +21,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <cstdint>
 #include <exception>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <deque>
 #include <algorithm>
@@ -30,6 +32,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include <tuple>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <condition_variable>
+#include <type_traits>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/file.hpp>
@@ -58,9 +63,12 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include <Windows.h>
 #include <ktmw32.h>
+#pragma warning(push)
+#pragma warning(disable: 4091)
 #include <vss.h>
 #include <vswriter.h>
 #include <vsbackup.h>
+#pragma warning(pop)
 #include <comdef.h>
 
 #ifdef max
@@ -79,10 +87,3 @@ declare class members without having to have the complete type definition for
 the object type.
 */
 #define weak_unique_ptr shared_ptr
-
-#include "SimpleTypes.h"
-#include "Globals.h"
-#include "Exception.h"
-#include "Utility.h"
-#include "MemoryStream.h"
-#include "serialization/fso.aux.h"

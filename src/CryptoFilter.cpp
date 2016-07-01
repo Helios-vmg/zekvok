@@ -7,163 +7,134 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "CryptoFilter.h"
+#include "Utility.h"
+
+namespace zstreams{
 
 template <typename T>
-class GenericCryptoOutputFilter : public CryptoOutputFilter{
-	struct impl{
-		typename CryptoPP::CBC_Mode<T>::Encryption e;
-		std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
-		std::uint8_t buffer[4096];
-	};
-	
-	std::shared_ptr<impl> data;
+class GenericCryptoOutputStream : public CryptoSink{
+	typename CryptoPP::CBC_Mode<T>::Encryption e;
+	std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
+
 protected:
-	std::uint8_t *get_buffer(size_t &size) override{
-		size = sizeof(this->data->buffer);
-		return this->data->buffer;
-	}
 	CryptoPP::StreamTransformationFilter *get_filter() override{
-		return this->data->filter.get();
+		return this->filter.get();
 	}
 public:
-	GenericCryptoOutputFilter(
-			std::ostream &stream,
+	GenericCryptoOutputStream(
+			Sink &stream,
 			const CryptoPP::SecByteBlock &key,
-			const CryptoPP::SecByteBlock &iv): CryptoOutputFilter(stream){
-		this->data.reset(new impl);
-		this->data->e.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
-		this->data->filter.reset(new CryptoPP::StreamTransformationFilter(this->data->e));
-	}
-	~GenericCryptoOutputFilter(){
-		if (*this->copies == 1){
-			this->enable_flush();
-			// ReSharper disable once CppVirtualFunctionCallInsideCtor
-			this->flush();
-		}
+			const CryptoPP::SecByteBlock &iv): CryptoSink(stream){
+		this->e.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
+		this->filter.reset(new CryptoPP::StreamTransformationFilter(this->e));
 	}
 };
 
-std::shared_ptr<std::ostream> CryptoOutputFilter::create(
-		Algorithm algo,
-		std::ostream &stream,
-		const CryptoPP::SecByteBlock *key,
-		const CryptoPP::SecByteBlock *iv){
-	std::shared_ptr<std::ostream> ret;
+Stream<CryptoSink> CryptoSink::create(Algorithm algo, Sink &stream, const CryptoPP::SecByteBlock *key, const CryptoPP::SecByteBlock *iv){
 	switch (algo){
 		case Algorithm::Rijndael:
-			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Rijndael>>(stream, *key, *iv));
-			break;
+			return Stream<GenericCryptoOutputStream<CryptoPP::Rijndael>>(stream, *key, *iv);
 		case Algorithm::Serpent:
-			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Serpent>>(stream, *key, *iv));
-			break;
+			return Stream<GenericCryptoOutputStream<CryptoPP::Serpent>>(stream, *key, *iv);
 		case Algorithm::Twofish:
-			ret.reset(new boost::iostreams::stream<GenericCryptoOutputFilter<CryptoPP::Twofish>>(stream, *key, *iv));
-			break;
+			return Stream<GenericCryptoOutputStream<CryptoPP::Twofish>>(stream, *key, *iv);
 	}
-	return ret;
+	zekvok_assert(false);
 }
 
-std::streamsize CryptoOutputFilter::write(const char *s, std::streamsize n){
+void CryptoSink::work(){
 	auto filter = this->get_filter();
-	filter->Put(reinterpret_cast<const byte *>(s), n);
-	size_t size;
-	auto buffer = this->get_buffer(size);
-	while (1){
-		auto read = filter->Get(buffer, size);
+	while (true){
+		{
+			auto segment = this->read();
+			if (segment.get_type() == SegmentType::Eof)
+				break;
+			auto data = segment.get_data();
+			filter->Put(data.data, data.size);
+		}
+
+		this->flush_filter(filter);
+	}
+	this->flush_impl();
+}
+
+static void flush_filter(StreamProcessor *p, CryptoPP::StreamTransformationFilter *filter){
+	while (true){
+		auto segment = p->allocate_segment();
+		auto data = segment.get_data();
+		auto read = filter->Get(data.data, data.size);
 		if (!read)
-			break;
-		this->next_write(reinterpret_cast<const char *>(buffer), read);
+			return;
+		segment.trim_to_size(read);
+		p->write(segment);
 	}
-	return n;
 }
 
-bool CryptoOutputFilter::internal_flush(){
+void CryptoSink::flush_filter(CryptoPP::StreamTransformationFilter *filter){
+	zstreams::flush_filter(this, filter);
+}
+
+void CryptoSink::flush_impl(){
 	auto filter = this->get_filter();
-	size_t size;
-	auto buffer = this->get_buffer(size);
 	if (!this->flushed){
 		filter->MessageEnd();
 		this->flushed = true;
 	}
-	while (1){
-		auto read = filter->Get(buffer, size);
-		if (!read)
-			break;
-		this->next_write(reinterpret_cast<const char *>(buffer), read);
-	}
-	return OutputFilter::internal_flush();
+	this->flush_filter(filter);
 }
 
 template <typename T>
-class GenericCryptoInputFilter : public CryptoInputFilter{
-	struct impl{
-		typename CryptoPP::CBC_Mode<T>::Decryption d;
-		std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
-		std::uint8_t buffer[4096];
-	};
-	
-	std::shared_ptr<impl> data;
+class GenericCryptoInputStream : public CryptoSource{
+	typename CryptoPP::CBC_Mode<T>::Decryption d;
+	std::unique_ptr<CryptoPP::StreamTransformationFilter> filter;
+
 protected:
-	std::uint8_t *get_buffer(size_t &size) override{
-		size = sizeof(this->data->buffer);
-		return this->data->buffer;
-	}
 	CryptoPP::StreamTransformationFilter *get_filter() override{
-		return this->data->filter.get();
+		return this->filter.get();
 	}
 public:
-	GenericCryptoInputFilter(std::istream &stream, const CryptoPP::SecByteBlock &key, const CryptoPP::SecByteBlock &iv): CryptoInputFilter(stream){
-		this->data.reset(new impl);
-		this->data->d.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
-		this->data->filter.reset(new CryptoPP::StreamTransformationFilter(this->data->d));
+	GenericCryptoInputStream(Source &stream, const CryptoPP::SecByteBlock &key, const CryptoPP::SecByteBlock &iv): CryptoSource(stream){
+		this->d.SetKeyWithIV(key, key.size(), iv.data(), iv.size());
+		this->filter.reset(new CryptoPP::StreamTransformationFilter(this->d));
 	}
 };
 
-std::shared_ptr<std::istream> CryptoInputFilter::create(
+Stream<CryptoSource> CryptoSource::create(
 		Algorithm algo,
-		std::istream &stream,
+		Source &stream,
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv){
-	std::shared_ptr<std::istream> ret;
 	switch (algo){
 		case Algorithm::Rijndael:
-			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Rijndael>>(stream, *key, *iv));
-			break;
+			return Stream<GenericCryptoInputStream<CryptoPP::Rijndael>>(stream, *key, *iv);
 		case Algorithm::Serpent:
-			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Serpent>>(stream, *key, *iv));
-			break;
+			return Stream<GenericCryptoInputStream<CryptoPP::Serpent>>(stream, *key, *iv);
 		case Algorithm::Twofish:
-			ret.reset(new boost::iostreams::stream<GenericCryptoInputFilter<CryptoPP::Twofish>>(stream, *key, *iv));
-			break;
+			return Stream<GenericCryptoInputStream<CryptoPP::Twofish>>(stream, *key, *iv);
 	}
-	return ret;
+	zekvok_assert(false);
 }
 
-std::streamsize CryptoInputFilter::read(char *s, std::streamsize n){
-	if (this->done)
-		return -1;
-	std::streamsize ret = 0;
-	bool bad = false;
-	size_t size;
-	auto buffer = this->get_buffer(size);
+void CryptoSource::work(){
 	auto filter = this->get_filter();
-	while (n){
-		auto read = this->next_read(reinterpret_cast<char *>(buffer), size);
-		if (read >= 0)
-			filter->Put(buffer, read);
-		else if (!bad){
-			if (!this->done){
+	bool done = false;
+
+	while (!done){
+		{
+			auto segment = this->read();
+			if (segment.get_type() == SegmentType::Eof){
 				filter->MessageEnd();
-				this->done = true;
+				done = true;
+			}else{
+				auto data = segment.get_data();
+				filter->Put(data.data, data.size);
 			}
-			bad = true;
 		}
-		read = filter->Get(reinterpret_cast<byte *>(s), n);
-		if (!read && bad)
-			break;
-		s += read;
-		n -= read;
-		ret += read;
+
+		zstreams::flush_filter(this, filter);
 	}
-	return !ret && bad ? -1 : ret;
+	Segment eof(SegmentType::Eof);
+	this->write(eof);
+}
+
 }

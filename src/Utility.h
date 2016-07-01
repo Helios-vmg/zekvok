@@ -7,6 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "SimpleTypes.h"
+#include "Exception.h"
+
 struct strcmpci
 {
 	template <typename CharType>
@@ -298,13 +301,13 @@ std::shared_ptr<T> easy_clone(const T &src){
 	{
 		boost::iostreams::stream<MemorySink> omem(&mem);
 		SerializerStream stream(omem);
-		stream.serialize(src);
+		stream.full_serialization(src);
 	}
 	std::shared_ptr<T> cloned;
 	{
 		boost::iostreams::stream<MemorySource> imem(&mem);
 		ImplementedDeserializerStream stream(imem);
-		cloned.reset(stream.deserialize<T>());
+		cloned.reset(stream.full_deserialization<T>());
 	}
 	return cloned;
 }
@@ -359,3 +362,92 @@ template <typename T>
 std::shared_ptr<T> make_shared(T *p){
 	return std::shared_ptr<T>(p);
 }
+
+template <typename T>
+std::unique_ptr<T> copy_and_make_unique(T &p){
+	return std::unique_ptr<T>(new T(p));
+}
+
+template <typename T>
+class ScopedIncrement{
+	T &data;
+public:
+	ScopedIncrement(T &data): data(data){
+		++this->data;
+	}
+	ScopedIncrement(const ScopedIncrement<T> &) = delete;
+	ScopedIncrement(ScopedIncrement<T> &&) = delete;
+	~ScopedIncrement(){
+		--this->data;
+	}
+	void operator=(const ScopedIncrement<T> &) = delete;
+};
+
+template <typename T>
+class ScopedDecrement{
+	T &data;
+public:
+	ScopedDecrement(T &data): data(data){
+		--this->data;
+	}
+	ScopedDecrement(const ScopedDecrement<T> &) = delete;
+	ScopedDecrement(ScopedDecrement<T> &&) = delete;
+	~ScopedDecrement(){
+		++this->data;
+	}
+	void operator=(const ScopedDecrement<T> &) = delete;
+};
+
+template <typename T>
+class ScopedAtomicReversibleSet{
+	std::atomic<T> &data;
+	T old_value;
+	bool cancelled;
+	bool cancel_on_exception;
+public:
+	enum CancellationBehavior{
+		NoCancellation,
+		CancelOnException,
+	};
+	ScopedAtomicReversibleSet(std::atomic<T> &data, T new_value, CancellationBehavior behavior):
+			data(data),
+			cancelled(false),
+			cancel_on_exception(behavior == CancelOnException){
+		this->old_value = this->data.exchange(new_value);
+	}
+	ScopedAtomicReversibleSet(const ScopedAtomicReversibleSet<T> &) = delete;
+	ScopedAtomicReversibleSet(ScopedAtomicReversibleSet<T> &&) = delete;
+	~ScopedAtomicReversibleSet(){
+		if (this->cancelled)
+			return;
+		if (this->cancel_on_exception && std::uncaught_exception())
+			return;
+		this->data = this->old_value;
+	}
+	void cancel(){
+		this->cancelled = true;
+	}
+	void operator=(const ScopedAtomicReversibleSet<T> &) = delete;
+	T get_old_value() const{
+		return this->old_value;
+	}
+};
+
+template <typename T>
+class ScopedAtomicPostSet{
+	std::atomic<T> &data;
+	T new_value;
+	bool cancelled;
+public:
+	ScopedAtomicPostSet(std::atomic<T> &data, T new_value): data(data), cancelled(false), new_value(new_value){}
+	ScopedAtomicPostSet(const ScopedAtomicPostSet<T> &) = delete;
+	ScopedAtomicPostSet(ScopedAtomicPostSet<T> &&) = delete;
+	~ScopedAtomicPostSet(){
+		if (!this->cancelled)
+			this->data = this->new_value;
+	}
+	void cancel(){
+		this->cancelled = true;
+	}
+	void operator=(const ScopedAtomicPostSet<T> &) = delete;
+};

@@ -8,6 +8,10 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../stdafx.h"
 #include "SystemOperations.h"
 #include "../AutoHandle.h"
+#include "../Globals.h"
+#include "../Exception.h"
+#include "../Utility.h"
+#include "../serialization/fso.aux.h"
 #include <WinIoCtl.h>
 
 std::wstring path_from_string(const std::wstring &path){

@@ -18,6 +18,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "VersionForRestore.h"
 #include "BoundedStreamFilter.h"
 #include "NullStream.h"
+#include "MemoryStream.h"
+
+using zstreams::Stream;
 
 const wchar_t * const system_path_prefix = L"\\\\?\\";
 
@@ -443,20 +446,24 @@ void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_nu
 		return;
 	
 	dst = this->get_aux_fso_path(version);
-	boost::iostreams::stream<TransactedFileSink> file(tx, dst.wstring().c_str());
+	std::unique_ptr<std::ostream> file(new boost::iostreams::stream<TransactedFileSink>(tx, dst.wstring().c_str()));
+	zstreams::StreamPipeline pipeline;
+	Stream<zstreams::StdStreamSink> stdsink(file, pipeline);
 	bool mt = false;
-	boost::iostreams::stream<LzmaOutputFilter> lzma(file, &mt, 8);
+	Stream<zstreams::LzmaSink> lzma(*stdsink, &mt, 8);
 	for (auto &fso : this->base_objects){
 		auto cloned = easy_clone(*fso);
 		cloned->encrypt();
 		buffer_t mem;
 		{
-			boost::iostreams::stream<MemorySink> omem(&mem);
-			SerializerStream stream(omem);
-			stream.serialize(*cloned, config::include_typehashes);
+			Stream<zstreams::MemorySink> omem(mem, pipeline);
+			boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*omem);
+			SerializerStream stream(sync_sink);
+			stream.full_serialization(*cloned, config::include_typehashes);
 		}
 
-		simple_buffer_serialization(lzma, mem);
+		boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*lzma);
+		simple_buffer_serialization(sync_sink, mem);
 	}
 }
 
@@ -620,17 +627,20 @@ std::wstring simplify_path(const std::wstring &path){
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(ArchiveReader &archive, version_number_t v){
-	boost::filesystem::ifstream file(this->get_aux_fso_path(v), std::ios::binary);
-	if (!file)
+	std::unique_ptr<std::istream> file(new boost::filesystem::ifstream(this->get_aux_fso_path(v), std::ios::binary));
+	if (!*file)
 		return archive.get_base_objects();
-	boost::iostreams::stream<LzmaInputFilter> lzma(file);
+	zstreams::StreamPipeline pipeline;
+	Stream<zstreams::StdStreamSource> stdstream(file, pipeline);
+	Stream<zstreams::LzmaSource> lzma(*stdstream);
 
 	std::vector<std::shared_ptr<FileSystemObject>> ret;
 	buffer_t mem;
-	while (simple_buffer_deserialization(mem, lzma)){
+	boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*lzma);
+	while (simple_buffer_deserialization(mem, sync_source)){
 		boost::iostreams::stream<MemorySource> stream(&mem);
 		ImplementedDeserializerStream ds(stream);
-		std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
+		std::shared_ptr<FileSystemObject> fso(ds.full_deserialization<FileSystemObject>(config::include_typehashes));
 		ret.push_back(fso);
 		auto mbp = fso->get_unmapped_base_path();
 		if (!mbp)
@@ -905,7 +915,7 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 				auto hardlink = static_cast<FileHardlinkFso *>(fso);
 				hardlink->set_treat_as_file(true);
 			}
-			fso->restore(*pair.second);
+			fso->restore(pair.second);
 			for (; begin2 != end && begin2->second->get_stream_id() == stream_id; ++begin2){
 				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << begin2->second->get_mapped_path() << "\"\n";
 				auto hardlink = static_cast<FileHardlinkFso *>(begin2->second);
@@ -944,28 +954,30 @@ std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version
 bool BackupSystem::verify(version_number_t version) const{
 	if (!this->version_exists(version))
 		return false;
-	fs::ifstream file(this->get_version_path(version), std::ios::binary);
-	if (!file)
+	std::unique_ptr<std::istream> file(new fs::ifstream(this->get_version_path(version), std::ios::binary));
+	if (!*file)
 		return false;
-	file.seekg(0, std::ios::end);
-	std::uint64_t size = file.tellg();
+	file->seekg(0, std::ios::end);
+	std::uint64_t size = file->tellg();
 	sha256_digest digest;
-	file.seekg(-(int)digest.size(), std::ios::end);
-	file.read(reinterpret_cast<char *>(digest.data()), digest.size());
-	if (file.gcount() != digest.size())
+	file->seekg(-(int)digest.size(), std::ios::end);
+	file->read(reinterpret_cast<char *>(digest.data()), digest.size());
+	if (file->gcount() != digest.size())
 		return false;
-	file.seekg(0);
-	sha256_digest new_digest;
+	file->seekg(0);
+	std::shared_ptr<zstreams::HashSource<CryptoPP::SHA256>::digest_t> new_digest;
 	{
-		boost::iostreams::stream<BoundedInputFilter> bounded(file, size - digest.size());
-		boost::iostreams::stream<HashInputFilter> hash(bounded, new CryptoPP::SHA256);
+		zstreams::StreamPipeline pipeline;
+		Stream<zstreams::StdStreamSource> stdsource(file, pipeline);
+		Stream<zstreams::BoundedSource> bounded(*stdsource, size - digest.size());
+		Stream<zstreams::HashSource<CryptoPP::SHA256>> hash(*bounded);
 		{
-			boost::iostreams::stream<NullOutputStream> output(0);
-			output << hash.rdbuf();
+			Stream<zstreams::NullSink> null(pipeline);
+			hash->copy_to(*null);
 		}
-		hash->get_result(new_digest.data(), new_digest.size());
+		new_digest = hash->get_digest();
 	}
-	return new_digest == digest;
+	return *new_digest == digest;
 }
 
 bool BackupSystem::full_verify(version_number_t version) const{
@@ -1009,7 +1021,7 @@ void BackupSystem::generate_keypair(const std::wstring &recipient, const std::ws
 		RsaKeyPair pair(pri, pub, symmetric_key);
 		boost::filesystem::ofstream file(filename, std::ios::binary);
 		SerializerStream ss(file);
-		ss.serialize(pair, false);
+		ss.full_serialization(pair, false);
 		break;
 	}
 }

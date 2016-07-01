@@ -13,6 +13,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "../HashFilter.h"
 #include "../Utility.h"
 
+using zstreams::Stream;
+
 //------------------------------------------------------------------------------
 // default_values()
 //------------------------------------------------------------------------------
@@ -394,13 +396,13 @@ FileSystemObject *FileSystemObject::create(const path_t &path, const path_t &unm
 	throw InvalidSwitchVariableException();
 }
 
-std::shared_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
+std::unique_ptr<std::istream> FileSystemObject::open_for_exclusive_read(std::uint64_t &size) const{
 	path_t path = path_from_string(this->get_mapped_path().wstring());
 	auto result = system_ops::get_file_size(path.wstring());
 	if (!result.success)
 		throw Win32Exception(result.error);
 	size = result.result;
-	auto ret = make_shared(new boost::filesystem::ifstream(path, std::ios::binary));
+	auto ret = std::make_unique<boost::filesystem::ifstream>(path, std::ios::binary);
 	if (!*ret)
 		throw FileNotFoundException(path);
 	return ret;
@@ -556,20 +558,24 @@ bool FilishFso::compute_hash(sha256_digest &dst){
 bool FilishFso::compute_hash(){
 	if (this->hash.valid)
 		return true;
-	boost::filesystem::ifstream file(this->get_mapped_path(), std::ios::binary);
-	if (!file)
+	std::unique_ptr<std::istream> file(new boost::filesystem::ifstream(this->get_mapped_path(), std::ios::binary));
+	if (!*file)
 		return false;
-	boost::iostreams::stream<NullOutputStream> null_stream(0);
+	zstreams::StreamPipeline pipeline;
+	Stream<zstreams::NullSink> null(pipeline);
+	Stream<zstreams::StdStreamSource> stdstream(file, pipeline);
+	std::shared_ptr<zstreams::HashSink<CryptoPP::SHA256>::digest_t> digest;
 	{
-		boost::iostreams::stream<HashOutputFilter> hash_filter(null_stream, new CryptoPP::SHA256);
-		hash_filter << file.rdbuf();
-		hash_filter->get_result(this->hash.digest.data(), this->hash.digest.size());
+		Stream<zstreams::HashSink<CryptoPP::SHA256>> hash(*null);
+		stdstream->copy_to(*hash);
+		digest = hash->get_digest();
 	}
+	this->hash.digest = *digest;
 	this->hash.valid = true;
 	return true;
 }
 
-void FileSystemObject::restore(std::istream &, const path_t *base_path){
+void FileSystemObject::restore(zstreams::Source *, const path_t *base_path){
 	throw IncorrectImplementationException();
 }
 
@@ -584,13 +590,14 @@ void FileSystemObject::restore_internal(const path_t *base_path){
 	throw IncorrectImplementationException();
 }
 
-void RegularFileFso::restore(std::istream &stream, const path_t *base_path){
+void RegularFileFso::restore(zstreams::Source *stream, const path_t *base_path){
 	auto path = this->path_override_unmapped_base_weak(base_path);
 	auto long_path = path_from_string(path.wstring());
-	boost::filesystem::ofstream file(long_path, std::ios::binary);
-	if (!file)
+	std::unique_ptr<std::ostream> file(new boost::filesystem::ofstream(long_path, std::ios::binary));
+	if (!*file)
 		throw CantOpenOutputFileException(path);
-	file << stream.rdbuf();
+	Stream<zstreams::StdStreamSink> sink(file, stream->get_pipeline());
+	stream->copy_to(*sink);
 }
 
 void DirectoryFso::restore_internal(const path_t *base_path){

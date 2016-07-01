@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include "Filters.h"
+#include "StreamProcessor.h"
 
 enum class Algorithm{
 	Rijndael,
@@ -15,39 +16,48 @@ enum class Algorithm{
 	Serpent,
 };
 
-class CryptoOutputFilter : public OutputFilter{
+namespace zstreams{
+
+class CryptoSink : public Sink{
 protected:
 	bool flushed;
-	virtual std::uint8_t *get_buffer(size_t &size) = 0;
 	virtual CryptoPP::StreamTransformationFilter *get_filter() = 0;
-	CryptoOutputFilter(std::ostream &stream):
-		OutputFilter(stream),
+	CryptoSink(Sink &stream):
+		Sink(stream),
 		flushed(false){}
-	bool internal_flush() override;
+	void work() override;
+	void flush_impl() override;
+	void flush_filter(CryptoPP::StreamTransformationFilter *);
 public:
-	virtual ~CryptoOutputFilter(){}
-	static std::shared_ptr<std::ostream> create(
+	virtual ~CryptoSink(){}
+	static Stream<CryptoSink> create(
 		Algorithm algo,
-		std::ostream &stream,
+		Sink &stream,
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv
 	);
-	std::streamsize write(const char *s, std::streamsize n) override;
+	const char *class_name() const override{
+		return "CryptoOutputStream";
+	}
 };
 
-class CryptoInputFilter : public InputFilter{
-	bool done;
+class CryptoSource : public Source{
 protected:
-	virtual std::uint8_t *get_buffer(size_t &size) = 0;
 	virtual CryptoPP::StreamTransformationFilter *get_filter() = 0;
-	CryptoInputFilter(std::istream &stream): InputFilter(stream), done(false){}
+	CryptoSource(Source &stream): Source(stream){}
+	void work() override;
+	IGNORE_FLUSH_COMMAND
 public:
-	virtual ~CryptoInputFilter(){}
-	static std::shared_ptr<std::istream> create(
+	virtual ~CryptoSource(){}
+	static Stream<CryptoSource> create(
 		Algorithm algo,
-		std::istream &stream,
+		Source &stream,
 		const CryptoPP::SecByteBlock *key,
 		const CryptoPP::SecByteBlock *iv
 	);
-	std::streamsize read(char *s, std::streamsize n) override;
+	const char *class_name() const override{
+		return "CryptoInputStream";
+	}
 };
+
+}

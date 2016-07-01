@@ -57,9 +57,6 @@
     <ClCompile Include="..\src\LzmaFilter.cpp">
       <Filter>Source Files\Stream filters</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\HashFilter.cpp">
-      <Filter>Source Files\Stream filters</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\BoundedStreamFilter.cpp">
       <Filter>Source Files\Stream filters</Filter>
     </ClCompile>
@@ -93,9 +90,6 @@
     <ClCompile Include="..\src\serialization\RsaKeyPair.cpp">
       <Filter>Source Files\Serialization</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ComposingFilter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\CryptoFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -109,6 +103,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Utility.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\System\Threads.cpp">
+      <Filter>Source Files\System</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\StreamProcessor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\NullStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -174,9 +177,6 @@
       <Filter>Header Files\Serialization\Generated</Filter>
     </ClInclude>
     <ClInclude Include="..\src\LzmaFilter.h">
-      <Filter>Header Files\Stream filters</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Filters.h">
       <Filter>Header Files\Stream filters</Filter>
     </ClInclude>
     <ClInclude Include="..\src\HashFilter.h">
@@ -245,9 +245,6 @@
     <ClInclude Include="..\src\serialization\RsaKeyPair.h">
       <Filter>Header Files\Serialization</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\ComposingFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\CryptoFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -255,6 +252,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\MemoryStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\System\Threads.h">
+      <Filter>Header Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StreamProcessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
