@@ -7,6 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "SimpleTypes.h"
+#include "serialization/fso.aux.h"
+
 class BackupSystem;
 class VersionManifest;
 class ArchiveReader;

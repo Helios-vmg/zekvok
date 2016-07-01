@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "SimpleTypes.h"
+
 class NonFatalException : public std::exception{
 public:
 	virtual ~NonFatalException() = 0 {}

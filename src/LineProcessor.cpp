@@ -285,7 +285,7 @@ void LineProcessor::process_select_keypair(const std::wstring *begin, const std:
 	this->ensure_backup_initialized();
 	boost::filesystem::ifstream file(*begin, std::ios::binary);
 	ImplementedDeserializerStream ds(file);
-	auto keypair = make_shared(ds.deserialize<RsaKeyPair>(false));
+	auto keypair = make_shared(ds.full_deserialization<RsaKeyPair>(false));
 	if (++begin != end)
 		keypair->get_private_key(to_string(*begin));
 	this->backup_system->set_keypair(keypair);

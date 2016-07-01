@@ -7,6 +7,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "CryptoFilter.h"
+#include "Utility.h"
 
 namespace zstreams{
 

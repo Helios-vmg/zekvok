@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "StreamProcessor.h"
+
 class RsaKeyPair;
 class KernelTransaction;
 class VersionManifest;
@@ -87,6 +89,7 @@ class ArchiveWriter{
 	};
 	State state;
 	KernelTransaction &tx;
+	zstreams::StreamPipeline pipeline;
 	zstreams::Stream<zstreams::StdStreamSink> stream;
 	std::vector<stream_id_t> stream_ids;
 	std::vector<std::uint64_t> stream_sizes;
@@ -98,7 +101,6 @@ class ArchiveWriter{
 	zstreams::Sink *nested_stream;
 	std::unique_ptr<ArchiveKeys> keys;
 	size_t archive_key_index;
-	zstreams::StreamPipeline pipeline;
 
 public:
 	ArchiveWriter(KernelTransaction &tx, const path_t &, RsaKeyPair *keypair);

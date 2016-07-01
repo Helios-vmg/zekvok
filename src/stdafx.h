@@ -87,10 +87,3 @@ declare class members without having to have the complete type definition for
 the object type.
 */
 #define weak_unique_ptr shared_ptr
-
-#include "SimpleTypes.h"
-#include "Globals.h"
-#include "Exception.h"
-#include "Utility.h"
-#include "MemoryStream.h"
-#include "serialization/fso.aux.h"

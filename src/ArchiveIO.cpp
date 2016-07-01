@@ -180,7 +180,7 @@ std::shared_ptr<VersionManifest> ArchiveReader::read_manifest(){
 		boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*lzma);
 
 		ImplementedDeserializerStream ds(sync_source);
-		this->version_manifest.reset(ds.deserialize<VersionManifest>(config::include_typehashes));
+		this->version_manifest.reset(ds.full_deserialization<VersionManifest>(config::include_typehashes));
 		if (!this->version_manifest)
 			throw ArchiveReadException("Invalid data: Error during manifest deserialization");
 	}
@@ -218,7 +218,7 @@ std::vector<std::shared_ptr<FileSystemObject>> ArchiveReader::read_base_objects(
 			Stream<zstreams::BoundedSource> bounded2(*lzma, s);
 			boost::iostreams::stream<zstreams::SynchronousSource> sync_source(*bounded2);
 			ImplementedDeserializerStream ds(sync_source);
-			std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
+			std::shared_ptr<FileSystemObject> fso(ds.full_deserialization<FileSystemObject>(config::include_typehashes));
 			if (!fso)
 				throw ArchiveReadException("Invalid data: Error during FSO deserialization");
 			ret.push_back(fso);
@@ -320,7 +320,7 @@ void ArchiveWriter::add_files(const std::vector<FileQueueElement> &files){
 
 		std::shared_ptr<zstreams::HashSink<CryptoPP::SHA256>::digest_t> digest;
 		{
-			zstreams::StreamPipeline pipeline;
+			auto &pipeline = lzma->get_pipeline();
 			Stream<zstreams::StdStreamSource> stdstream(stream2, pipeline);
 			Stream<zstreams::HashSource<CryptoPP::SHA256>> hash(*stdstream);
 			if (size)
@@ -355,7 +355,7 @@ void ArchiveWriter::add_base_objects(const std::vector<FileSystemObject *> &base
 			Stream<zstreams::ByteCounterSink> counter2(*lzma, bytes_processed);
 			boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*counter2);
 			SerializerStream ss(sync_sink);
-			ss.serialize(*i, config::include_typehashes);
+			ss.full_serialization(*i, config::include_typehashes);
 		}
 		this->base_object_entry_sizes.push_back(bytes_processed);
 	}
@@ -378,7 +378,7 @@ void ArchiveWriter::add_version_manifest(VersionManifest &manifest){
 		Stream<zstreams::LzmaSink> lzma(*counter, &mt, 8);
 		boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*lzma);
 		SerializerStream ss(sync_sink);
-		ss.serialize(manifest, config::include_typehashes);
+		ss.full_serialization(manifest, config::include_typehashes);
 	}
 	auto s_manifest_length = serialize_fixed_le_int(manifest_length);
 	boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*this->nested_stream);

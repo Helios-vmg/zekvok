@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "../stdafx.h"
 #include "Transactions.h"
+#include "../Exception.h"
+#include "../Utility.h"
 
 KernelTransaction::KernelTransaction(){
 	this->tx = CreateTransaction(nullptr, nullptr, 0, 0, 0, 0, nullptr);

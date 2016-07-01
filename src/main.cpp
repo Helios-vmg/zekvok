@@ -7,6 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "LineProcessor.h"
+#include "StreamProcessor.h"
+#include "MemoryStream.h"
+#include "Globals.h"
 
 void test1(){
 	using zstreams::Stream;
@@ -42,7 +45,7 @@ void test(){
 int main(int argc, char **argv){
 	CoInitialize(nullptr);
 	random_number_generator.reset(new CryptoPP::AutoSeededRandomPool);
-#ifdef _DEBUG
+#if defined _DEBUG && 0
 	test();
 #endif
 	LineProcessor processor(argc, argv);

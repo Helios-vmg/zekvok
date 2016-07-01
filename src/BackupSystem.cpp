@@ -18,6 +18,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "VersionForRestore.h"
 #include "BoundedStreamFilter.h"
 #include "NullStream.h"
+#include "MemoryStream.h"
 
 using zstreams::Stream;
 
@@ -458,7 +459,7 @@ void BackupSystem::save_encrypted_base_objects(KernelTransaction &tx, version_nu
 			Stream<zstreams::MemorySink> omem(mem, pipeline);
 			boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*omem);
 			SerializerStream stream(sync_sink);
-			stream.serialize(*cloned, config::include_typehashes);
+			stream.full_serialization(*cloned, config::include_typehashes);
 		}
 
 		boost::iostreams::stream<zstreams::SynchronousSink> sync_sink(*lzma);
@@ -639,7 +640,7 @@ std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_old_objects(Arc
 	while (simple_buffer_deserialization(mem, sync_source)){
 		boost::iostreams::stream<MemorySource> stream(&mem);
 		ImplementedDeserializerStream ds(stream);
-		std::shared_ptr<FileSystemObject> fso(ds.deserialize<FileSystemObject>(config::include_typehashes));
+		std::shared_ptr<FileSystemObject> fso(ds.full_deserialization<FileSystemObject>(config::include_typehashes));
 		ret.push_back(fso);
 		auto mbp = fso->get_unmapped_base_path();
 		if (!mbp)
@@ -1021,7 +1022,7 @@ void BackupSystem::generate_keypair(const std::wstring &recipient, const std::ws
 		RsaKeyPair pair(pri, pub, symmetric_key);
 		boost::filesystem::ofstream file(filename, std::ios::binary);
 		SerializerStream ss(file);
-		ss.serialize(pair, false);
+		ss.full_serialization(pair, false);
 		break;
 	}
 }

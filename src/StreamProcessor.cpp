@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "stdafx.h"
 #include "StreamProcessor.h"
 #include "Utility.h"
+#include "Exception.h"
 
 namespace zstreams{
 
@@ -98,8 +99,7 @@ Segment::~Segment(){
 
 struct StreamProcessorStoppingException{};
 
-StreamProcessor::StreamProcessor(StreamPipeline &parent): parent(&parent), state(State::Uninitialized){
-	this->parent->notify_thread_creation(this);
+StreamProcessor::StreamProcessor(StreamPipeline &parent): pipeline(&parent), state(State::Uninitialized){
 }
 
 StreamProcessor::~StreamProcessor(){
@@ -119,9 +119,13 @@ Segment StreamProcessor::read(){
 	while (true){
 		Segment ret;
 		{
-			auto &running = this->parent->busy_threads;
+			auto &running = this->pipeline->busy_threads;
 			ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
 			ScopedDecrement<decltype(running)> inc(running);
+			while (!this->source_queue){
+				std::this_thread::sleep_for(std::chrono::milliseconds(250));
+				this->check_termination();
+			}
 			while (!this->source_queue->try_pop(ret))
 				this->check_termination();
 		}
@@ -158,9 +162,10 @@ void StreamProcessor::put_back(Segment &segment){
 }
 
 void StreamProcessor::write(Segment &segment){
-	if (!this->pass_eof && segment.get_type() == SegmentType::Eof)
+	bool is_eof = segment.get_type() == SegmentType::Eof;
+	if (!this->pass_eof && is_eof)
 		return;
-	auto &running = this->parent->busy_threads;
+	auto &running = this->pipeline->busy_threads;
 	ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
 	ScopedDecrement<decltype(running)> inc(running);
 	size_t size = 0;
@@ -170,6 +175,14 @@ void StreamProcessor::write(Segment &segment){
 		this->check_termination();
 	// Note: If we get to this point, the segment was definitely pushed. check_termination() throws.
 	this->bytes_written += size;
+}
+
+void StreamProcessor::notify_thread_creation(){
+	this->pipeline->notify_thread_creation(this);
+}
+
+void StreamProcessor::notify_thread_end(){
+	this->pipeline->notify_thread_end(this);
 }
 
 void StreamProcessor::start(){
@@ -183,15 +196,15 @@ void StreamProcessor::start(){
 void StreamProcessor::thread_func(){
 	this->state = State::Running;
 	ScopedAtomicPostSet<State> scope(this->state, State::Completed);
-	auto &running = this->parent->busy_threads;
+	auto &running = this->pipeline->busy_threads;
 	ScopedIncrement<decltype(running)> inc(running);
 	try{
 		this->work();
 	}catch (StreamProcessorStoppingException &){
 	}catch (std::exception &e){
-		this->parent->set_exception_message((std::string)this->class_name() + ": " + e.what());
+		this->pipeline->set_exception_message((std::string)this->class_name() + ": " + e.what());
 	}
-	this->parent->notify_thread_end(this);
+	this->notify_thread_end();
 }
 
 void StreamProcessor::join(){
@@ -206,8 +219,10 @@ void StreamProcessor::stop(){
 	while (true){
 		switch (this->state){
 			case State::Uninitialized:
+				return;
 			case State::Starting:
-				continue;
+				this->join();
+				return;
 			case State::Running:
 			case State::Yielding:
 				this->state = State::Stopping;
@@ -250,17 +265,21 @@ void StreamProcessor::connect_to_sink(StreamProcessor &p){
 }
 
 Segment StreamProcessor::allocate_segment() const{
-	return this->parent->allocate_segment();
+	return this->pipeline->allocate_segment();
 }
 
 void StreamPipeline::notify_thread_creation(StreamProcessor *p){
+	std::string name = p->class_name();
 	LOCK_MUTEX(this->processors_mutex);
-	this->processors.insert((uintptr_t)p);
+	this->processors[(uintptr_t)p] = name;
 }
 
 void StreamPipeline::notify_thread_end(StreamProcessor *p){
 	LOCK_MUTEX(this->processors_mutex);
-	this->processors.erase((uintptr_t)p);
+	auto it = this->processors.find((uintptr_t)p);
+	if (it == this->processors.end())
+		return;
+	this->processors.erase(it);
 }
 
 StreamPipeline::StreamPipeline(){
@@ -273,8 +292,10 @@ StreamPipeline::~StreamPipeline(){
 void StreamPipeline::start(){
 	this->check_exceptions();
 	LOCK_MUTEX(this->processors_mutex);
-	for (auto &p : this->processors)
-		((StreamProcessor *)p)->start();
+	for (auto &p : this->processors){
+		auto class_name = p.second;
+		((StreamProcessor *)p.first)->start();
+	}
 }
 
 void StreamPipeline::check_exceptions(){
@@ -329,6 +350,7 @@ Sink::~Sink(){
 }
 
 Sink::Sink(Sink &sink): StreamProcessor(sink.get_pipeline()){
+	this->pass_eof = false;
 	this->connect_to_sink(sink);
 }
 
@@ -359,7 +381,7 @@ Source::Source(Source &source) : StreamProcessor(source.get_pipeline()){
 void Source::copy_to(Sink &sink){
 	this->pass_eof = false;
 	this->connect_to_sink(sink);
-	this->parent->start();
+	this->pipeline->start();
 	this->join();
 }
 
@@ -395,7 +417,7 @@ FileSink::FileSink(const path_t &path, StreamPipeline &parent): StdStreamSink(pa
 
 void StdStreamSource::work(){
 	while (this->stream){
-		auto segment = this->parent->allocate_segment();
+		auto segment = this->pipeline->allocate_segment();
 		auto data = segment.get_data();
 		this->stream->read(reinterpret_cast<char *>(data.data), data.size);
 		auto bytes_read = this->stream->gcount();
@@ -423,7 +445,7 @@ SynchronousSourceImpl::~SynchronousSourceImpl(){
 std::streamsize SynchronousSourceImpl::read(char *s, std::streamsize n){
 	if (this->at_eof)
 		return -1;
-	this->parent->start();
+	this->pipeline->start();
 	std::streamsize ret = 0;
 	while (n){
 		if (!this->current_segment){
@@ -458,7 +480,7 @@ SynchronousSinkImpl::~SynchronousSinkImpl(){
 }
 
 std::streamsize SynchronousSinkImpl::write(const char *s, std::streamsize n){
-	this->parent->start();
+	this->pipeline->start();
 	std::streamsize ret = 0;
 	while (n){
 		this->ensure_valid_segment();
@@ -478,7 +500,7 @@ void SynchronousSinkImpl::ensure_valid_segment(){
 	if (!!this->current_segment)
 		return;
 
-	this->current_segment = this->parent->allocate_segment();
+	this->current_segment = this->pipeline->allocate_segment();
 	this->offset = 0;
 }
 

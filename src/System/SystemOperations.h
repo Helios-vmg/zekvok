@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "../SimpleTypes.h"
+
 std::wstring path_from_string(const std::wstring &path);
 
 namespace system_ops{

@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include "System/SystemOperations.h"
+#include "Utility.h"
 class VssSnapshot;
 class FileSystemObject;
 class FilishFso;

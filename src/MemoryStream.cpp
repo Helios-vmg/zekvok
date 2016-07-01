@@ -28,7 +28,7 @@ namespace zstreams{
 
 void MemorySource::work(){
 	while (this->size){
-		auto segment = this->parent->allocate_segment();
+		auto segment = this->pipeline->allocate_segment();
 		auto data = segment.get_data();
 		data.size = std::min(data.size, this->size);
 		memcpy(data.data, this->buffer, data.size);

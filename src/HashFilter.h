@@ -24,7 +24,7 @@ private:
 	virtual void write(Segment &) = 0;
 
 protected:
-	void HashFilter_work(){
+	void HashFilter_work(bool is_sink){
 		std::uint64_t bytes = 0;
 		while (true){
 			auto segment = this->read();
@@ -50,7 +50,7 @@ public:
 template <typename HashT>
 class HashSource : public HashFilter<HashT>, public Source{
 	void work() override{
-		HashFilter<HashT>::HashFilter_work();
+		HashFilter<HashT>::HashFilter_work(false);
 	}
 	Segment read() override{
 		return Source::read();
@@ -69,7 +69,7 @@ public:
 template <typename HashT>
 class HashSink : public HashFilter<HashT>, public Sink{
 	void work() override{
-		HashFilter<HashT>::HashFilter_work();
+		HashFilter<HashT>::HashFilter_work(true);
 	}
 	Segment read() override{
 		return Sink::read();

@@ -7,6 +7,9 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #pragma once
 
+#include "SimpleTypes.h"
+#include "Exception.h"
+
 struct strcmpci
 {
 	template <typename CharType>
@@ -298,13 +301,13 @@ std::shared_ptr<T> easy_clone(const T &src){
 	{
 		boost::iostreams::stream<MemorySink> omem(&mem);
 		SerializerStream stream(omem);
-		stream.serialize(src);
+		stream.full_serialization(src);
 	}
 	std::shared_ptr<T> cloned;
 	{
 		boost::iostreams::stream<MemorySource> imem(&mem);
 		ImplementedDeserializerStream stream(imem);
-		cloned.reset(stream.deserialize<T>());
+		cloned.reset(stream.full_deserialization<T>());
 	}
 	return cloned;
 }

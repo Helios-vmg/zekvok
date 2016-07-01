@@ -12,7 +12,7 @@ namespace zstreams{
 
 void NullSource::work(){
 	while (true){
-		auto segment = this->parent->allocate_segment();
+		auto segment = this->pipeline->allocate_segment();
 		auto data = segment.get_data();
 		memset(data.data, 0, data.size);
 		this->write(segment);

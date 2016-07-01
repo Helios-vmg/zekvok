@@ -36,14 +36,14 @@ void BoundedSource::work(){
 			continue;
 		}
 		Segment eof(SegmentType::Eof);
-		if (this->bytes_read == this->simulated_length){
-			this->write(eof);
-			break;
+		if (data.size == bytes_read){
+			this->write(segment);
+		}else{
+			auto copy = segment.clone_and_trim(bytes_read);
+			segment.skip_bytes(bytes_read);
+			this->source_queue->put_back(segment);
+			this->write(copy);
 		}
-		auto copy = segment.clone_and_trim(bytes_read);
-		segment.skip_bytes(bytes_read);
-		this->source_queue->put_back(segment);
-		this->write(copy);
 		this->write(eof);
 		break;
 	}

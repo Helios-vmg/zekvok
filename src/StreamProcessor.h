@@ -140,7 +140,7 @@ private:
 	std::uint64_t bytes_read = 0,
 		bytes_written = 0;
 protected:
-	StreamPipeline *parent;
+	StreamPipeline *pipeline;
 	std::atomic<State> state;
 	std::unique_ptr<std::thread> thread;
 	std::shared_ptr<Queue> sink_queue,
@@ -176,7 +176,7 @@ public:
 	void connect_to_source(StreamProcessor &);
 	void connect_to_sink(StreamProcessor &p);
 	StreamPipeline &get_pipeline() const{
-		return *this->parent;
+		return *this->pipeline;
 	}
 	virtual const char *class_name() const = 0;
 	void set_bytes_written_dst(std::uint64_t &dst){
@@ -187,12 +187,14 @@ public:
 	}
 	Segment allocate_segment() const;
 	void write(Segment &);
+	void notify_thread_creation();
+	void notify_thread_end();
 };
 
 class StreamPipeline{
 	friend class StreamProcessor;
 	std::atomic<int> busy_threads;
-	std::unordered_set<uintptr_t> processors;
+	std::unordered_map<uintptr_t, std::string> processors;
 	std::mutex processors_mutex;
 	std::vector<std::unique_ptr<buffer_t>> allocated_buffers;
 	std::mutex allocated_buffers_mutex;
@@ -362,7 +364,9 @@ public:
 	}
 	Stream(){}
 	template <typename ... Args>
-	Stream(Args && ... args): stream(std::make_unique<T, Args...>(std::forward<Args>(args)...)){}
+	Stream(Args && ... args): stream(std::make_unique<T, Args...>(std::forward<Args>(args)...)){
+		this->stream->notify_thread_creation();
+	}
 	template <typename T2>
 	Stream(Stream<T2> &&old){
 		this->stream = std::move(old.stream);
@@ -374,6 +378,8 @@ public:
 	}
 	~Stream(){
 		this->flush_stream<T>();
+		if (this->stream)
+			this->stream->notify_thread_end();
 	}
 	T &operator*(){
 		return *this->stream;

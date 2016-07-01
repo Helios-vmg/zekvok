@@ -7,6 +7,8 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #include "stdafx.h"
 #include "LzmaFilter.h"
+#include "Utility.h"
+#include "Exception.h"
 
 namespace zstreams{
 
@@ -27,7 +29,7 @@ LzmaSink::~LzmaSink(){
 }
 
 void LzmaSink::reset_segment(){
-	this->output_segment = this->parent->allocate_segment();
+	this->output_segment = this->pipeline->allocate_segment();
 	auto data = this->output_segment.get_data();
 	this->lstream.next_out = data.data;
 	this->lstream.avail_out = data.size;
@@ -145,8 +147,9 @@ void LzmaSink::work(){
 	do{
 		if (this->lstream.avail_in == 0){
 			segment = this->read();
-			if (segment.get_type() == SegmentType::Eof)
+			if (segment.get_type() == SegmentType::Eof){
 				break;
+			}
 			auto data = segment.get_data();
 			if (!data.size)
 				continue;
@@ -208,7 +211,7 @@ void LzmaSource::work(){
 		if (!this->lstream.avail_out){
 			if (!!out_segment)
 				this->write(out_segment);
-			out_segment = this->parent->allocate_segment();
+			out_segment = this->pipeline->allocate_segment();
 			auto data = out_segment.get_data();
 			this->lstream.next_out = data.data;
 			this->lstream.avail_out = data.size;
@@ -248,6 +251,8 @@ void LzmaSource::work(){
 		out_segment.trim_to_size(data.size - this->lstream.avail_out);
 		this->write(out_segment);
 	}
+	Segment eof(SegmentType::Eof);
+	this->write(eof);
 }
 
 }
