@@ -25,6 +25,7 @@ LzmaSink::LzmaSink(Sink &stream, bool *multithreaded, int compression_level, boo
 }
 
 LzmaSink::~LzmaSink(){
+	StreamProcessor::stop();
 	lzma_end(&this->lstream);
 }
 
@@ -187,6 +188,7 @@ LzmaSource::LzmaSource(Source &stream):
 }
 
 LzmaSource::~LzmaSource(){
+	StreamProcessor::stop();
 	lzma_end(&this->lstream);
 }
 
