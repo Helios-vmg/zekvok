@@ -125,6 +125,8 @@ public:
 	}
 };
 
+//#define USE_THREADPOOL
+
 class StreamProcessor{
 public:
 	enum class State{
@@ -142,7 +144,11 @@ private:
 protected:
 	StreamPipeline *pipeline;
 	std::atomic<State> state;
+#ifdef USE_THREADPOOL
+	ThreadWrapper thread;
+#else
 	std::unique_ptr<std::thread> thread;
+#endif
 	std::shared_ptr<Queue> sink_queue,
 		source_queue;
 	bool pass_eof = true;

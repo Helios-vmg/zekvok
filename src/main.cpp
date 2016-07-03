@@ -10,6 +10,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #include "StreamProcessor.h"
 #include "MemoryStream.h"
 #include "Globals.h"
+#include "System/Threads.h"
 
 void test1(){
 	using zstreams::Stream;
@@ -45,6 +46,7 @@ void test(){
 int main(int argc, char **argv){
 	CoInitialize(nullptr);
 	random_number_generator.reset(new CryptoPP::AutoSeededRandomPool);
+	thread_pool.reset(new ThreadPool);
 #if defined _DEBUG && 0
 	test();
 #endif

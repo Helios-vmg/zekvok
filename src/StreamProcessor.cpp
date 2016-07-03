@@ -201,7 +201,12 @@ void StreamProcessor::start(){
 	if (!this->state.compare_exchange_strong(expected, State::Starting))
 		return;
 	this->state = State::Starting;
+#ifdef USE_THREADPOOL
+	this->thread = thread_pool->allocate_thread();
+	this->thread->run(std::make_unique<std::function<void()>>([this](){ this->thread_func(); }));
+#else
 	this->thread.reset(new std::thread([this](){ this->thread_func(); }));
+#endif
 }
 
 void StreamProcessor::thread_func(){
@@ -219,7 +224,7 @@ void StreamProcessor::thread_func(){
 }
 
 void StreamProcessor::join(){
-	if (this->thread){
+	if (!!this->thread){
 		this->thread->join();
 		this->thread.reset();
 	}

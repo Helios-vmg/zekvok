@@ -78,3 +78,75 @@ public:
 		return false;
 	}
 };
+
+class ThreadPool;
+
+class PooledThread{
+	friend class ThreadWrapper;
+	std::shared_ptr<std::thread> thread;
+	std::mutex cv_mutex, reverse_cv_mutex;
+	std::condition_variable cv, reverse_cv;
+	enum class State{
+		WaitingForJob,
+		JobReady,
+		RunningJob,
+		Terminating,
+		Stopped,
+	};
+	std::atomic<State> state;
+	std::unique_ptr<std::function<void()>> job;
+	ThreadPool *pool = nullptr;
+
+	void thread_func();
+	void thread_func2();
+	bool wait_for_job();
+public:
+	PooledThread(ThreadPool *pool);
+	~PooledThread();
+	void set_pool(ThreadPool *pool){
+		this->pool = pool;
+	}
+	void stop();
+	void join();
+	void run(std::unique_ptr<std::function<void()>> &&);
+};
+
+class ThreadWrapper{
+	PooledThread *thread = nullptr;
+public:
+	ThreadWrapper(){}
+	ThreadWrapper(PooledThread *thread): thread(thread){}
+	ThreadWrapper(ThreadWrapper &&tw): thread(nullptr){
+		*this = std::move(tw);
+	}
+	const ThreadWrapper &operator=(ThreadWrapper &&tw){
+		this->thread = tw.thread;
+		tw.thread = nullptr;
+		return *this;
+	}
+	const ThreadWrapper &operator=(const ThreadWrapper &) = delete;
+	~ThreadWrapper();
+	PooledThread &operator*() const{
+		return *this->thread;
+	}
+	PooledThread *operator->() const{
+		return this->thread;
+	}
+	bool operator!() const{
+		return !this->thread;
+	}
+	void reset();
+};
+
+class ThreadPool{
+	std::vector<std::shared_ptr<PooledThread>> all_threads;
+	std::vector<PooledThread *> inactive_threads;
+	std::mutex mutex;
+public:
+	ThreadPool();
+	~ThreadPool();
+	ThreadWrapper allocate_thread();
+	void release_thread(PooledThread *);
+};
+
+extern std::unique_ptr<ThreadPool> thread_pool;
