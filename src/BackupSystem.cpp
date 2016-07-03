@@ -780,7 +780,7 @@ bool BackupSystem::file_has_changed(version_number_t &dst, FilishFso &new_file){
 			ret = new_file.get_modification_time() != old_file->get_modification_time();
 			break;
 		case ChangeCriterium::Hash:
-			ret = compare_hashes(new_file, *old_file);
+			ret = !compare_hashes(new_file, *old_file);
 			break;
 		case ChangeCriterium::HashAuto:
 			ret = this->file_has_changed(new_file, *old_file);

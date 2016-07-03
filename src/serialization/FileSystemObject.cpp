@@ -660,13 +660,13 @@ void FileSystemObject::encrypt(){
 	if (this->is_encrypted)
 		return;
 	if (!!this->parent)
-		this->name = encrypt_string(this->name);
+		this->name = encrypt_string_ci(this->name);
 	//if (this->mapped_base_path)
 	//	*this->mapped_base_path = encrypt_string_ci(*this->mapped_base_path);
 	//if (this->unmapped_base_path)
 	//	*this->unmapped_base_path = encrypt_string_ci(*this->unmapped_base_path);
 	if (this->link_target)
-		*this->link_target = encrypt_string(*this->link_target);
+		*this->link_target = encrypt_string_ci(*this->link_target);
 	this->exceptions.clear();
 	this->encrypt_internal();
 	this->is_encrypted = true;
@@ -679,5 +679,5 @@ void DirectoryFso::encrypt_internal(){
 
 void FileHardlinkFso::encrypt_internal(){
 	for (auto &peer : this->peers)
-		peer = encrypt_string(peer);
+		peer = encrypt_string_ci(peer);
 }
