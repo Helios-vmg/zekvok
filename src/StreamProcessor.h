@@ -134,7 +134,6 @@ public:
 		Starting,
 		Running,
 		Yielding,
-		Stopping,
 		Completed,
 		Ignore,
 	};
@@ -144,6 +143,7 @@ private:
 protected:
 	StreamPipeline *pipeline;
 	std::atomic<State> state;
+	std::atomic<bool> stop_requested;
 #ifdef USE_THREADPOOL
 	ThreadWrapper thread;
 #else
@@ -158,7 +158,7 @@ protected:
 	void thread_func();
 	virtual void work() = 0;
 	Segment read();
-	void check_termination();
+	void throw_on_termination();
 	virtual void flush_impl(){}
 	virtual bool pass_flush(){
 		return true;

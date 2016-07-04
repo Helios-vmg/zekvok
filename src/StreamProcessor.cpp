@@ -123,16 +123,14 @@ Segment StreamProcessor::read(){
 		{
 			auto &running = this->pipeline->busy_threads;
 			ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
-			if (scope.get_old_value() == State::Stopping)
-				return eof;
 			ScopedDecrement<decltype(running)> inc(running);
 			while (!this->source_queue){
 				std::this_thread::sleep_for(std::chrono::milliseconds(250));
-				if (this->state == State::Stopping)
+				if (this->stop_requested)
 					return eof;
 			}
 			while (!this->source_queue->try_pop(ret))
-				if (this->state == State::Stopping)
+				if (this->stop_requested)
 					return eof;
 		}
 		if (ret.get_type() == SegmentType::Flush){
@@ -154,8 +152,8 @@ Segment StreamProcessor::read(){
 	}
 }
 
-void StreamProcessor::check_termination(){
-	if (this->state == State::Stopping)
+void StreamProcessor::throw_on_termination(){
+	if (this->stop_requested)
 		throw StreamProcessorStoppingException();
 }
 
@@ -174,18 +172,16 @@ void StreamProcessor::write(Segment &segment){
 	auto &running = this->pipeline->busy_threads;
 	{
 		ScopedAtomicReversibleSet<State> scope(this->state, State::Yielding, ScopedAtomicReversibleSet<State>::CancelOnException);
-		if (scope.get_old_value() != State::Stopping){
-			ScopedDecrement<decltype(running)> inc(running);
-			size_t size = 0;
-			if (segment.get_type() == SegmentType::Data)
-				size = segment.get_data().size;
-			while (!this->sink_queue->try_push(segment))
-				this->check_termination();
-			// Note: If we get to this point, the segment was definitely pushed. check_termination() throws.
-			this->bytes_written += size;
-		}
+		ScopedDecrement<decltype(running)> inc(running);
+		size_t size = 0;
+		if (segment.get_type() == SegmentType::Data)
+			size = segment.get_data().size;
+		while (!this->sink_queue->try_push(segment))
+			this->throw_on_termination();
+		// Note: If we get to this point, the segment was definitely pushed. check_termination() throws.
+		this->bytes_written += size;
 	}
-	this->check_termination();
+	this->throw_on_termination();
 }
 
 void StreamProcessor::notify_thread_creation(){
@@ -241,8 +237,7 @@ void StreamProcessor::stop(){
 				return;
 			case State::Running:
 			case State::Yielding:
-				this->state = State::Stopping;
-			case State::Stopping:
+				this->stop_requested = true;
 			case State::Completed:
 				this->join();
 				return;
