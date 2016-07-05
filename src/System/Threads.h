@@ -84,24 +84,32 @@ class ThreadPool;
 class PooledThread{
 	friend class ThreadWrapper;
 	std::shared_ptr<std::thread> thread;
-	std::mutex cv_mutex, reverse_cv_mutex;
-	std::condition_variable cv, reverse_cv;
-	enum class State{
-		WaitingForJob,
+	std::mutex requested_state_cv_mutex, reported_state_cv_mutex;
+	std::condition_variable requested_state_cv, reported_state_cv;
+	enum class RequestedState{
+		None,
 		JobReady,
+		Terminate,
+	};
+	enum class ReportedState{
+		WaitingForJob,
 		RunningJob,
-		Terminating,
+		Stopping,
 		Stopped,
 	};
-	std::atomic<State> state;
+	std::atomic<RequestedState> requested_state;
+	std::atomic<ReportedState> reported_state;
 	std::unique_ptr<std::function<void()>> job;
 	ThreadPool *pool = nullptr;
 
 	void thread_func();
 	void thread_func2();
-	bool wait_for_job();
+	bool wait_for_request();
+	void wait_for_none();
 public:
 	PooledThread(ThreadPool *pool);
+	PooledThread(const PooledThread &) = delete;
+	PooledThread(PooledThread &&) = delete;
 	~PooledThread();
 	void set_pool(ThreadPool *pool){
 		this->pool = pool;

@@ -46,7 +46,6 @@ void test(){
 int main(int argc, char **argv){
 	CoInitialize(nullptr);
 	random_number_generator.reset(new CryptoPP::AutoSeededRandomPool);
-	thread_pool.reset(new ThreadPool);
 #if defined _DEBUG && 0
 	test();
 #endif
