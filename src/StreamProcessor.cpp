@@ -100,7 +100,7 @@ Segment::~Segment(){
 
 struct StreamProcessorStoppingException{};
 
-StreamProcessor::StreamProcessor(StreamPipeline &parent): pipeline(&parent), state(State::Uninitialized){
+StreamProcessor::StreamProcessor(StreamPipeline &parent): pipeline(&parent), state(State::Uninitialized), stop_requested(false){
 }
 
 StreamProcessor::~StreamProcessor(){
