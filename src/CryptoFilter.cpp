@@ -40,6 +40,7 @@ Stream<CryptoSink> CryptoSink::create(Algorithm algo, Sink &stream, const Crypto
 			return Stream<GenericCryptoOutputStream<CryptoPP::Twofish>>(stream, *key, *iv);
 	}
 	zekvok_assert(false);
+	return Stream<GenericCryptoOutputStream<CryptoPP::Twofish>>();
 }
 
 void CryptoSink::work(){
@@ -113,6 +114,7 @@ Stream<CryptoSource> CryptoSource::create(
 			return Stream<GenericCryptoInputStream<CryptoPP::Twofish>>(stream, *key, *iv);
 	}
 	zekvok_assert(false);
+	return Stream<GenericCryptoInputStream<CryptoPP::Twofish>>();
 }
 
 void CryptoSource::work(){
