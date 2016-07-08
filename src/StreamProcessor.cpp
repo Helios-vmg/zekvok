@@ -374,15 +374,13 @@ void Sink::flush(){
 		this->join();
 		return;
 	}
-	std::mutex flush_mutex;
-	std::condition_variable cv;
+	Event cv;
 	bool ready = false;
-	auto cb = std::make_unique<flush_callback_t>([&]{ ready = true; cv.notify_all(); });
+	auto cb = std::make_unique<flush_callback_t>([&]{ ready = true; cv.signal(); });
 	auto segment = Segment::construct_flush(cb);
 	this->source_queue->push(segment);
-	std::unique_lock<std::mutex> lock(flush_mutex);
 	while (!ready && this->state != State::Completed)
-		cv.wait_for(lock, std::chrono::milliseconds(250));
+		cv.wait_for(250);
 	if (!ready)
 		this->flush_impl();
 }

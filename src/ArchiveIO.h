@@ -8,6 +8,7 @@ Distributed under a permissive license. See COPYING.txt for details.
 #pragma once
 
 #include "StreamProcessor.h"
+#include "BoundedStreamFilter.h"
 
 class RsaKeyPair;
 class KernelTransaction;
@@ -43,7 +44,53 @@ public:
 
 class ArchiveReader{
 public:
-	typedef boost::coroutines::asymmetric_coroutine<std::pair<std::uint64_t, zstreams::Source *>> read_everything_co_t;
+	class ArchivePart{
+		std::uint64_t stream_id,
+			skip_bytes,
+			stream_length;
+		zstreams::Source *source;
+		bool was_skipped;
+		zstreams::Stream<zstreams::Source> created_source;
+	public:
+		ArchivePart(std::uint64_t stream_id, zstreams::Source *source, std::uint64_t stream_length, std::uint64_t skip_bytes){
+			this->stream_id = stream_id;
+			this->skip_bytes = skip_bytes;
+			this->stream_length = stream_length;
+			this->source = source;
+			this->was_skipped = false;
+		}
+		ArchivePart(const ArchivePart &old) = delete;
+		const ArchivePart &operator=(const ArchivePart &old) = delete;
+		ArchivePart(const ArchivePart &&old) = delete;
+		const ArchivePart &operator=(const ArchivePart &&old) = delete;
+		void skip(){
+			this->was_skipped = true;
+		}
+		void check_skip(std::uint64_t &skipped){
+			if (this->was_skipped || !this->created_source){
+				skipped += this->stream_length;
+				return;
+			}
+
+			std::uint64_t written = 0;
+			this->created_source->set_bytes_written_dst(written);
+			this->created_source = zstreams::Stream<zstreams::Source>();
+			skipped = this->stream_length - written;
+		}
+		zstreams::Source *read(){
+			if (this->skip_bytes){
+				zstreams::Stream<zstreams::BoundedSource> temp(*this->source, this->skip_bytes);
+				temp->discard_rest();
+				this->skip_bytes = 0;
+			}
+			this->created_source = zstreams::Stream<zstreams::BoundedSource>(*this->source, this->stream_length);
+			return &*this->created_source;
+		}
+		std::uint64_t get_stream_id() const{
+			return this->stream_id;
+		}
+	};
+	typedef boost::coroutines::asymmetric_coroutine<ArchivePart *> read_everything_co_t;
 private:
 	//std::deque<input_filter_generator_t> filters;
 	path_t path;

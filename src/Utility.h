@@ -451,3 +451,13 @@ public:
 	}
 	void operator=(const ScopedAtomicPostSet<T> &) = delete;
 };
+
+template <typename T, typename F>
+void remove_duplicates(std::vector<T> &v, const F &equality){
+	std::vector<T> temp;
+	temp.reserve(v.size());
+	for (auto &p : v)
+		if (!temp.size() || !equality(p, temp.back()))
+			temp.push_back(p);
+	v = std::move(temp);
+}

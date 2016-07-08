@@ -11,6 +11,32 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 const int wait_time = 1;
 
+void Event::signal(){
+	std::lock_guard<std::mutex> lock(this->mutex);
+	this->signalled = true;
+	this->cv.notify_one();
+}
+
+void Event::wait(){
+	while (true){
+		std::unique_lock<std::mutex> lock(this->mutex);
+		if (this->signalled){
+			this->signalled = false;
+			break;
+		}
+		this->cv.wait(lock);
+	}
+}
+
+void Event::wait_for(unsigned ms){
+	std::unique_lock<std::mutex> lock(this->mutex);
+	if (this->signalled){
+		this->signalled = false;
+		return;
+	}
+	this->cv.wait_for(lock, std::chrono::milliseconds(ms));
+}
+
 std::unique_ptr<ThreadPool> thread_pool;
 
 PooledThread::PooledThread(ThreadPool *pool){
@@ -28,58 +54,48 @@ void PooledThread::stop(){
 	if (!this->thread)
 		return;
 	this->requested_state = RequestedState::Terminate;
-	this->requested_state_cv.notify_all();
+	this->requested_state_cv.signal();
 	this->thread->join();
 	this->thread.reset();
 }
 
 void PooledThread::join(){
-	std::unique_lock<std::mutex> ul(this->reported_state_cv_mutex);
 	// TODO: This could deadlock if the thread dies without the state
 	// being set and/or the CV being notified. I should fix this at some point.
 	while (true){
 		ReportedState state = this->reported_state;
 		if (state == ReportedState::WaitingForJob || state == ReportedState::Stopped)
 			break;
-		this->reported_state_cv.wait_for(ul, std::chrono::milliseconds(wait_time));
+		this->reported_state_cv.wait();
 	}
 }
 
 void PooledThread::run(std::unique_ptr<std::function<void()>> &&f){
 	this->job = std::move(f);
 	this->requested_state = RequestedState::JobReady;
-	this->requested_state_cv.notify_all();
-	{
-		std::unique_lock<std::mutex> ul(this->reported_state_cv_mutex);
-		while (this->reported_state != ReportedState::RunningJob)
-			this->reported_state_cv.wait_for(ul, std::chrono::milliseconds(wait_time));
-	}
+	this->requested_state_cv.signal();
+	while (this->reported_state != ReportedState::RunningJob)
+		this->reported_state_cv.wait();
 	this->requested_state = RequestedState::None;
-	this->requested_state_cv.notify_all();
+	this->requested_state_cv.signal();
 }
 
 bool PooledThread::wait_for_request(){
-	std::unique_lock<std::mutex> ul(this->requested_state_cv_mutex);
 	RequestedState state;
-	while (true){
-		state = this->requested_state;
-		if (state != RequestedState::None)
-			break;
-		this->requested_state_cv.wait_for(ul, std::chrono::milliseconds(wait_time));
-	}
+	while ((state = this->requested_state) == RequestedState::None)
+		this->requested_state_cv.wait();
 	return state != RequestedState::Terminate;
 }
 
 void PooledThread::wait_for_none(){
-	std::unique_lock<std::mutex> ul(this->requested_state_cv_mutex);
 	while (this->requested_state != RequestedState::None)
-		this->requested_state_cv.wait_for(ul, std::chrono::milliseconds(wait_time));
+		this->requested_state_cv.wait();
 }
 
 void PooledThread::thread_func2(){
 	while (true){
 		this->reported_state = ReportedState::WaitingForJob;
-		this->reported_state_cv.notify_all();
+		this->reported_state_cv.signal();
 
 		if (!this->wait_for_request())
 			break;
@@ -87,7 +103,7 @@ void PooledThread::thread_func2(){
 		auto job = std::move(this->job);
 
 		this->reported_state = ReportedState::RunningJob;
-		this->reported_state_cv.notify_all();
+		this->reported_state_cv.signal();
 
 		this->wait_for_none();
 
@@ -100,11 +116,11 @@ void PooledThread::thread_func(){
 		this->thread_func2();
 	}catch (...){
 		this->reported_state = ReportedState::Stopped;
-		this->reported_state_cv.notify_all();
+		this->reported_state_cv.signal();
 		throw;
 	}
 	this->reported_state = ReportedState::Stopped;
-	this->reported_state_cv.notify_all();
+	this->reported_state_cv.signal();
 }
 
 ThreadPool::ThreadPool(){

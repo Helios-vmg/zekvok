@@ -20,6 +20,8 @@ class KernelTransaction;
 class ArchiveReader;
 class ArchiveWriter;
 
+typedef std::vector<std::pair<version_number_t, std::vector<FileSystemObject *>>> restore_vt;
+
 class BackupSystem{
 	version_number_t version_count;
 	path_t target_path;
@@ -77,7 +79,7 @@ class BackupSystem{
 	bool file_has_changed(const FileSystemObject &, const FileSystemObject &);
 	ChangeCriterium get_change_criterium(const FileSystemObject &);
 	std::shared_ptr<VersionForRestore> compute_latest_version(version_number_t);
-	void perform_restore(const std::shared_ptr<VersionForRestore> &, const std::vector<std::pair<version_number_t, FileSystemObject *>> &);
+	void perform_restore(const std::shared_ptr<VersionForRestore> &, const restore_vt &);
 	void save_encrypted_base_objects(KernelTransaction &, version_number_t);
 	std::vector<std::shared_ptr<FileSystemObject>> get_old_objects(ArchiveReader &, version_number_t);
 	void archive_process_callback(

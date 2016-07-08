@@ -596,8 +596,14 @@ void RegularFileFso::restore(zstreams::Source *stream, const path_t *base_path){
 	std::unique_ptr<std::ostream> file(new boost::filesystem::ofstream(long_path, std::ios::binary));
 	if (!*file)
 		throw CantOpenOutputFileException(path);
-	Stream<zstreams::StdStreamSink> sink(file, stream->get_pipeline());
-	stream->copy_to(*sink);
+	std::shared_ptr<zstreams::HashFilter<CryptoPP::SHA256>::digest_t> digest;
+	{
+		Stream<zstreams::StdStreamSink> sink(file, stream->get_pipeline());
+		Stream<zstreams::HashSink<CryptoPP::SHA256>> hash_sink(*sink);
+		digest = hash_sink->get_digest();
+		stream->copy_to(*hash_sink);
+	}
+	//zekvok_assert(!this->get_hash().valid || *digest == this->get_hash().digest);
 }
 
 void DirectoryFso::restore_internal(const path_t *base_path){

@@ -19,6 +19,7 @@ public:
 private:
 	HashT hash;
 	std::shared_ptr<digest_t> digest;
+	bool Final_called = false;
 
 	virtual Segment read() = 0;
 	virtual void write(Segment &) = 0;
@@ -29,6 +30,7 @@ protected:
 		while (true){
 			auto segment = this->read();
 			if (segment.get_type() == SegmentType::Eof){
+				this->Final_called = true;
 				this->hash.Final(this->digest->data());
 				this->write(segment);
 				break;
@@ -41,7 +43,10 @@ protected:
 	}
 public:
 	HashFilter(): digest(new digest_t){}
-	virtual ~HashFilter(){}
+	virtual ~HashFilter(){
+		if (!this->Final_called)
+			this->hash.Final(this->digest->data());
+	}
 	std::shared_ptr<digest_t> get_digest(){
 		return this->digest;
 	}

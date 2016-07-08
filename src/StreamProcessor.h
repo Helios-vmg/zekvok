@@ -125,7 +125,7 @@ public:
 	}
 };
 
-//#define USE_THREADPOOL
+#define USE_THREADPOOL
 
 class StreamProcessor{
 public:
@@ -393,6 +393,9 @@ public:
 	}
 	T *operator->(){
 		return this->stream.get();
+	}
+	bool operator!() const{
+		return !this->stream;
 	}
 };
 

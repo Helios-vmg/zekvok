@@ -9,6 +9,16 @@ Distributed under a permissive license. See COPYING.txt for details.
 
 #define LOCK_MUTEX(x) std::lock_guard<decltype(x)> _CONCAT(LOCK_MUTEX_lock, __COUNTER__)(x)
 
+class Event{
+	bool signalled = false;
+	std::mutex mutex;
+	std::condition_variable cv;
+public:
+	void signal();
+	void wait();
+	void wait_for(unsigned ms);
+};
+
 class QueueBeingDestructed : public std::exception{
 public:
 	const char *what() const{
@@ -24,9 +34,7 @@ class CircularQueue{
 	size_t size;
 	const size_t capacity;
 	std::mutex mutex;
-	std::mutex pop_notification_mutex,
-		push_notification_mutex;
-	std::condition_variable pop_notification,
+	Event pop_notification,
 		push_notification;
 
 public:
@@ -46,14 +54,13 @@ public:
 					this->data[this->tail++ % n] = std::move(i);
 					this->tail %= n;
 					this->size++;
-					this->push_notification.notify_all();
+					this->push_notification.signal();
 					return true;
 				}
 			}
 			if (++j == 2)
 				break;
-			std::unique_lock<std::mutex> lock(this->pop_notification_mutex);
-			this->pop_notification.wait_for(lock, std::chrono::milliseconds(timeout_ms));
+			this->pop_notification.wait_for(timeout_ms);
 		}
 		return false;
 	}
@@ -66,14 +73,13 @@ public:
 					dst = std::move(this->data[this->head++]);
 					this->head %= n;
 					this->size--;
-					this->pop_notification.notify_all();
+					this->pop_notification.signal();
 					return true;
 				}
 			}
 			if (++j == 2)
 				break;
-			std::unique_lock<std::mutex> lock(this->push_notification_mutex);
-			this->push_notification.wait_for(lock, std::chrono::milliseconds(timeout_ms));
+			this->push_notification.wait_for(timeout_ms);
 		}
 		return false;
 	}
@@ -84,8 +90,8 @@ class ThreadPool;
 class PooledThread{
 	friend class ThreadWrapper;
 	std::shared_ptr<std::thread> thread;
-	std::mutex requested_state_cv_mutex, reported_state_cv_mutex;
-	std::condition_variable requested_state_cv, reported_state_cv;
+	Event requested_state_cv,
+		reported_state_cv;
 	enum class RequestedState{
 		None,
 		JobReady,

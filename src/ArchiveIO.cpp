@@ -250,10 +250,11 @@ void ArchiveReader::read_everything(read_everything_co_t::push_type &sink){
 	Stream<zstreams::LzmaSource> lzma(*stream);
 
 	zekvok_assert(this->stream_ids.size() == this->stream_sizes.size());
+	std::uint64_t accumulated_skip = 0;
 	for (size_t i = 0; i < this->stream_ids.size(); i++){
-		Stream<zstreams::BoundedSource> bounded2(*lzma, this->stream_sizes[i]);
-		sink(std::make_pair(this->stream_ids[i], &*bounded2));
-		bounded2->discard_rest();
+		ArchivePart part(this->stream_ids[i], &*lzma, this->stream_sizes[i], accumulated_skip);
+		sink(&part);
+		part.check_skip(accumulated_skip);
 	}
 }
 

@@ -859,25 +859,25 @@ void BackupSystem::restore_backup(version_number_t version_number){
 		for (auto &fso : old_object->get_iterator())
 			latest_version->restore(fso, restore_later);
 	}
-	std::vector<std::pair<version_number_t, FileSystemObject *>> fsos_per_version;
-	for (auto &fso : restore_later)
-		fsos_per_version.push_back(std::make_pair(fso->get_latest_version(), fso));
-	std::sort(
-		fsos_per_version.begin(),
-		fsos_per_version.end(),
-		[](const std::pair<version_number_t, FileSystemObject *> &a, const std::pair<version_number_t, FileSystemObject *> &b){
-			if (a.first < b.first)
-				return true;
-			if (a.first > b.first)
-				return false;
-			return a.second->get_stream_id() < b.second->get_stream_id();
+	std::sort(restore_later.begin(), restore_later.end(), [](FileSystemObject *a, FileSystemObject *b)
+	{
+		return a->get_latest_version() < b->get_latest_version() || a->get_latest_version() == b->get_latest_version() && a->get_stream_id() < b->get_stream_id();
+	});
+	restore_vt fsos_per_version;
+	for (auto &fso : restore_later){
+		if (!fsos_per_version.size() || fsos_per_version.back().first != fso->get_latest_version()){
+			fsos_per_version.resize(fsos_per_version.size() + 1);
+			fsos_per_version.back().first = fso->get_latest_version();
 		}
-	);
+		fsos_per_version.back().second.push_back(fso);
+	}
+	remove_duplicates(fsos_per_version, [](const decltype(fsos_per_version)::value_type &a, const decltype(fsos_per_version)::value_type &b)
+	{
+		return a.first == b.first;
+	});
 	restore_later.clear();
 	this->perform_restore(latest_version, fsos_per_version);
 }
-
-typedef std::vector<std::pair<version_number_t, FileSystemObject *>> restore_vt;
 
 void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin, restore_vt::const_iterator *shared_end, std::mutex *mutex){
 	while (true){
@@ -889,60 +889,64 @@ void restore_thread(BackupSystem *This, restore_vt::const_iterator *shared_begin
 				break;
 			version_number = (*shared_begin)->first;
 			begin = *shared_begin;
-			end = find_first_true(
-				begin,
-				*shared_end,
-				[version_number](const std::pair<version_number_t, FileSystemObject *> &x){
-					return x.second->get_latest_version() > version_number;
-				}
-			);
+			end = begin;
+			++end;
 			*shared_begin = end;
 		}
 		//Assume monotonicity of input stream IDs.
-		auto begin2 = begin;
+		auto begin2 = begin->second.begin();
+		auto end2 = begin->second.end();
 		auto path = This->get_aux_fso_path(version_number);
 		ArchiveReader archive(This->get_version_path(version_number), &path, This->get_keypair().get());
-		for (auto &pair : archive.read_everything()){
-			auto stream_id = pair.first;
+		std::cout << "Processing version " << version_number << std::endl;
+		for (auto archive_part : archive.read_everything()){
+			auto stream_id = archive_part->get_stream_id();
 			auto it = begin2;
-			FileSystemObject *fso;
-			if (it->second->get_stream_id() != stream_id)
+			FileSystemObject *fso = *it;
+			if (fso->get_stream_id() != stream_id){
+				archive_part->skip();
 				continue;
-			fso = it->second;
+			}
 			++begin2;
-			std::wcout << L"Restoring path \"" << fso->get_unmapped_path().wstring() << L"\"\n";
+			auto restore_path = fso->get_unmapped_path().wstring();
+			std::wcout << L"Restoring path \"" << restore_path << L"\"\n";
 			if (fso->get_type() == FileSystemObjectType::FileHardlink){
 				auto hardlink = static_cast<FileHardlinkFso *>(fso);
 				hardlink->set_treat_as_file(true);
 			}
-			fso->restore(pair.second);
-			for (; begin2 != end && begin2->second->get_stream_id() == stream_id; ++begin2){
-				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << begin2->second->get_mapped_path() << "\"\n";
-				auto hardlink = static_cast<FileHardlinkFso *>(begin2->second);
+			auto restore_stream = archive_part->read();
+			fso->restore(restore_stream);
+			for (; begin2 != end2 && (*begin2)->get_stream_id() == stream_id; ++begin2){
+				std::wcout << L"Hardlink requested. Existing path: \"" << fso->get_mapped_path() << L"\", new path: \"" << (*begin2)->get_mapped_path() << "\"\n";
+				auto hardlink = static_cast<FileHardlinkFso *>(*begin2);
 				hardlink->set_link_target(fso->get_mapped_path());
 				hardlink->restore();
 			}
-			if (begin2 == end || begin2->second->get_latest_version() > it->second->get_latest_version())
+			if (begin2 == end2 || (*begin2)->get_latest_version() > (*it)->get_latest_version())
 				break;
 		}
-		zekvok_assert(begin2 == end || begin2->second->get_latest_version() > begin->second->get_latest_version());
+		zekvok_assert(begin2 == end2);
 	}
 }
 
 void BackupSystem::perform_restore(
 		const std::shared_ptr<VersionForRestore> &latest_version,
 		const restore_vt &restore_later){
-	std::vector<std::shared_ptr<std::thread>> threads;
-	threads.reserve(std::thread::hardware_concurrency());
-	std::mutex mutex;
 	auto begin = restore_later.begin();
 	auto end = restore_later.end();
+	std::mutex mutex;
+#if 1
+	std::vector<std::shared_ptr<std::thread>> threads;
+	threads.reserve(std::thread::hardware_concurrency() * 4);
 	while (threads.size() < threads.capacity())
 		threads.push_back(std::make_shared<std::thread>(restore_thread, this, &begin, &end, &mutex));
 	while (threads.size()){
 		threads.back()->join();
 		threads.pop_back();
 	}
+#else
+	restore_thread(this, &begin, &end, &mutex);
+#endif
 }
 
 std::vector<std::shared_ptr<FileSystemObject>> BackupSystem::get_entries(version_number_t version){
