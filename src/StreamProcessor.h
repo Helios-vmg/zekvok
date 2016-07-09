@@ -368,6 +368,8 @@ public:
 	}
 	template <typename T1>
 	typename std::enable_if<!std::is_base_of<Sink, T1>::value, void>::type flush_stream(){
+		if (this->stream)
+			this->stream->stop();
 	}
 	Stream(){}
 	template <typename ... Args>
