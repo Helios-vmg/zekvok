@@ -935,7 +935,7 @@ void BackupSystem::perform_restore(
 	auto begin = restore_later.begin();
 	auto end = restore_later.end();
 	std::mutex mutex;
-#if 1
+#if 0
 	std::vector<std::shared_ptr<std::thread>> threads;
 	threads.reserve(std::thread::hardware_concurrency() * 4);
 	while (threads.size() < threads.capacity())
